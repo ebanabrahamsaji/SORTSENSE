@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - SortSense</title>
+    <meta name="description" content="Secure admin login portal for SortSense waste management system">
+    <link rel="stylesheet" href="../css/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="auth-split-screen">
+        <!-- Left Side: Admin Branding & Visual -->
+        <div class="auth-left admin-left">
+            <div class="auth-branding">
+                <a href="../index.html" class="logo auth-logo">
+                    Sort Sense <i class="ri-leaf-fill"></i>
+                </a>
+                <h1 class="auth-tagline">
+                    <span class="gradient-text">Administrative</span> Control Center
+                </h1>
+                <p class="auth-description">
+                    Secure access portal for authorized administrators. Monitor systems, manage users, and oversee
+                    waste management operations.
+                </p>
+
+                <div class="auth-features">
+                    <div class="auth-feature-item">
+                        <i class="ri-shield-check-fill"></i>
+                        <span>Enhanced Security</span>
+                    </div>
+                    <div class="auth-feature-item">
+                        <i class="ri-global-line"></i>
+                        <span>System Monitoring</span>
+                    </div>
+                    <div class="auth-feature-item">
+                        <i class="ri-database-2-line"></i>
+                        <span>Data Management</span>
+                    </div>
+                    <div class="auth-feature-item">
+                        <i class="ri-line-chart-line"></i>
+                        <span>Analytics Dashboard</span>
+                    </div>
+                </div>
+
+                <!-- Security Badge -->
+                <div class="security-badge">
+                    <i class="ri-lock-2-fill"></i>
+                    <div>
+                        <strong>Encrypted Connection</strong>
+                        <span>256-bit SSL Security</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decorative Elements -->
+            <div class="auth-blob blob-1"></div>
+            <div class="auth-blob blob-2"></div>
+            <i class="ri-shield-keyhole-line auth-floating-icon" style="top: 15%; left: 10%;"></i>
+            <i class="ri-settings-3-line auth-floating-icon" style="bottom: 20%; right: 15%;"></i>
+        </div>
+
+        <!-- Right Side: Admin Login Form -->
+        <div class="auth-right">
+            <div class="auth-form-container">
+                <div class="auth-form-header">
+                    <div class="admin-badge-header">
+                        <i class="ri-user-settings-line"></i>
+                    </div>
+                    <h2>Admin Portal</h2>
+                    <p>Enter your credentials to continue</p>
+                </div>
+
+                <!-- Admin Login Form -->
+                <form id="adminLoginForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="adminId">Admin ID</label>
+                        <div class="input-with-icon">
+                            <i class="ri-admin-line"></i>
+                            <input type="text" id="adminId" placeholder="Enter your admin ID" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-with-icon">
+                            <i class="ri-lock-password-line"></i>
+                            <input type="password" id="password" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="securityCode">Security Code (Optional)</label>
+                        <div class="input-with-icon">
+                            <i class="ri-shield-keyhole-line"></i>
+                            <input type="text" id="securityCode" placeholder="Two-factor authentication code">
+                        </div>
+                    </div>
+
+                    <div class="form-footer">
+                        <label class="remember-me">
+                            <input type="checkbox" id="remember">
+                            <span>Remember this device</span>
+                        </label>
+                        <a href="forgot-password.html" class="forgot-password">Need help?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary auth-submit-btn">
+                        <i class="ri-login-circle-line"></i> Access Admin Panel
+                    </button>
+                </form>
+
+                <!-- Warning Notice -->
+                <div class="admin-warning">
+                    <i class="ri-error-warning-line"></i>
+                    <p>This area is for authorized personnel only. All access attempts are logged and monitored.</p>
+                </div>
+
+                <a href="../index.html" class="back-home-link">
+                    <i class="ri-arrow-left-line"></i> Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/script.js"></script>
+    <script>
+        // Admin login form handler
+        document.getElementById('adminLoginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const adminId = document.getElementById('adminId').value;
+            const password = document.getElementById('password').value;
+            const securityCode = document.getElementById('securityCode').value;
+
+            // TODO: Implement actual admin authentication
+            console.log('Admin login attempt:', { adminId, hasSecurityCode: !!securityCode });
+
+            // Placeholder response
+            alert('Admin authentication will be implemented here.\n\nAdmin ID: ' + adminId);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SortSense</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="container">
+            <nav class="dashboard-nav">
+                <a href="../index.html" class="logo">
+                    Sort Sense <i class="ri-leaf-fill"></i>
+                </a>
+                <div class="nav-actions">
+                    <div class="user-profile">
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=10b981&color=fff"
+                            alt="User" class="user-avatar">
+                        <span id="userName">User</span>
+                        <i class="ri-arrow-down-s-line"></i>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">
+                        <i class="ri-logout-box-line"></i> Logout
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="dashboard-main">
+        <div class="container">
+            <!-- Welcome Section -->
+            <section class="welcome-section">
+                <div class="welcome-content">
+                    <h1>Welcome back, <span id="welcomeName">User</span>! 👋</h1>
+                    <p>Track your eco-friendly impact and continue making a difference.</p>
+                </div>
+                <div class="quick-action">
+                    <button class="btn btn-primary scan-btn">
+                        <i class="ri-camera-line"></i> Scan Waste Item
+                    </button>
+                </div>
+            </section>
+
+            <!-- Stats Grid -->
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon green">
+                        <i class="ri-trophy-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>1,247</h3>
+                        <p>Green Points</p>
+                    </div>
+                    <div class="stat-trend up">
+                        <i class="ri-arrow-up-line"></i> 12%
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon blue">
+                        <i class="ri-recycle-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>89</h3>
+                        <p>Items Sorted</p>
+                    </div>
+                    <div class="stat-trend up">
+                        <i class="ri-arrow-up-line"></i> 8%
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon purple">
+                        <i class="ri-fire-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>15</h3>
+                        <p>Day Streak</p>
+                    </div>
+                    <div class="stat-trend up">
+                        <i class="ri-arrow-up-line"></i> 3 days
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon orange">
+                        <i class="ri-leaf-line"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>12.5kg</h3>
+                        <p>CO₂ Saved</p>
+                    </div>
+                    <div class="stat-trend up">
+                        <i class="ri-arrow-up-line"></i> 5%
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Content Grid -->
+            <div class="dashboard-grid">
+                <!-- Recent Activity -->
+                <section class="dashboard-card recent-activity">
+                    <div class="card-header">
+                        <h2><i class="ri-history-line"></i> Recent Activity</h2>
+                        <a href="#" class="view-all">View All</a>
+                    </div>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon recyclable">
+                                <i class="ri-recycle-line"></i>
+                            </div>
+                            <div class="activity-details">
+                                <h4>Plastic Bottle</h4>
+                                <p>Recyclable • Correctly sorted</p>
+                            </div>
+                            <div class="activity-points">+15 pts</div>
+                            <div class="activity-time">2 hours ago</div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-icon compost">
+                                <i class="ri-plant-line"></i>
+                            </div>
+                            <div class="activity-details">
+                                <h4>Food Waste</h4>
+                                <p>Compostable • Correctly sorted</p>
+                            </div>
+                            <div class="activity-points">+10 pts</div>
+                            <div class="activity-time">5 hours ago</div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-icon general">
+                                <i class="ri-delete-bin-line"></i>
+                            </div>
+                            <div class="activity-details">
+                                <h4>Mixed Waste</h4>
+                                <p>General Waste • Correctly sorted</p>
+                            </div>
+                            <div class="activity-points">+5 pts</div>
+                            <div class="activity-time">1 day ago</div>
+                        </div>
+
+                        <div class="activity-item">
+                            <div class="activity-icon hazard">
+                                <i class="ri-alert-line"></i>
+                            </div>
+                            <div class="activity-details">
+                                <h4>Battery</h4>
+                                <p>Hazardous • Correctly sorted</p>
+                            </div>
+                            <div class="activity-points">+20 pts</div>
+                            <div class="activity-time">2 days ago</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Achievements -->
+                <section class="dashboard-card achievements">
+                    <div class="card-header">
+                        <h2><i class="ri-medal-line"></i> Achievements</h2>
+                    </div>
+                    <div class="achievement-grid">
+                        <div class="achievement-badge earned">
+                            <i class="ri-seedling-line"></i>
+                            <span>Eco Starter</span>
+                        </div>
+                        <div class="achievement-badge earned">
+                            <i class="ri-recycle-line"></i>
+                            <span>Recycler</span>
+                        </div>
+                        <div class="achievement-badge earned">
+                            <i class="ri-fire-line"></i>
+                            <span>Week Streak</span>
+                        </div>
+                        <div class="achievement-badge locked">
+                            <i class="ri-trophy-line"></i>
+                            <span>Eco Master</span>
+                        </div>
+                        <div class="achievement-badge locked">
+                            <i class="ri-star-line"></i>
+                            <span>100 Items</span>
+                        </div>
+                        <div class="achievement-badge locked">
+                            <i class="ri-team-line"></i>
+                            <span>Influencer</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Impact Summary -->
+                <section class="dashboard-card impact-summary">
+                    <div class="card-header">
+                        <h2><i class="ri-earth-line"></i> Your Impact</h2>
+                    </div>
+                    <div class="impact-stats">
+                        <div class="impact-item">
+                            <div class="impact-icon">
+                                <i class="ri-water-flash-line"></i>
+                            </div>
+                            <div class="impact-data">
+                                <h4>450L</h4>
+                                <p>Water Saved</p>
+                            </div>
+                        </div>
+                        <div class="impact-item">
+                            <div class="impact-icon">
+                                <i class="ri-tree-line"></i>
+                            </div>
+                            <div class="impact-data">
+                                <h4>8 Trees</h4>
+                                <p>Equivalent Planted</p>
+                            </div>
+                        </div>
+                        <div class="impact-item">
+                            <div class="impact-icon">
+                                <i class="ri-flashlight-line"></i>
+                            </div>
+                            <div class="impact-data">
+                                <h4>125 kWh</h4>
+                                <p>Energy Saved</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="impact-message">
+                        <i class="ri-heart-fill"></i>
+                        <p>You're making a real difference! Keep up the great work.</p>
+                    </div>
+                </section>
+
+                <!-- Quick Tips -->
+                <section class="dashboard-card quick-tips">
+                    <div class="card-header">
+                        <h2><i class="ri-lightbulb-line"></i> Eco Tips</h2>
+                    </div>
+                    <div class="tips-list">
+                        <div class="tip-item">
+                            <i class="ri-checkbox-circle-fill"></i>
+                            <p>Rinse containers before recycling to avoid contamination</p>
+                        </div>
+                        <div class="tip-item">
+                            <i class="ri-checkbox-circle-fill"></i>
+                            <p>Flatten cardboard boxes to save space in recycling bins</p>
+                        </div>
+                        <div class="tip-item">
+                            <i class="ri-checkbox-circle-fill"></i>
+                            <p>Compost food scraps to reduce landfill waste</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+
+</html>

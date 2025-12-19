@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sign-In Diagnostic Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+
+        .status-icon.success {
+            background: #10b981;
+        }
+
+        .status-icon.error {
+            background: #ef4444;
+        }
+
+        .status-icon.warning {
+            background: #f59e0b;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #333;
+            min-width: 150px;
+        }
+
+        .info-value {
+            color: #666;
+            font-family: monospace;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        #googleButton {
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .console-log {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .console-log .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #4ec9b0;
+            padding-left: 10px;
+        }
+
+        .console-log .log-error {
+            border-left-color: #f48771;
+            color: #f48771;
+        }
+
+        .console-log .log-success {
+            border-left-color: #4ec9b0;
+            color: #4ec9b0;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔍 Google Sign-In Diagnostic Test</h1>
+        <p class="subtitle">Testing Google OAuth integration for SortSense</p>
+
+        <!-- Configuration Section -->
+        <div class="section">
+            <h2>📋 Configuration</h2>
+            <div class="info-item">
+                <div class="status-icon" id="clientIdStatus">?</div>
+                <div class="info-label">Client ID:</div>
+                <div class="info-value" id="clientIdValue">Loading...</div>
+            </div>
+            <div class="info-item">
+                <div class="status-icon" id="urlStatus">?</div>
+                <div class="info-label">Current URL:</div>
+                <div class="info-value" id="currentUrl">Loading...</div>
+            </div>
+            <div class="info-item">
+                <div class="status-icon" id="protocolStatus">?</div>
+                <div class="info-label">Protocol:</div>
+                <div class="info-value" id="protocol">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Google Sign-In Button -->
+        <div class="section">
+            <h2>🔐 Google Sign-In Button</h2>
+            <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                Click the button below to test Google Sign-In:
+            </p>
+
+            <!-- Google Sign-In Configuration -->
+            <div id="g_id_onload"
+                data-client_id="1033862193558-21l8mqvkjigogomhvonf256av4mmqo8q.apps.googleusercontent.com"
+                data-context="signin" data-ux_mode="popup" data-callback="handleGoogleSignIn" data-auto_prompt="false">
+            </div>
+
+            <div id="googleButton">
+                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline"
+                    data-text="signin_with" data-size="large" data-logo_alignment="left">
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Section -->
+        <div class="section">
+            <h2>📊 Status</h2>
+            <div class="info-item">
+                <div class="status-icon" id="scriptStatus">?</div>
+                <div class="info-label">Google Script:</div>
+                <div class="info-value" id="scriptStatusText">Checking...</div>
+            </div>
+            <div class="info-item">
+                <div class="status-icon" id="buttonStatus">?</div>
+                <div class="info-label">Button Render:</div>
+                <div class="info-value" id="buttonStatusText">Waiting...</div>
+            </div>
+        </div>
+
+        <!-- Console Logs -->
+        <div class="section">
+            <h2>📝 Console Logs</h2>
+            <div class="console-log" id="consoleLogs">
+                <div class="log-entry">Initializing diagnostic test...</div>
+            </div>
+        </div>
+
+        <!-- Troubleshooting Guide -->
+        <div class="section">
+            <h2>🛠️ Troubleshooting Guide</h2>
+            <div style="color: #666; font-size: 14px; line-height: 1.8;">
+                <p><strong>If the button doesn't appear:</strong></p>
+                <ol style="margin-left: 20px; margin-top: 10px;">
+                    <li>Make sure you're accessing via <code>http://localhost:3000</code> (not file://)</li>
+                    <li>Check that your Google Client ID is correct</li>
+                    <li>Verify authorized origins in Google Cloud Console</li>
+                    <li>Check browser console for JavaScript errors</li>
+                    <li>Try clearing browser cache and cookies</li>
+                </ol>
+                <p style="margin-top: 15px;"><strong>Required Google Cloud Console Setup:</strong></p>
+                <ul style="margin-left: 20px; margin-top: 10px;">
+                    <li>Add <code>http://localhost:3000</code> to Authorized JavaScript origins</li>
+                    <li>Add <code>http://localhost:3000</code> to Authorized redirect URIs</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <script>
+        // Logging utility
+        function addLog(message, type = 'info') {
+            const logsContainer = document.getElementById('consoleLogs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+            console.log(message);
+        }
+
+        // Update status indicator
+        function updateStatus(elementId, status, text) {
+            const statusIcon = document.getElementById(elementId);
+            const statusText = document.getElementById(elementId + 'Text');
+
+            statusIcon.className = `status-icon ${status}`;
+            statusIcon.textContent = status === 'success' ? '✓' : status === 'error' ? '✗' : '!';
+
+            if (statusText) {
+                statusText.textContent = text;
+            }
+        }
+
+        // Check current environment
+        function checkEnvironment() {
+            const currentUrl = window.location.href;
+            const protocol = window.location.protocol;
+            const clientId = '1033862193558-21l8mqvkjigogomhvonf256av4mmqo8q.apps.googleusercontent.com';
+
+            // Update UI
+            document.getElementById('currentUrl').textContent = currentUrl;
+            document.getElementById('protocol').textContent = protocol;
+            document.getElementById('clientIdValue').textContent = clientId;
+
+            // Check protocol
+            if (protocol === 'http:' || protocol === 'https:') {
+                updateStatus('protocolStatus', 'success', protocol);
+                addLog(`✓ Protocol check passed: ${protocol}`, 'success');
+            } else {
+                updateStatus('protocolStatus', 'error', protocol);
+                addLog(`✗ Invalid protocol: ${protocol}. Google Sign-In requires http:// or https://`, 'error');
+            }
+
+            // Check URL
+            if (currentUrl.includes('localhost') || currentUrl.includes('127.0.0.1')) {
+                updateStatus('urlStatus', 'success', currentUrl);
+                addLog('✓ Running on localhost', 'success');
+            } else if (protocol === 'file:') {
+                updateStatus('urlStatus', 'error', currentUrl);
+                addLog('✗ Running from file system. Please use a web server!', 'error');
+            } else {
+                updateStatus('urlStatus', 'warning', currentUrl);
+                addLog('⚠ Not running on localhost. Make sure this origin is authorized in Google Cloud Console.', 'warning');
+            }
+
+            // Check Client ID
+            if (clientId && clientId.endsWith('.apps.googleusercontent.com')) {
+                updateStatus('clientIdStatus', 'success', clientId);
+                addLog('✓ Client ID format is valid', 'success');
+            } else {
+                updateStatus('clientIdStatus', 'error', clientId);
+                addLog('✗ Invalid Client ID format', 'error');
+            }
+        }
+
+        // Check if Google script loaded
+        function checkGoogleScript() {
+            addLog('Checking for Google Identity Services script...');
+
+            const checkInterval = setInterval(() => {
+                if (typeof google !== 'undefined' && google.accounts) {
+                    clearInterval(checkInterval);
+                    updateStatus('scriptStatus', 'success', 'Loaded successfully');
+                    addLog('✓ Google Identity Services script loaded', 'success');
+
+                    // Check if button rendered
+                    setTimeout(() => {
+                        const button = document.querySelector('.g_id_signin iframe');
+                        if (button) {
+                            updateStatus('buttonStatus', 'success', 'Rendered successfully');
+                            addLog('✓ Google Sign-In button rendered', 'success');
+                        } else {
+                            updateStatus('buttonStatus', 'error', 'Failed to render');
+                            addLog('✗ Google Sign-In button failed to render. Check console for errors.', 'error');
+                        }
+                    }, 2000);
+                }
+            }, 100);
+
+            // Timeout after 10 seconds
+            setTimeout(() => {
+                if (typeof google === 'undefined' || !google.accounts) {
+                    clearInterval(checkInterval);
+                    updateStatus('scriptStatus', 'error', 'Failed to load');
+                    addLog('✗ Google Identity Services script failed to load. Check your internet connection.', 'error');
+                }
+            }, 10000);
+        }
+
+        // Handle Google Sign-In callback
+        function handleGoogleSignIn(response) {
+            addLog('🎉 Google Sign-In callback triggered!', 'success');
+
+            try {
+                const credential = response.credential;
+                addLog('✓ Received credential token', 'success');
+
+                // Decode JWT token
+                const payload = JSON.parse(atob(credential.split('.')[1]));
+                addLog('✓ Successfully decoded JWT token', 'success');
+                addLog(`User: ${payload.name} (${payload.email})`, 'success');
+                addLog(`Picture: ${payload.picture}`, 'success');
+
+                // Show success message
+                alert(`✅ Google Sign-In Successful!\n\nName: ${payload.name}\nEmail: ${payload.email}\n\nCheck the console logs for more details.`);
+
+                // Store in localStorage
+                localStorage.setItem('userEmail', payload.email);
+                localStorage.setItem('userName', payload.name);
+                localStorage.setItem('userPicture', payload.picture);
+                localStorage.setItem('googleCredential', credential);
+
+                addLog('✓ User data stored in localStorage', 'success');
+                addLog('🎯 Test completed successfully! Google Sign-In is working.', 'success');
+
+            } catch (error) {
+                addLog(`✗ Error processing Google Sign-In: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // Make function globally available
+        window.handleGoogleSignIn = handleGoogleSignIn;
+
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            addLog('Page loaded, starting diagnostics...');
+            checkEnvironment();
+            checkGoogleScript();
+        });
+
+        // Log any errors
+        window.addEventListener('error', (e) => {
+            addLog(`✗ JavaScript Error: ${e.message}`, 'error');
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sign-In Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f5f5f5;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Google Sign-In Test</h1>
+
+        <!-- Google Sign-In Button -->
+        <div id="g_id_onload" data-client_id="1033862193558-21l8mqvkjigogomhvonf256av4mmqo8q.apps.googleusercontent.com"
+            data-callback="handleGoogleSignIn" data-auto_prompt="false">
+        </div>
+
+        <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with"
+            data-shape="rectangular" data-logo_alignment="left">
+        </div>
+
+        <div id="status" class="status" style="display:none;"></div>
+    </div>
+
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <script>
+        function handleGoogleSignIn(response) {
+            console.log('Sign-in successful!', response);
+
+            const credential = response.credential;
+            const payload = JSON.parse(atob(credential.split('.')[1]));
+
+            const statusDiv = document.getElementById('status');
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = `
+                <strong>Success!</strong><br>
+                Name: ${payload.name}<br>
+                Email: ${payload.email}
+            `;
+
+            console.log('User info:', payload);
+        }
+
+        window.handleGoogleSignIn = handleGoogleSignIn;
+    </script>
+</body>
+
+</html>
