@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SortSense</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="auth-split-screen">
+        <!-- Left Side: Branding & Visual -->
+        <div class="auth-left">
+            <div class="auth-branding">
+                <a href="../index.html" class="logo auth-logo">
+                    Sort Sense <i class="ri-leaf-fill"></i>
+                </a>
+                <h1 class="auth-tagline">Welcome Back to a <span class="gradient-text">Greener Future</span></h1>
+                <p class="auth-description">Sign in to continue your journey towards smart waste management and earn
+                    rewards for every eco-friendly action.</p>
+
+                <div class="auth-features">
+                    <div class="auth-feature-item">
+                        <i class="ri-checkbox-circle-fill"></i>
+                        <span>Track your impact</span>
+                    </div>
+                    <div class="auth-feature-item">
+                        <i class="ri-checkbox-circle-fill"></i>
+                        <span>Earn green rewards</span>
+                    </div>
+                    <div class="auth-feature-item">
+                        <i class="ri-checkbox-circle-fill"></i>
+                        <span>AI-powered guidance</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Decorative Elements -->
+            <div class="auth-blob blob-1"></div>
+            <div class="auth-blob blob-2"></div>
+            <i class="ri-leaf-line auth-floating-icon" style="top: 15%; left: 10%;"></i>
+            <i class="ri-plant-line auth-floating-icon" style="bottom: 20%; right: 15%;"></i>
+        </div>
+
+        <!-- Right Side: Login Form -->
+        <div class="auth-right">
+            <div class="auth-form-container">
+                <div class="auth-form-header">
+                    <h2>Sign In</h2>
+                    <p>Access your account to continue</p>
+                </div>
+
+
+
+                <!-- Google Sign-In -->
+                <div id="g_id_onload"
+                    data-client_id="1033862193558-21l8mqvkjigogomhvonf256av4mmqo8q.apps.googleusercontent.com"
+                    data-context="signin" data-ux_mode="popup" data-callback="handleGoogleSignIn"
+                    data-auto_prompt="false">
+                </div>
+
+                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline"
+                    data-text="signin_with" data-size="large" data-logo_alignment="left" data-width="400">
+                </div>
+
+                <div class="auth-divider">
+                    <span>OR</span>
+                </div>
+
+                <!-- Email Login Form -->
+                <form id="userLoginForm" class="auth-form">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-with-icon">
+                            <i class="ri-mail-line"></i>
+                            <input type="email" id="email" placeholder="your@email.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-with-icon">
+                            <i class="ri-lock-password-line"></i>
+                            <input type="password" id="password" placeholder="Enter your password" required>
+                        </div>
+                    </div>
+
+                    <div class="form-footer">
+                        <label class="remember-me">
+                            <input type="checkbox" id="remember">
+                            <span>Remember me</span>
+                        </label>
+                        <a href="forgot-password.html" class="forgot-password">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary auth-submit-btn">
+                        Sign In <i class="ri-arrow-right-line"></i>
+                    </button>
+                </form>
+
+                <div class="auth-switch">
+                    <p>Don't have an account? <a href="register-user.html">Get Started</a></p>
+                </div>
+
+                <a href="../index.html" class="back-home-link">
+                    <i class="ri-arrow-left-line"></i> Back to Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <!-- App Scripts -->
+    <script src="../js/config.js"></script>
+    <script src="../js/google-auth.js"></script>
+    <script src="../js/script.js"></script>
+
+</body>
+
+</html>
