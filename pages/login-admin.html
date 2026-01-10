@@ -141,8 +141,12 @@
             // TODO: Implement actual admin authentication
             console.log('Admin login attempt:', { adminId, hasSecurityCode: !!securityCode });
 
-            // Placeholder response
-            alert('Admin authentication will be implemented here.\n\nAdmin ID: ' + adminId);
+            // Simulate admin authentication
+            localStorage.setItem('adminUser', adminId);
+            localStorage.setItem('isAuthenticated', 'true');
+
+            // Redirect to admin dashboard
+            window.location.href = 'admin-dashboard.html';
         });
     </script>
 </body>

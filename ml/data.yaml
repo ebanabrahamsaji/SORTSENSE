@@ -1,0 +1,15 @@
+# SortSense Waste Classification Dataset
+# Shape-based object detection for accurate material inference
+
+path: ../datasets/sortsense_waste
+
+train: train/images
+val: val/images
+
+nc: 4
+
+names:
+  0: plastic_bottle     # transparent / opaque plastic containers
+  1: glass_bottle       # reflective, transparent, rigid containers
+  2: metal_can          # aluminium / tin cans
+  3: paper              # crumpled paper, newspaper, cardboard sheets

@@ -777,7 +777,7 @@ nav {
 
 .input-with-icon input {
     width: 100%;
-    padding: 1rem 1rem 1rem 3rem;
+    padding: 1rem 3rem 1rem 3rem;
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(15, 23, 42, 0.6);
@@ -796,6 +796,18 @@ nav {
     background: rgba(15, 23, 42, 0.9);
     border-color: var(--primary-color);
     box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+}
+
+.input-with-icon .toggle-password {
+    left: auto;
+    right: 1rem;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: all 0.3s;
+}
+
+.input-with-icon .toggle-password:hover {
+    color: var(--primary-color);
 }
 
 .input-with-icon input:focus+i,

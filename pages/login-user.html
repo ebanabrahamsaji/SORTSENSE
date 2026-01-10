@@ -87,6 +87,7 @@
                         <div class="input-with-icon">
                             <i class="ri-lock-password-line"></i>
                             <input type="password" id="password" placeholder="Enter your password" required>
+                            <i class="ri-eye-line toggle-password" id="togglePassword"></i>
                         </div>
                     </div>
 
@@ -121,6 +122,41 @@
     <script src="../js/config.js"></script>
     <script src="../js/google-auth.js"></script>
     <script src="../js/script.js"></script>
+    <script>
+        const togglePassword = document.querySelector('#togglePassword');
+        const password = document.querySelector('#password');
+
+        togglePassword.addEventListener('click', function (e) {
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            this.classList.toggle('ri-eye-line');
+            this.classList.toggle('ri-eye-off-line');
+        });
+
+        // Password Validation
+        const errorMessage = document.createElement('p');
+        errorMessage.style.color = '#ef4444';
+        errorMessage.style.fontSize = '0.8rem';
+        errorMessage.style.marginTop = '0.5rem';
+        errorMessage.style.display = 'none';
+        errorMessage.innerText = 'Enter a strong password using characters, numbers, and special characters (at least 8 characters)';
+        password.closest('.form-group').appendChild(errorMessage);
+
+        password.addEventListener('input', function () {
+            const val = this.value;
+            // Criteria: 8 chars, letters, numbers, special chars
+            const isStrong = val.length >= 8 &&
+                /[a-zA-Z]/.test(val) &&
+                /\d/.test(val) &&
+                /[!@#$%^&*(),.?":{}|<>]/.test(val);
+
+            if (val.length > 0 && !isStrong) {
+                errorMessage.style.display = 'block';
+            } else {
+                errorMessage.style.display = 'none';
+            }
+        });
+    </script>
 
 </body>
 

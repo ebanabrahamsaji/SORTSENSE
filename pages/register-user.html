@@ -96,6 +96,7 @@
                         <div class="input-with-icon">
                             <i class="ri-lock-password-line"></i>
                             <input type="password" id="password" placeholder="Create a strong password" required>
+                            <i class="ri-eye-line toggle-password" id="togglePassword"></i>
                         </div>
                     </div>
 
@@ -104,6 +105,7 @@
                         <div class="input-with-icon">
                             <i class="ri-lock-password-line"></i>
                             <input type="password" id="confirm-password" placeholder="Re-enter your password" required>
+                            <i class="ri-eye-line toggle-password" id="toggleConfirmPassword"></i>
                         </div>
                     </div>
 
@@ -135,6 +137,49 @@
     <script src="../js/config.js"></script>
     <script src="../js/google-auth.js"></script>
     <script src="../js/script.js"></script>
+    <script>
+        function setupPasswordToggle(toggleId, inputId) {
+            const toggle = document.querySelector(toggleId);
+            const input = document.querySelector(inputId);
+            if (toggle && input) {
+                toggle.addEventListener('click', function () {
+                    const type = input.getAttribute('type') === 'password' ? 'text' : 'password';
+                    input.setAttribute('type', type);
+                    this.classList.toggle('ri-eye-line');
+                    this.classList.toggle('ri-eye-off-line');
+                });
+            }
+        }
+        setupPasswordToggle('#togglePassword', '#password');
+        setupPasswordToggle('#toggleConfirmPassword', '#confirm-password');
+
+        // Password Strength Validation
+        const passwordInput = document.getElementById('password');
+        const errorMessage = document.createElement('p');
+        errorMessage.style.color = '#ef4444';
+        errorMessage.style.fontSize = '0.8rem';
+        errorMessage.style.marginTop = '0.5rem';
+        errorMessage.style.display = 'none';
+        errorMessage.innerText = 'Enter a strong password using characters, numbers, and special characters (at least 8 characters)';
+
+        // Append error message after the password input group
+        passwordInput.closest('.form-group').appendChild(errorMessage);
+
+        passwordInput.addEventListener('input', function () {
+            const val = this.value;
+            // Criteria: 8 chars, letters, numbers, special chars
+            const isStrong = val.length >= 8 &&
+                /[a-zA-Z]/.test(val) &&
+                /\d/.test(val) &&
+                /[!@#$%^&*(),.?":{}|<>]/.test(val);
+
+            if (val.length > 0 && !isStrong) {
+                errorMessage.style.display = 'block';
+            } else {
+                errorMessage.style.display = 'none';
+            }
+        });
+    </script>
 
 </body>
 

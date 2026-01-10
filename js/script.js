@@ -75,15 +75,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            console.log('User Login Attempt:', { email, password });
+            console.log('User Login Attempt:', { email });
 
-            // Store user data (in production, this would come from backend)
-            const userName = email.split('@')[0];
-            localStorage.setItem('userEmail', email);
-            localStorage.setItem('userName', userName.charAt(0).toUpperCase() + userName.slice(1));
-
-            // Redirect to dashboard
-            window.location.href = 'dashboard.html';
+            // Call Backend Login
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+                .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                .then(({ status, body }) => {
+                    if (status === 200 || status === 201) { // Accept 200 or 201
+                        console.log('✅ Login successful', body);
+                        localStorage.setItem('userEmail', body.user.email);
+                        localStorage.setItem('userName', body.user.name);
+                        window.location.href = 'dashboard.html';
+                    } else {
+                        alert('Login failed: ' + (body.message || 'Invalid credentials'));
+                    }
+                })
+                .catch(err => {
+                    console.error("Login Error:", err);
+                    alert("Connection failed. Ensure server is running on localhost:8000.");
+                });
         });
     }
 
@@ -105,14 +119,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('User Registration:', { fullname, email });
 
             // Send to Backend
-            fetch('http://localhost:8000/register', {
+            fetch('/api/auth/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullname, email, password })
+                body: JSON.stringify({ name: fullname, email, password }) // Map fullname -> name
             })
                 .then(res => res.json().then(data => ({ status: res.status, body: data })))
                 .then(({ status, body }) => {
-                    if (status === 201) {
+                    if (status === 201 || status === 200) {
                         console.log('✅ Registration successful');
                         // Store user data
                         localStorage.setItem('userEmail', email);
@@ -121,11 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Redirect to dashboard
                         window.location.href = 'dashboard.html';
                     } else {
-                        alert('Registration failed: ' + body.message);
+                        alert('Registration failed: ' + (body.message || 'Unknown error'));
                     }
                 })
                 .catch(err => {
-                    console.error(err);
+                    console.error("Register Error:", err);
                     alert('Error connecting to server. Is Node running?');
                 });
         });
@@ -143,4 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Admin login functionality would go here.\nAdmin ID: ' + adminId);
         });
     }
+
+
 });

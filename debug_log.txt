@@ -1,0 +1,2 @@
+Edge: 0.1555, Bright: 121.94
+Edge: 0.0208, Bright: 193.79

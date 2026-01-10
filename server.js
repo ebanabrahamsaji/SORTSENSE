@@ -1,180 +1,84 @@
 import express from 'express';
-// import mongoose from 'mongoose'; // <-- Commenting out MongoDB
 import cors from 'cors';
-import crypto from 'crypto';
-import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { transporter } from './email.js';
-import dotenv from 'dotenv';
+import multer from 'multer';
 
+// Import Routes
+import authRoutes from './routes/authRoutes.js';
+import wasteRoutes from './routes/wasteRoutes.js';
+import centerRoutes from './routes/centerRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+
+// Configuration
 dotenv.config();
-
+const app = express();
+const PORT = process.env.PORT || 8000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
-app.use(express.json());
+// Middleware
 app.use(cors());
+app.use(express.json()); // Parse JSON bodies
+app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from the current directory
+// Static Files (Serve frontend if needed, but primarily for uploads)
 app.use(express.static(__dirname));
 
-// --- MOCK DATABASE (For Demo Purposes) ---
-// Since MongoDB might not be running, we'll simulate a user.
-// You can add more users here.
-const MOCK_USERS = [
-    {
-        email: "test@example.com",
-        password: "$2b$10$YourHashedPasswordHere", // hash for 'password123'
-        authProvider: "local",
-        resetToken: null,
-        resetTokenExpiry: null
-    },
-    // Adding your email so it works for you
-    {
-        email: "ebanabraham52@gmail.com",
-        password: "mockpassword",
-        authProvider: "local",
-        resetToken: null,
-        resetTokenExpiry: null
-    },
-    {
-        email: "ebanabraham28@gmail.com",
-        password: "mockpassword",
-        authProvider: "local",
-        resetToken: null,
-        resetTokenExpiry: null
-    }
-];
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/waste', wasteRoutes);
+app.use('/api/centers', centerRoutes);
+app.use('/api/admin', adminRoutes);
 
-console.log("------------------------------------------------");
-console.log("⚠️  RUNNING IN MOCK DB MODE");
-console.log("    (No MongoDB installation required)");
-console.log("------------------------------------------------");
-
-const PORT = process.env.PORT || 8000;
-
-// --- REGISTER API ---
-app.post("/register", async (req, res) => {
-    const { fullname, email, password } = req.body;
-
-    // Check if user already exists
-    const existingUser = MOCK_USERS.find(u => u.email === email);
-    if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create new user in MOCK DB
-    const newUser = {
-        email,
-        password: hashedPassword,
-        fullname, // Optional, but good to have
-        authProvider: "local",
-        resetToken: null,
-        resetTokenExpiry: null
-    };
-
-    MOCK_USERS.push(newUser);
-    console.log("✅ New user registered:", newUser);
-
-    res.status(201).json({ message: "User registered successfully" });
+// Alias for frontend compatibility (or update frontend)
+app.get('/api/activities', (req, res) => {
+    // Redirect logic or just reuse the handler if imported, but simpler to just fetch from the admin route mock
+    res.redirect('/api/admin/activities');
 });
 
-// --- FORGOT PASSWORD API ---
-app.post("/forgot-password", async (req, res) => {
-    const { email } = req.body;
-    console.log(`Received request for: ${email}`);
+// Base Route
+app.get('/', (req, res) => {
+    res.send('SortSense Backend API is running...');
+});
 
-    try {
-        // Find user in MOCK_USERS instead of MongoDB
-        const user = MOCK_USERS.find(u => u.email === email);
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error("❌ Unhandled Error:", err.stack);
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({ message: `Upload Error: ${err.message}` });
+    }
+    res.status(500).json({ message: err.message || 'Internal Server Error' });
+});
 
-        if (!user) {
-            console.log("User not found in mock DB");
-            // Maintain security by not revealing non-existence
-            return res.json({
-                message: "If the email exists, a reset link has been sent"
+// Start Server
+// Start Server
+const startServer = () => {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running on http://localhost:${PORT}`);
+
+        // Start Python AI Service
+        console.log("🐍 Starting Python AI Service...");
+        import('child_process').then(({ spawn }) => {
+            const pythonProcess = spawn('python', ['ml/api.py'], { stdio: 'inherit' });
+
+            pythonProcess.on('error', (err) => {
+                console.error("❌ Failed to start Python AI Service:", err);
             });
-        }
 
-        // ❌ Google login users
-        if (user.authProvider === "google") {
-            return res.json({
-                message: "Please sign in using Google"
+            pythonProcess.on('exit', (code, signal) => {
+                if (code) console.log(`Python AI Service exited with code ${code}`);
+                if (signal) console.log(`Python AI Service killed with signal ${signal}`);
             });
-        }
 
-        console.log(`Found user: ${user.email}`);
-        console.log(`Generating reset token for: ${user.email}`);
-
-        const token = crypto.randomBytes(32).toString("hex");
-
-        // Save token to mock user
-        user.resetToken = token;
-        user.resetTokenExpiry = Date.now() + 15 * 60 * 1000;
-
-        const resetLink = `http://localhost:${PORT}/pages/reset-password.html?token=${token}`;
-
-        console.log(`Attempting to send email to ${user.email}...`);
-
-        await transporter.sendMail({
-            from: `"SortSense Support" <${process.env.EMAIL_USER}>`,
-            to: user.email, // ⭐ USER ENTERED EMAIL (Dynamic)
-            subject: "Reset Your Password - SortSense",
-            html: `
-          <div style="font-family: sans-serif; padding: 20px;">
-              <h3 style="color: #10B981;">Password Reset Request</h3>
-              <p>Click the link below to reset your password:</p>
-              <a href="${resetLink}" style="background-color: #10B981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a>
-              <p style="margin-top: 20px; font-size: 12px; color: #666;">This link expires in 15 minutes.</p>
-          </div>
-        `
+            // Cleanup on exit
+            process.on('SIGINT', () => {
+                pythonProcess.kill();
+                process.exit();
+            });
         });
+    });
+};
 
-        console.log(`✅ Email sent successfully to ${email}`);
-        res.json({ message: "Reset link sent to your email" });
-
-    } catch (error) {
-        console.error("❌ Link generation error:", error);
-        res.status(500).json({ message: "Server error: " + error.message });
-    }
-});
-
-// --- RESET PASSWORD API ---
-app.post("/reset-password", async (req, res) => {
-    const { token, password } = req.body;
-
-    try {
-        // Find user with valid token
-        const user = MOCK_USERS.find(u =>
-            u.resetToken === token &&
-            u.resetTokenExpiry > Date.now()
-        );
-
-        if (!user) {
-            return res.status(400).json({
-                message: "Invalid or expired link"
-            });
-        }
-
-        // Hash and save password
-        user.password = await bcrypt.hash(password, 10);
-        user.resetToken = null;
-        user.resetTokenExpiry = null;
-
-        console.log(`Password updated for ${user.email}`);
-        res.json({ message: "Password updated successfully" });
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Server error" });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+startServer();

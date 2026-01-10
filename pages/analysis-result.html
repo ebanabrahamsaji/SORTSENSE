@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Result - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        .analysis-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .waste-image-preview {
+            width: 100%;
+            height: 300px;
+            object-fit: contain;
+            /* Changed to contain to show full image */
+            border-radius: 12px;
+            margin-bottom: 20px;
+            background-color: #f1f5f9;
+        }
+
+        .category-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .confidence-meter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .info-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #10b981;
+        }
+
+        .info-card h4 {
+            color: #1e293b;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .disposal-steps ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .disposal-steps li {
+            padding: 8px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .disposal-steps li i {
+            color: #10b981;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="analysis-container">
+            <div class="result-header">
+                <a href="dashboard.html" style="float: left; color: #64748b; text-decoration: none;">
+                    <i class="ri-arrow-left-line"></i> Back
+                </a>
+                <h2>Analysis Result</h2>
+            </div>
+
+            <img id="analyzedImage" class="waste-image-preview" src="" alt="Analyzed Waste">
+
+            <div style="text-align: center;">
+                <div id="categoryBadge" class="category-badge">
+                    <span id="categoryName">Loading...</span>
+                </div>
+                <div class="confidence-meter">
+                    <i class="ri-search-eye-line"></i>
+                    AI Confidence: <span id="confidenceScore">--%</span>
+                </div>
+            </div>
+
+            <div class="info-card" style="margin-top: 25px;">
+                <h4><i class="ri-delete-bin-line"></i> Disposal Method</h4>
+                <div id="disposalMethod" class="disposal-steps"></div>
+            </div>
+
+            <div class="info-card" style="border-left-color: #f59e0b;">
+                <h4><i class="ri-book-open-line"></i> Rules & Guidelines</h4>
+                <p id="rulesDescription">Loading rules...</p>
+            </div>
+
+            <div class="info-card" id="centerCard" style="border-left-color: #3b82f6; display: none;">
+                <h4><i class="ri-map-pin-line"></i> Nearest Collection Center</h4>
+                <div id="centerDetails">
+                    <p>Searching nearby...</p>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <a href="dashboard.html" class="btn btn-outline-primary">Analyze Another</a>
+                <button onclick="window.print()" class="btn btn-primary"><i class="ri-printer-line"></i> Save
+                    Report</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { CATEGORY_DATA } from '../js/category-data.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const rawResult = sessionStorage.getItem('analysisResult');
+            const wasteImage = sessionStorage.getItem('wasteImage');
+
+            if (wasteImage) {
+                document.getElementById('analyzedImage').src = wasteImage;
+            }
+
+            if (rawResult) {
+                const result = JSON.parse(rawResult);
+                let data = result; // result is the flat object from server usually (category, confidence, etc)
+                // Note: Previous code used result.data in some places, but server sends flat JSON. 
+                // Let's standarize on 'data' being the object with properties.
+
+                // Initial Render
+                renderResult(data);
+
+            } else {
+                alert("No analysis result found. Redirecting...");
+                window.location.href = 'dashboard.html';
+            }
+        });
+
+        function renderResult(data) {
+            const catBadge = document.getElementById('categoryBadge');
+            const categoryName = document.getElementById('categoryName');
+            const confidenceScore = document.getElementById('confidenceScore');
+            const disposalMethod = document.getElementById('disposalMethod');
+            const rulesDescription = document.getElementById('rulesDescription');
+            const centerCard = document.getElementById('centerCard');
+
+            // --- 1. Header & Confidence (Status) ---
+            if (data.is_uncertain || (data.status && data.status.includes("Confirm"))) {
+                // UI for Uncertainty
+                catBadge.style.backgroundColor = '#fef3c7';
+                catBadge.style.color = '#d97706';
+                categoryName.innerText = "Needs Review: " + (data.category || "Unknown");
+                confidenceScore.innerHTML = `<span style="color: #dc2626; font-weight: bold;">🔴 ${data.confidence} (${data.status})</span>`;
+
+                // Add "Help AI" Section
+                renderManualSelection();
+
+            } else {
+                // Success UI
+                const isLikely = data.status === "Likely Identified";
+                const color = isLikely ? '#eab308' : '#10b981'; // Yellow-Green or Pure Green
+                const icon = isLikely ? '🟡' : '🟢';
+
+                catBadge.style.backgroundColor = color + '20';
+                catBadge.style.color = color;
+                categoryName.textContent = (data.category || 'Unknown').toUpperCase();
+                confidenceScore.innerHTML = `<span style="color: ${color}; font-weight: bold;">${icon} ${data.confidence} (${data.status})</span>`;
+
+                // Remove manual selector
+                const existingManual = document.getElementById('manualSelector');
+                if (existingManual) existingManual.remove();
+            }
+
+            // --- 2. Reasoning (New!) ---
+            if (data.material_reasoning) {
+                // Insert reasoning below badge if not exists
+                let reasonDiv = document.getElementById('reasonDiv');
+                if (!reasonDiv) {
+                    reasonDiv = document.createElement('div');
+                    reasonDiv.id = 'reasonDiv';
+                    reasonDiv.style = "margin: 15px 0; color: #475569; font-style: italic; font-size: 0.95rem; text-align: center;";
+                    catBadge.parentElement.appendChild(reasonDiv);
+                }
+                reasonDiv.innerHTML = `"${data.material_reasoning}"`;
+            }
+
+            // --- 3. Disposal Content ---
+            if (data.disposal_method) {
+                disposalMethod.innerHTML = `
+                    <div style="margin-bottom: 10px;">${data.disposal_method}</div>
+                    ${data.user_action ? `<div style="background: #eff6ff; padding: 10px; border-radius: 6px; color: #1e40af; border: 1px solid #bfdbfe;"><strong>👉 Next Action:</strong> ${data.user_action}</div>` : ''}
+                 `;
+            } else if (data.disposal) {
+                disposalMethod.innerHTML = data.disposal; // Fallback to old format
+            }
+
+            // --- 4. Rules (Kerala Context) ---
+            if (data.kerala_rule) {
+                rulesDescription.innerHTML = `<strong>🌴 Kerala Rule:</strong> ${data.kerala_rule}`;
+            } else if (data.rules) {
+                rulesDescription.textContent = data.rules;
+            }
+
+            // --- 5. Nearest Center (Live Location) ---
+            if (data.category && data.category !== 'unknown' && data.category !== 'mixed' && data.category !== 'Uncertain') {
+                getLiveLocationAndFetchCenter(data.category);
+            } else {
+                centerCard.style.display = 'none';
+            }
+        }
+
+        function getLiveLocationAndFetchCenter(category) {
+            const centerCard = document.getElementById('centerCard');
+            const centerDetails = document.getElementById('centerDetails');
+
+            centerDetails.innerHTML = '<div style="color: #64748b;">Finding your location... <i class="ri-loader-4-line ri-spin"></i></div>';
+            centerCard.style.display = 'block';
+
+            if (!navigator.geolocation) {
+                // Fallback if not supported
+                fetchCenter(category, 8.5241, 76.9366); // Trivandrum
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Success
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    fetchCenter(category, lat, lng);
+                },
+                (error) => {
+                    // Error / Denied -> Fallback
+                    console.warn("Geolocation denied or error:", error);
+                    centerDetails.innerHTML = `
+                        <div style="color: #f59e0b; margin-bottom: 8px;">
+                            <i class="ri-map-pin-user-line"></i> Location access denied. Showing results for Trivandrum.
+                        </div>
+                    `;
+                    // Brief delay then fetch fallback
+                    setTimeout(() => fetchCenter(category, 8.5241, 76.9366), 1000);
+                }
+            );
+        }
+
+        function fetchCenter(category, lat, lng) {
+            // Map nice title (e.g. "Plastic Waste") back to key ("plastic") roughly
+            const simpleCat = category.split(' ')[0].toLowerCase();
+
+            fetch(`http://localhost:8000/api/centers?lat=${lat}&lng=${lng}&category=${simpleCat}`)
+                .then(res => res.json())
+                .then(centers => {
+                    const centerCard = document.getElementById('centerCard');
+                    const centerDetails = document.getElementById('centerDetails');
+
+                    // Handle Array Response (API returns sorted array)
+                    const center = Array.isArray(centers) && centers.length > 0 ? centers[0] : null;
+
+                    if (center) {
+                        centerCard.style.display = 'block';
+                        // Generate Google Maps Embed or Link
+                        const mapLink = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${center.latitude},${center.longitude}`;
+
+                        centerDetails.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:start;">
+                                <div>
+                                    <strong style="font-size: 1.1rem; color: #1e293b;">${center.center_name}</strong><br>
+                                    <span style="font-size: 0.9em; color: #64748b;">${center.address}</span>
+                                </div>
+                                <div style="text-align:right;">
+                                    <span class="badge" style="background: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight:600;">
+                                        ${center.distance} km
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 12px; display:flex; gap: 10px;">
+                                <a href="${mapLink}" target="_blank" class="btn btn-sm" style="background: #3b82f6; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; flex: 1; text-align: center;">
+                                    <i class="ri-direction-fill"></i> Get Directions
+                                </a>
+                            </div>
+                            <div style="margin-top: 5px; font-size: 0.8em; color: #94a3b8; text-align: center;">
+                                * Nearest of ${centers.length} found
+                            </div>
+                        `;
+                    } else {
+                        centerDetails.innerHTML = `<span style="color: #64748b;">No specific collection centers found nearby for ${category}.</span>`;
+                    }
+                })
+                .catch(e => {
+                    console.error("Center fetch error", e);
+                    document.getElementById('centerDetails').innerText = "Unable to fetch nearby centers.";
+                });
+        }
+
+    </script>
+</body>
+
+</html>

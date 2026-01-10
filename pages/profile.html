@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        /* Specific Styles for Profile Page */
+        .profile-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .profile-avatar-wrapper {
+            position: relative;
+            width: 120px;
+            height: 120px;
+        }
+
+        .profile-avatar-large {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #fff;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .edit-avatar-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: #10B981;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .edit-avatar-btn:hover {
+            transform: scale(1.1);
+            background: #059669;
+        }
+
+        .profile-title h1 {
+            font-size: 2rem;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-title p {
+            color: #6b7280;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-input-wrapper {
+            position: relative;
+        }
+
+        .form-input-wrapper i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9CA3AF;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 2.8rem;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.3s;
+            background-color: #F9FAFB;
+        }
+
+        .form-input:focus {
+            border-color: #10B981;
+            outline: none;
+            background-color: #fff;
+        }
+
+        .form-input:disabled {
+            background-color: #f3f4f6;
+            cursor: not-allowed;
+            color: #9ca3af;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6B7280;
+            text-decoration: none;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            color: #10B981;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Sort Sense</span>
+                    <i class="ri-leaf-fill logo-icon"></i>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="dashboard.html">
+                            <i class="ri-dashboard-line"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="history.html">
+                            <i class="ri-history-line"></i>
+                            <span>History</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="rewards.html">
+                            <i class="ri-trophy-line"></i>
+                            <span>Rewards</span>
+                        </a>
+                    </li>
+                    <li class="active">
+                        <a href="profile.html">
+                            <i class="ri-user-settings-line"></i>
+                            <span>Profile</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="ri-logout-box-line"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-search">
+                    <!-- Placeholder to keep layout -->
+                </div>
+
+                <div class="header-profile">
+                    <div class="user-info">
+                        <span id="headerUserName" style="font-weight: 600; color: #374151;">User</span>
+                        <img id="userAvatarSmall"
+                            src="https://ui-avatars.com/api/?name=User&background=10b981&color=fff" alt="Profile">
+                    </div>
+                </div>
+            </header>
+
+            <div class="profile-container">
+                <a href="dashboard.html" class="back-link"><i class="ri-arrow-left-line"></i> Back to Dashboard</a>
+
+                <div class="profile-header">
+                    <div class="profile-avatar-wrapper">
+                        <img id="profileAvatarLarge"
+                            src="https://ui-avatars.com/api/?name=User&background=10b981&color=fff"
+                            class="profile-avatar-large" alt="Profile">
+                        <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+                        <button class="edit-avatar-btn" title="Change Avatar"
+                            onclick="document.getElementById('avatarUpload').click()">
+                            <i class="ri-camera-fill"></i>
+                        </button>
+                    </div>
+                    <div class="profile-title">
+                        <h1>Your Profile</h1>
+                        <p>Manage your account settings and preferences.</p>
+                    </div>
+                </div>
+
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <div class="form-input-wrapper">
+                            <i class="ri-user-line"></i>
+                            <input type="text" id="fullName" class="form-input" placeholder="Enter your full name">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <div class="form-input-wrapper">
+                            <i class="ri-mail-line"></i>
+                            <input type="email" id="email" class="form-input" disabled value="user@example.com"
+                                title="Email cannot be changed">
+                            <i class="ri-checkbox-circle-fill" style="color: #10B981; left: auto; right: 1rem;"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <div class="form-input-wrapper">
+                            <i class="ri-phone-line"></i>
+                            <input type="tel" id="phone" class="form-input" placeholder="Enter phone number">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>City</label>
+                        <div class="form-input-wrapper">
+                            <i class="ri-building-line"></i>
+                            <input type="text" id="city" class="form-input" placeholder="Enter city">
+                        </div>
+                    </div>
+
+                    <div class="row-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>State</label>
+                            <div class="form-input-wrapper">
+                                <i class="ri-map-pin-line"></i>
+                                <input type="text" id="state" class="form-input" placeholder="Enter state">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Zip Code</label>
+                            <div class="form-input-wrapper">
+                                <i class="ri-hashtag"></i>
+                                <input type="text" id="zip" class="form-input" placeholder="Zip Code">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Country</label>
+                        <div class="form-input-wrapper">
+                            <i class="ri-flag-line"></i>
+                            <input type="text" id="country" class="form-input" placeholder="Enter country">
+                        </div>
+                    </div>
+
+                    <div class="form-actions" style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <a href="dashboard.html" class="btn-secondary"
+                            style="flex: 1; text-align: center; padding: 1rem; border: 1px solid #E5E7EB; border-radius: 12px; color: #374151; text-decoration: none; font-weight: 600; background: white; transition: all 0.2s;">Back
+                            To Home</a>
+                        <button type="submit" class="save-btn" style="flex: 1; margin-top: 0;">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/profile.js"></script>
+    <script>
+        // Simple Logout Reuse
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            if (confirm('Logout?')) {
+                localStorage.clear();
+                window.location.href = '../index.html';
+            }
+        });
+    </script>
+</body>
+
+</html>
