@@ -1,3 +1,11 @@
+console.log("LIVE MAP v2.1 LOADED");
+
+// --- GLOBAL MAP STATE ---
+window.userLat = null;
+window.userLng = null;
+let map = null;
+let markersLayer = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
     const dropZone = document.getElementById('dropZone');
@@ -5,13 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const preview = document.getElementById('preview');
     const analyzeBtn = document.getElementById('analyzeBtn');
     const resultsArea = document.getElementById('resultsArea');
-
-    // User Location State
-    let userLat = null;
-    let userLng = null;
-    let map = null;
-    let markers = [];
-    let uploadedFile = null; // Fix 1: Dedicated variable
+    let uploadedFile = null;
 
     // 1. Handle File Upload UI
     dropZone.addEventListener('click', () => fileInput.click());
@@ -52,28 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsDataURL(file);
 
         // Store file for upload
-        uploadedFile = file; // Fix 1: Use variable
+        uploadedFile = file;
     }
 
-    // 2. Get Location (Pre-load)
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                userLat = pos.coords.latitude;
-                userLng = pos.coords.longitude;
-                console.log("Location acquired:", userLat, userLng);
-            },
-            (err) => {
-                console.warn("Location permission denied or unavailable", err);
-                // Default to Kochi if denied
-                userLat = 9.9312;
-                userLng = 76.2673;
-            }
-        );
-    }
-
-    // 3. Analyze Action
-    // 3. Analyze Action
+    // 2. Analyze Action
     analyzeBtn.addEventListener('click', async (e) => {
         e.stopPropagation(); // Prevent re-triggering dropzone
 
@@ -84,12 +68,17 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsArea.style.display = 'none';
 
         // UI Loading State
-        const originalBtnText = analyzeBtn.innerHTML;
         analyzeBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Analyzing...';
         analyzeBtn.disabled = true;
 
         const formData = new FormData();
         formData.append('image', uploadedFile);
+
+        // Add User ID for History
+        const userId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+        if (userId) {
+            formData.append('userId', userId);
+        }
 
         try {
             // Call AI API
@@ -101,7 +90,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
 
             if (response.ok) {
-                displayResults(result);
+                // UNIFIED UI: Store result & Image, then redirect to the main result page
+                // This ensures Image Analysis looks EXACTLY like Quick Search output.
+
+                try {
+                    // Safe cleanup
+                    sessionStorage.removeItem('wasteImage');
+                    sessionStorage.removeItem('analysisResult');
+
+                    // 1. Store the Analysis Data
+                    sessionStorage.setItem('analysisResult', JSON.stringify(result));
+
+                    // 2. Store the Image (from preview src which is already Base64)
+                    const previewImg = document.getElementById('preview');
+                    if (previewImg && previewImg.src) {
+                        sessionStorage.setItem('wasteImage', previewImg.src);
+                    }
+
+                    // 3. Redirect to the unified Output Screen
+                    window.location.href = 'analysis-result.html';
+
+                } catch (e) {
+                    console.error("Storage/Redirect Error:", e);
+                    showError("Failed to load results page.");
+                }
+
             } else {
                 showError(result.message || 'Analysis failed. Please try again.');
             }
@@ -132,11 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
         errorDiv.style.gap = '0.5rem';
         errorDiv.innerHTML = `<i class="ri-error-warning-line"></i> <span>${msg}</span>`;
 
-        // Insert after button
-        const uploadSection = document.querySelector('.upload-section');
-        uploadSection.appendChild(errorDiv);
+        dropZone.appendChild(errorDiv);
 
-        // Auto dismiss after 5s or just leave it
         setTimeout(() => {
             if (errorDiv) errorDiv.remove();
         }, 5000);
@@ -147,17 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (existingError) existingError.remove();
     }
 
-    // 4. Display Results
+    // 3. Display Results
     function displayResults(data) {
-        resultsArea.style.display = 'grid'; // Show Grid
-
-        // Scroll to results
+        resultsArea.style.display = 'grid'; // Show Kind of Grid
         resultsArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
         // Update Text
         const badge = document.getElementById('categoryBadge');
         const category = data.category || 'Unknown';
-        badge.textContent = category;
+        badge.textContent = (typeof getTranslation === 'function') ? getTranslation(category) : category;
 
         // Dynamic Badge Color
         if (category === 'Uncertain') {
@@ -165,18 +173,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (data.is_hazardous) {
             badge.style.background = '#ef4444'; // Red for Hazardous
         } else {
-            // Default Green/Primary for Dry/Wet
             const lowerCat = category.toLowerCase();
             if (lowerCat.includes('wet')) badge.style.background = '#22c55e'; // Green
             else if (lowerCat.includes('dry')) badge.style.background = '#3b82f6'; // Blue
             else badge.style.background = 'var(--primary-color)';
         }
-
-        // Fix 2: Clamp Confidence
-        // Use legacy numeric confidence for the bar
-        const safeConfidence = Math.min(100, data.confidence || 0);
-        document.getElementById('confidenceText').textContent = safeConfidence + '%';
-        document.getElementById('confidenceBar').style.width = safeConfidence + '%';
 
         // Show detailed message
         const msgEl = document.getElementById('analysisMessage');
@@ -191,88 +192,193 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (data.details) {
-            document.getElementById('disposalText').textContent = data.details.disposal_guideline;
-            document.getElementById('keralaRule').textContent = data.details.kerala_mandate || data.details.safety_instructions;
+        const catLower = category.toLowerCase();
+        let disposalHtml = "";
+        let ruleHtml = "";
+
+        // Heuristic disposal logic
+        let baseKey = catLower;
+        if (catLower.includes('plastic')) baseKey = 'plastic';
+        else if (catLower.includes('glass')) baseKey = 'glass';
+        else if (catLower.includes('metal')) baseKey = 'metal';
+        else if (catLower.includes('organic') || catLower.includes('wet')) baseKey = 'organic';
+        else if (catLower.includes('ewaste') || catLower.includes('e-waste')) baseKey = 'ewaste';
+        else if (catLower.includes('paper')) baseKey = 'paper';
+        else if (catLower.includes('textile')) baseKey = 'textile';
+        else if (catLower.includes('hazard')) baseKey = 'hazardous';
+
+        const tDisposal = (typeof getTranslation === 'function') ? getTranslation(baseKey + '_disposal') : null;
+        const tRule = (typeof getTranslation === 'function') ? getTranslation(baseKey + '_rule') : null;
+
+        if (tDisposal && tDisposal !== (baseKey + '_disposal')) {
+            disposalHtml = tDisposal;
+            ruleHtml = tRule;
         } else {
-            document.getElementById('disposalText').textContent = "No specific data found.";
-            document.getElementById('keralaRule').textContent = "Consult local authorities.";
-        }
-
-        // Initialize Map
-        if (data.status !== 'Uncertain') {
-            setTimeout(() => {
-                initMap(data.category);
-            }, 500); // Small delay to allow layout (grid) to settle
-        }
-    }
-
-    // 5. Initialize Leaflet Map
-    async function initMap(category) {
-        // Clear previous map if exists
-        // Wait... standard pattern is to reuse map or remove it. 
-        // User asked to clear markers.
-
-        if (!map) {
-            const centerLat = userLat || 9.9312;
-            const centerLng = userLng || 76.2673;
-            map = L.map('map').setView([centerLat, centerLng], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            if (userLat) {
-                L.marker([userLat, userLng])
-                    .addTo(map)
-                    .bindPopup("<b>You are here</b>")
-                    .openPopup();
+            if (data.details) {
+                disposalHtml = data.details.disposal_guideline;
+                ruleHtml = data.details.kerala_mandate || data.details.safety_instructions;
+            } else {
+                disposalHtml = "No specific data found.";
+                ruleHtml = "Consult local authorities.";
             }
         }
 
-        // Fix 3: Clear Markers
-        markers.forEach(m => map.removeLayer(m));
-        markers = [];
+        document.getElementById('disposalText').innerHTML = disposalHtml;
+        document.getElementById('keralaRule').innerHTML = ruleHtml;
 
+        // Initialize Map
+        if (data.status !== 'Uncertain') {
+            // Determine filter category for the map
+            let mapCategory = 'all';
+            if (baseKey === 'ewaste') mapCategory = 'E-waste';
+            else if (baseKey === 'hazardous' || baseKey === 'medical') mapCategory = 'Hazardous'; // Adjust as needed
+            else if (baseKey && baseKey !== 'unknown') mapCategory = baseKey.charAt(0).toUpperCase() + baseKey.slice(1);
 
-        // Center on user or Default Kochi
-        const centerLat = userLat || 9.9312;
-        const centerLng = userLng || 76.2673;
-
-        // Fetch Centers Filtered by Category & Location
-        try {
-            // Fix 4: Pass category in query
-            const query = new URLSearchParams({
-                lat: centerLat,
-                lng: centerLng,
-                category: category || ''
-            });
-
-            const res = await fetch(`/api/centers?${query.toString()}`);
-            const centers = await res.json();
-
-            // Add Markers (Red)
-            const redIcon = new L.Icon({
-                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowSize: [41, 41]
-            });
-
-            centers.forEach(center => {
-                const m = L.marker([center.latitude, center.longitude], { icon: redIcon })
-                    .addTo(map)
-                    .bindPopup(`
-                        <b>${center.center_name}</b><br>
-                        ${center.address}<br>
-                        <i>Distance: ${center.distance} km</i>
-                    `);
-                markers.push(m); // Fix 3: tracking
-            });
-
-        } catch (err) {
-            console.error("Map data error:", err);
+            setTimeout(() => {
+                startSmartMapSystem(mapCategory);
+            }, 500);
         }
     }
 });
+
+// --- STABLE MAP ENGINE FUNCTIONS ---
+
+function startSmartMapSystem(category) {
+    if (map) { map.remove(); map = null; }
+
+    // Default view (Kerala center-ish)
+    map = L.map('map').setView([9.9312, 76.2673], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    markersLayer = L.layerGroup().addTo(map);
+
+    // Get User Location ONCE (No live tracking)
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                window.userLat = position.coords.latitude;
+                window.userLng = position.coords.longitude;
+                // Center map on user
+                map.setView([window.userLat, window.userLng], 12);
+                loadAndRenderCenters(category);
+            },
+            (err) => {
+                console.warn("Location denied or error:", err);
+                loadAndRenderCenters(category); // Load anyway, just no distances
+            }
+        );
+    } else {
+        loadAndRenderCenters(category);
+    }
+}
+
+function loadAndRenderCenters(category) {
+    // API Call with Category Filter
+    let url = `/api/centers`;
+    if (category && category !== 'all') {
+        url += `?category=${encodeURIComponent(category)}`;
+    }
+
+    fetch(url)
+        .then(res => res.json())
+        .then(centers => {
+            if (!Array.isArray(centers) || centers.length === 0) {
+                console.log("No centers found for category:", category);
+                return;
+            }
+
+            if (window.userLat && window.userLng) {
+                centers.forEach(c => {
+                    c._distance = getDistanceFromLatLonInKm(window.userLat, window.userLng, c.latitude, c.longitude);
+                });
+                // Sort by distance
+                centers.sort((a, b) => a._distance - b._distance);
+            }
+
+            // 2. Render Markers
+            renderMarkers(centers);
+        })
+        .catch(e => console.error("Map Error:", e));
+}
+
+function renderMarkers(centers) {
+    markersLayer.clearLayers();
+    const bounds = L.latLngBounds([]);
+
+    centers.forEach((center, index) => {
+        const isNearest = (index === 0 && window.userLat != null);
+        const distText = center._distance ? `${parseFloat(center._distance).toFixed(2)} km away` : 'Distance unknown';
+
+        // Green Marker Icon similar to screenshot
+        const greenIconHtml = `<div class="marker-pin-green"><i class="ri-map-pin-fill"></i></div>`;
+        const customIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: greenIconHtml,
+            iconSize: [30, 42],
+            iconAnchor: [15, 42],
+            popupAnchor: [0, -38]
+        });
+
+        // Popup Content exactly matching screenshot request
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${center.latitude},${center.longitude}`;
+
+        let popupHtml = `
+            <div class="popup-stable">
+                <div class="popup-header">
+                    <strong style="font-size: 1.1em; color: #0f172a;">${center.center_name}</strong>
+                    <!-- Close button is default in Leaflet, we don't need a custom one unless we override -->
+                </div>
+                <div class="popup-tags" style="margin-top: 5px;">
+                    <span style="background: #f1f5f9; color: #64748b; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-weight: 600;">${center.type || 'hks'}</span>
+                    <span style="color: #64748b; font-size: 0.9em;"> ${center.address || ''}</span>
+                </div>
+                <div class="popup-distance" style="color: #22c55e; font-weight: 600; margin: 8px 0; display: flex; align-items: center; gap: 5px;">
+                    <i class="ri-map-pin-line"></i> ${distText}
+                </div>
+                
+                <a href="${googleMapsUrl}" target="_blank" style="display: block; width: 100%; background: #3b82f6; color: white; text-align: center; padding: 8px; border-radius: 6px; text-decoration: none; font-weight: 600; margin-bottom: 8px;">
+                    <i class="ri-navigation-fill"></i> Navigate
+                </a>
+        `;
+
+        if (isNearest) {
+            popupHtml += `
+                <div style="background: #dcfce7; color: #166534; text-align: center; padding: 5px; border-radius: 6px; font-weight: 700; font-size: 0.85em;">
+                    ⭐ NEAREST
+                </div>
+            `;
+        }
+
+        popupHtml += `</div>`;
+
+        const marker = L.marker([center.latitude, center.longitude], { icon: customIcon })
+            .bindPopup(popupHtml, {
+                maxWidth: 260
+            })
+            .addTo(markersLayer);
+
+        if (isNearest) {
+            marker.openPopup();
+        }
+
+        bounds.extend([center.latitude, center.longitude]);
+    });
+
+    if (centers.length > 0) {
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+}
+
+// Distance Calc
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function deg2rad(deg) { return deg * (Math.PI / 180); }

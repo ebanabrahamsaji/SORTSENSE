@@ -10,6 +10,7 @@ import authRoutes from './routes/authRoutes.js';
 import wasteRoutes from './routes/wasteRoutes.js';
 import centerRoutes from './routes/centerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import specialWasteRoutes from './routes/specialWasteRoutes.js';
 
 // Configuration
 dotenv.config();
@@ -31,6 +32,15 @@ app.use('/api/auth', authRoutes);
 app.use('/api/waste', wasteRoutes);
 app.use('/api/centers', centerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/special-waste', specialWasteRoutes);
+
+// Strict User Profile Route (Requested)
+import userRoutes from './routes/userRoutes.js';
+app.use('/api/user', userRoutes);
+
+// Pickup Routes
+import pickupRoutes from './routes/pickupRoutes.js';
+app.use('/api/pickup', pickupRoutes);
 
 // Alias for frontend compatibility (or update frontend)
 app.get('/api/activities', (req, res) => {

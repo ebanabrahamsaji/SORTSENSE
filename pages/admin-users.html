@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        .admin-sidebar {
+            background: rgba(30, 30, 40, 0.95);
+        }
+
+        .table-action-btn {
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            margin-right: 5px;
+            font-size: 0.8rem;
+        }
+
+        .btn-deactivate {
+            background: #EF4444;
+        }
+
+        .btn-activate {
+            background: #10B981;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Sort Sense</span>
+                    <span class="badge"
+                        style="background: var(--accent-color); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">ADMIN</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="admin-dashboard.html"><i class="ri-dashboard-3-line"></i><span>Overview</span></a></li>
+                    <li class="active"><a href="#"><i class="ri-user-settings-line"></i><span>User Management</span></a>
+                    </li>
+                    <li><a href="#"><i class="ri-delete-bin-2-line"></i><span>Waste Data</span></a></li>
+                    <li><a href="admin-special-waste.html"><i class="ri-folder-reduce-line"></i><span>Request
+                                Management</span></a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn"><i class="ri-logout-box-line"></i><span>Logout</span></button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <h2>User Management</h2>
+                <div class="header-profile">
+                    <div class="user-info"><span style="font-weight: 600;">Admin User</span></div>
+                </div>
+            </header>
+
+            <div class="dashboard-content" style="padding: 2rem;">
+                <div class="section-card"
+                    style="background: rgba(30, 41, 59, 0.5); padding: 1.5rem; border-radius: 16px;">
+                    <div class="section-title">
+                        <h3>Registered Users</h3>
+                    </div>
+                    <table class="recent-table" style="width: 100%; border-collapse: collapse; color: #e2e8f0;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #334155; text-align: left;">
+                                <th style="padding: 10px;">User</th>
+                                <th style="padding: 10px;">Email</th>
+                                <th style="padding: 10px;">Role</th>
+                                <th style="padding: 10px;">Joined</th>
+                                <th style="padding: 10px;">Status</th>
+                                <th style="padding: 10px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:20px;">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="../js/config.js"></script>
+    <script src="../js/admin-users.js"></script>
+</body>
+
+</html>

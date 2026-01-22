@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - SortSense</title>
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/login-tabs.css">
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
         rel="stylesheet">
@@ -13,75 +14,79 @@
 </head>
 
 <body>
-    <div class="auth-split-screen">
-        <!-- Left Side: Branding & Visual -->
-        <div class="auth-left">
-            <div class="auth-branding">
-                <a href="../index.html" class="logo auth-logo">
-                    Sort Sense <i class="ri-leaf-fill"></i>
-                </a>
-                <h1 class="auth-tagline">Welcome Back to a <span class="gradient-text">Greener Future</span></h1>
-                <p class="auth-description">Sign in to continue your journey towards smart waste management and earn
-                    rewards for every eco-friendly action.</p>
 
-                <div class="auth-features">
-                    <div class="auth-feature-item">
-                        <i class="ri-checkbox-circle-fill"></i>
-                        <span>Track your impact</span>
-                    </div>
-                    <div class="auth-feature-item">
-                        <i class="ri-checkbox-circle-fill"></i>
-                        <span>Earn green rewards</span>
-                    </div>
-                    <div class="auth-feature-item">
-                        <i class="ri-checkbox-circle-fill"></i>
-                        <span>AI-powered guidance</span>
-                    </div>
+    <div class="auth-split-layout">
+
+        <!-- Left Panel: Welcome Section -->
+        <div class="auth-left-panel">
+            <div class="brand-title">
+                Sort Sense <i class="ri-leaf-fill"></i>
+            </div>
+
+            <h1 class="auth-headline">Welcome Back to a <br>Greener Future</h1>
+
+            <p class="auth-subtext">
+                Sign in to continue your journey towards smart waste management and earn rewards for every eco-friendly
+                action.
+            </p>
+
+            <div class="feature-checklist">
+                <div class="check-item">
+                    <i class="ri-checkbox-circle-fill"></i>
+                    <span>Track your impact</span>
+                </div>
+                <div class="check-item">
+                    <i class="ri-checkbox-circle-fill"></i>
+                    <span>Earn green rewards</span>
+                </div>
+                <div class="check-item">
+                    <i class="ri-checkbox-circle-fill"></i>
+                    <span>AI-powered guidance</span>
                 </div>
             </div>
 
-            <!-- Decorative Elements -->
-            <div class="auth-blob blob-1"></div>
-            <div class="auth-blob blob-2"></div>
-            <i class="ri-leaf-line auth-floating-icon" style="top: 15%; left: 10%;"></i>
-            <i class="ri-plant-line auth-floating-icon" style="bottom: 20%; right: 15%;"></i>
+            <!-- Decorative background leaf -->
+            <i class="ri-plant-line floating-icon-bg"></i>
         </div>
 
-        <!-- Right Side: Login Form -->
-        <div class="auth-right">
-            <div class="auth-form-container">
-                <div class="auth-form-header">
-                    <h2>Sign In</h2>
-                    <p>Access your account to continue</p>
+        <!-- Right Panel: Login Form -->
+        <div class="auth-right-panel">
+
+            <!-- Wrapper -->
+            <div class="login-wrapper" style="position:relative; z-index:2;">
+
+                <!-- Tabs -->
+                <div class="role-tabs" style="margin-bottom: 2rem;">
+                    <button class="role-tab active" onclick="switchRole('user')" id="tab-user">User Login</button>
+                    <button class="role-tab" onclick="switchRole('center')" id="tab-center">Collection Center</button>
+                    <button class="role-tab" onclick="switchRole('admin')" id="tab-admin">Admin</button>
                 </div>
 
-
-
-                <!-- Google Sign-In -->
-                <div id="g_id_onload"
-                    data-client_id="1033862193558-21l8mqvkjigogomhvonf256av4mmqo8q.apps.googleusercontent.com"
-                    data-context="signin" data-ux_mode="popup" data-callback="handleGoogleSignIn"
-                    data-auto_prompt="false">
+                <div class="card-header">
+                    <h2 id="login-title">Sign In</h2>
+                    <p id="login-desc">Access your account to continue</p>
                 </div>
 
-                <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline"
-                    data-text="signin_with" data-size="large" data-logo_alignment="left" data-width="400">
+                <!-- Google Block -->
+                <div id="google-block">
+                    <div id="g_id_onload"
+                        data-client_id="1033862193558-21l8mqvkjigogomhvonf256av4mmqo8q.apps.googleusercontent.com"
+                        data-context="signin" data-ux_mode="popup" data-callback="handleGoogleSignIn"
+                        data-auto_prompt="false"></div>
+                    <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline"
+                        data-text="signin_with" data-size="large" data-logo_alignment="left" data-width="100%"></div>
+                    <div class="auth-divider"><span>OR</span></div>
                 </div>
 
-                <div class="auth-divider">
-                    <span>OR</span>
-                </div>
-
-                <!-- Email Login Form -->
-                <form id="userLoginForm" class="auth-form">
+                <!-- Form -->
+                <form id="unifiedLoginForm" class="auth-form">
                     <div class="form-group">
-                        <label for="email">Email Address</label>
+                        <label for="email" id="email-label">Email Address</label>
                         <div class="input-with-icon">
-                            <i class="ri-mail-line"></i>
-                            <input type="email" id="email" placeholder="your@email.com" required>
+                            <i class="ri-mail-line" id="email-icon"></i>
+                            <input type="text" id="email" placeholder="your@email.com" required>
                         </div>
                     </div>
-
                     <div class="form-group">
                         <label for="password">Password</label>
                         <div class="input-with-icon">
@@ -90,13 +95,16 @@
                             <i class="ri-eye-line toggle-password" id="togglePassword"></i>
                         </div>
                     </div>
-
                     <div class="form-footer">
                         <label class="remember-me">
                             <input type="checkbox" id="remember">
                             <span>Remember me</span>
                         </label>
-                        <a href="forgot-password.html" class="forgot-password">Forgot password?</a>
+                        <a href="forgot-password.html" class="forgot-password" id="forgot-link">Forgot password?</a>
+                    </div>
+
+                    <div id="login-error-msg"
+                        style="color:#ef4444; font-size:0.9rem; margin-bottom:1rem; display:none; text-align:center;">
                     </div>
 
                     <button type="submit" class="btn btn-primary auth-submit-btn">
@@ -104,60 +112,189 @@
                     </button>
                 </form>
 
-                <div class="auth-switch">
+                <div class="auth-switch" id="signup-link-block">
                     <p>Don't have an account? <a href="register-user.html">Get Started</a></p>
                 </div>
 
-                <a href="../index.html" class="back-home-link">
-                    <i class="ri-arrow-left-line"></i> Back to Home
-                </a>
+                <div style="text-align:center; margin-top:1rem;">
+                    <a href="../index.html" style="color:#64748b; font-size:0.9rem; text-decoration:none;">
+                        <i class="ri-arrow-left-line"></i> Back to Home
+                    </a>
+                </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Google Identity Services -->
+    <!-- Scripts -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-    <!-- App Scripts -->
     <script src="../js/config.js"></script>
     <script src="../js/google-auth.js"></script>
-    <script src="../js/script.js"></script>
     <script>
-        const togglePassword = document.querySelector('#togglePassword');
-        const password = document.querySelector('#password');
+        let currentRole = 'user';
 
-        togglePassword.addEventListener('click', function (e) {
-            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
-            password.setAttribute('type', type);
+        function switchRole(role) {
+            currentRole = role;
+
+            // Tabs
+            document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${role}`).classList.add('active');
+
+            // Elements
+            const googleBlock = document.getElementById('google-block');
+            const forgotLink = document.getElementById('forgot-link');
+            const signupBlock = document.getElementById('signup-link-block');
+            const emailLabel = document.getElementById('email-label');
+            const emailInput = document.getElementById('email');
+            const emailIcon = document.getElementById('email-icon');
+            const passwordInput = document.getElementById('password');
+            const rememberCheckbox = document.getElementById('remember');
+            const errorMsg = document.getElementById('login-error-msg');
+
+            // Reset Form Fields
+            if (emailInput) emailInput.value = '';
+            if (passwordInput) passwordInput.value = '';
+            if (rememberCheckbox) rememberCheckbox.checked = false;
+            if (errorMsg) {
+                errorMsg.style.display = 'none';
+                errorMsg.innerText = '';
+            }
+
+            if (role === 'user') {
+                googleBlock.style.display = 'block';
+                forgotLink.style.visibility = 'visible';
+                signupBlock.style.visibility = 'visible';
+                emailLabel.textContent = 'Email Address';
+                emailInput.placeholder = 'your@email.com';
+                if (emailIcon) emailIcon.className = 'ri-mail-line';
+            }
+            else {
+                // Center & Admin
+                googleBlock.style.display = 'none';
+                forgotLink.style.visibility = 'hidden';
+                signupBlock.style.visibility = 'hidden';
+                emailLabel.textContent = 'Username';
+                emailInput.placeholder = role === 'admin' ? 'Enter Admin Username' : 'Enter Center Username';
+                if (emailIcon) emailIcon.className = 'ri-user-3-line';
+            }
+        }
+
+        // Toggler
+        document.querySelector('#togglePassword').addEventListener('click', function () {
+            const field = document.querySelector('#password');
+            const type = field.getAttribute('type') === 'password' ? 'text' : 'password';
+            field.setAttribute('type', type);
             this.classList.toggle('ri-eye-line');
             this.classList.toggle('ri-eye-off-line');
         });
 
-        // Password Validation
-        const errorMessage = document.createElement('p');
-        errorMessage.style.color = '#ef4444';
-        errorMessage.style.fontSize = '0.8rem';
-        errorMessage.style.marginTop = '0.5rem';
-        errorMessage.style.display = 'none';
-        errorMessage.innerText = 'Enter a strong password using characters, numbers, and special characters (at least 8 characters)';
-        password.closest('.form-group').appendChild(errorMessage);
+        // Submit
+        // Submit
+        document.getElementById('unifiedLoginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('login-error-msg');
 
-        password.addEventListener('input', function () {
-            const val = this.value;
-            // Criteria: 8 chars, letters, numbers, special chars
-            const isStrong = val.length >= 8 &&
-                /[a-zA-Z]/.test(val) &&
-                /\d/.test(val) &&
-                /[!@#$%^&*(),.?":{}|<>]/.test(val);
+            // Clear previous errors
+            errorMsg.style.display = 'none';
+            errorMsg.innerText = '';
 
-            if (val.length > 0 && !isStrong) {
-                errorMessage.style.display = 'block';
-            } else {
-                errorMessage.style.display = 'none';
+            // 1. Check for Empty
+            if (!email) {
+                errorMsg.innerText = "Please enter your " + (currentRole === 'user' ? "email address" : "username") + ".";
+                errorMsg.style.display = 'block';
+                return;
             }
-        });
-    </script>
+            if (!password) {
+                errorMsg.innerText = "Please enter your password.";
+                errorMsg.style.display = 'block';
+                return;
+            }
 
+            // 2. Format Check (Relaxed - Allow Username or Email)
+            // if (currentRole === 'user' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            //     errorMsg.innerText = "Please enter a valid email address.";
+            //     errorMsg.style.display = 'block';
+            //     return;
+            // }
+
+            const btn = document.querySelector('.auth-submit-btn');
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Signing In...';
+            btn.disabled = true;
+
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+                .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                .then(({ status, body }) => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+
+                    if (status === 200 || status === 201) {
+                        const userRole = body.user.role || 'USER';
+
+                        if (currentRole === 'user' && userRole !== 'USER') { alert("Please use the correct tab."); return; }
+                        if (currentRole === 'center' && userRole !== 'CENTER') { alert("Access Denied."); return; }
+                        if (currentRole === 'admin' && userRole !== 'ADMIN') { alert("Access Denied."); return; }
+
+                        // STRICT ROLE SEPARATION: Use distinct storage namespaces
+                        if (userRole === 'CENTER') {
+                            localStorage.setItem('center_sys_id', body.user.user_id);
+                            localStorage.setItem('center_sys_email', body.user.email);
+                            localStorage.setItem('center_sys_role', 'CENTER');
+                            if (body.user.name) localStorage.setItem('center_sys_name', body.user.name);
+
+                            // Clear User keys to prevent leakage
+                            localStorage.removeItem('app_user_id');
+                            localStorage.removeItem('app_user_email');
+                            localStorage.removeItem('app_user_role');
+                            localStorage.removeItem('userId'); // Cleanup legacy
+
+                            window.location.href = 'center-dashboard.html';
+                        }
+                        else if (userRole === 'ADMIN') {
+                            // Admin can share Center keys or have their own. Assuming Admin similar to Center for now or separate.
+                            // For safety, let's keep Admin on 'center_sys' or 'admin_sys'. 
+                            // Existing code mapped Admin -> admin-dashboard.html
+                            localStorage.setItem('admin_sys_id', body.user.user_id);
+                            localStorage.setItem('admin_sys_email', body.user.email);
+
+                            window.location.href = 'admin-dashboard.html';
+                        }
+                        else {
+                            // Regular USER
+                            localStorage.setItem('app_user_id', body.user.user_id);
+                            localStorage.setItem('app_user_email', body.user.email);
+                            localStorage.setItem('app_user_role', 'USER');
+                            if (body.user.name) localStorage.setItem('app_user_name', body.user.name);
+
+                            // Clear Center/Admin keys
+                            localStorage.removeItem('center_sys_id');
+                            localStorage.removeItem('center_sys_email');
+                            localStorage.removeItem('center_sys_role');
+                            localStorage.removeItem('userId'); // Cleanup legacy
+
+                            window.location.href = 'dashboard.html';
+                        }
+                    } else {
+                        alert('Login failed: ' + (body.message || 'Invalid credentials'));
+                    }
+                })
+                .catch(e => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert("Connection failed.");
+                });
+        });
+
+        // Init
+        switchRole('user');
+    </script>
 </body>
 
 </html>

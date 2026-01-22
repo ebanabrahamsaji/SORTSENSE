@@ -304,7 +304,8 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-header">
-                <a href="dashboard.html" class="back-btn"><i class="ri-arrow-left-line"></i> Back to Dashboard</a>
+                <a href="dashboard.html" class="back-btn"><i class="ri-arrow-left-line"></i> <span
+                        data-i18n="back_dashboard">Back to Dashboard</span></a>
 
                 <div class="header-profile">
                     <div class="notification-badge">
@@ -342,7 +343,7 @@
                 <section class="detail-section">
                     <div class="section-heading">
                         <i class="ri-grid-line"></i>
-                        <h3>Types of Waste</h3>
+                        <h3 data-i18n="types_of_waste">Types of Waste</h3>
                     </div>
                     <div class="subtypes-grid" id="subtypesGrid">
                         <!-- Cards injected here -->
@@ -353,7 +354,7 @@
                 <section class="detail-section">
                     <div class="section-heading">
                         <i class="ri-government-line"></i>
-                        <h3>Disposal Guidelines (Kerala Govt.)</h3>
+                        <h3 data-i18n="disposal_guidelines">Disposal Guidelines (Kerala Govt.)</h3>
                     </div>
                     <div class="guidelines-list" id="guidelinesList">
                         <!-- Items injected here -->
@@ -364,7 +365,7 @@
                 <section class="detail-section">
                     <div class="section-heading">
                         <i class="ri-walk-line"></i>
-                        <h3>What You Should Do</h3>
+                        <h3 data-i18n="what_to_do">What You Should Do</h3>
                     </div>
                     <div class="steps-container" id="stepsList">
                         <!-- Steps injected here -->
@@ -375,7 +376,7 @@
                 <section class="detail-section">
                     <div class="section-heading">
                         <i class="ri-earth-line"></i>
-                        <h3>Environmental Impact</h3>
+                        <h3 data-i18n="environmental_impact">Environmental Impact</h3>
                     </div>
                     <div class="impact-box">
                         <p style="font-size: 1.1rem; line-height: 1.6;" id="impactText">Impact text...</p>
@@ -389,19 +390,19 @@
                 <section class="detail-section">
                     <div class="section-heading">
                         <i class="ri-contrast-line"></i>
-                        <h3>Visual Guide</h3>
+                        <h3 data-i18n="visual_guide">Visual Guide</h3>
                     </div>
                     <div class="comparison-grid">
                         <div class="comparison-card do">
                             <img src="" alt="Do This" class="comparison-img" id="imgDo">
                             <div class="comparison-label">
-                                <i class="ri-check-line"></i> DO THIS
+                                <i class="ri-check-line"></i> <span data-i18n="do_this">DO THIS</span>
                             </div>
                         </div>
                         <div class="comparison-card dont">
                             <img src="" alt="Start Don't" class="comparison-img" id="imgDont">
                             <div class="comparison-label">
-                                <i class="ri-close-line"></i> DON'T DO THIS
+                                <i class="ri-close-line"></i> <span data-i18n="dont_do_this">DON'T DO THIS</span>
                             </div>
                         </div>
                     </div>
@@ -412,6 +413,7 @@
         </main>
     </div>
 
+    <script src="../js/translations.js"></script>
     <script type="module" src="../js/category-detail.js"></script>
     <script>
         // Simple spinner animation style if not global

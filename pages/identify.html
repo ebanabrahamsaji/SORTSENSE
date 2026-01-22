@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
+
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <style>
@@ -178,13 +179,13 @@
                 <!-- Upload Section -->
                 <div class="upload-section" id="dropZone">
                     <i class="ri-upload-cloud-2-line" style="font-size: 3rem; color: #cbd5e1;"></i>
-                    <h3>Click or Drag & Drop Image</h3>
+                    <h3 data-i18n="upload_text">Click or Drag & Drop Image</h3>
                     <p class="text-sm text-gray-500">Supports JPG, PNG</p>
                     <input type="file" id="fileInput" hidden accept="image/*">
                     <img id="preview" class="preview-image" alt="Preview">
                     <br>
                     <button class="btn-analyze" id="analyzeBtn">
-                        <i class="ri-magic-line"></i> Identify Waste
+                        <i class="ri-magic-line"></i> <span data-i18n="identify_waste">Identify Waste</span>
                     </button>
                 </div>
 
@@ -200,19 +201,55 @@
                             style="color: #64748b; margin-top: 0.5rem; font-style: italic;"></p>
 
                         <div class="guideline-box">
-                            <h4><i class="ri-information-line"></i> Disposal Guide</h4>
+                            <h4><i class="ri-information-line"></i> <span data-i18n="disposal_guide">Disposal
+                                    Guide</span></h4>
                             <p id="disposalText">Loading guidance...</p>
                         </div>
 
                         <div class="guideline-box" style="background: #fff7ed; border-color: #f97316;">
-                            <h4><i class="ri-alarm-warning-line"></i> Kerala Specific Rule</h4>
+                            <h4><i class="ri-alarm-warning-line"></i> <span data-i18n="kerala_rule">Kerala Specific
+                                    Rule</span></h4>
                             <p id="keralaRule">Loading rules...</p>
                         </div>
                     </div>
 
                     <div class="map-card">
-                        <h3 style="margin-bottom: 1rem;">Nearest Collection Centers</h3>
-                        <div id="map"></div>
+                        <h3 style="margin-bottom: 1rem;" data-i18n="nearest_centers">Nearest Collection Centers</h3>
+
+                        <div id="mapWrapper"
+                            style="position: relative; background: #fff; border-radius: 12px; overflow: hidden; height: 400px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                            <style>
+                                /* Green Marker Style for Stable Map */
+                                .marker-pin-green {
+                                    width: 30px;
+                                    height: 30px;
+                                    border-radius: 50% 50% 50% 0;
+                                    background: #22c55e;
+                                    position: absolute;
+                                    transform: rotate(-45deg);
+                                    left: 50%;
+                                    top: 50%;
+                                    margin: -15px 0 0 -15px;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                                }
+
+                                .marker-pin-green i {
+                                    transform: rotate(45deg);
+                                    color: white;
+                                    font-size: 14px;
+                                }
+
+                                .custom-div-icon {
+                                    background: transparent;
+                                    border: none;
+                                }
+                            </style>
+                            <div id="map" style="height: 100%; width: 100%;"></div>
+                        </div>
+                        <div id="centerDetails" style="margin-top:10px;"></div>
                     </div>
                 </div>
             </div>
@@ -222,7 +259,9 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <script src="../js/config.js"></script>
+    <script src="../js/translations.js"></script>
     <script src="../js/analysis.js"></script>
 </body>
 

@@ -10,7 +10,7 @@
         rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/dashboard_fix.css">
 </head>
 
 <body>
@@ -29,25 +29,31 @@
                     <li class="active">
                         <a href="#">
                             <i class="ri-dashboard-line"></i>
-                            <span>Dashboard</span>
+                            <span data-i18n="dashboard_menu">Dashboard</span>
                         </a>
                     </li>
                     <li>
                         <a href="#">
                             <i class="ri-history-line"></i>
-                            <span>History</span>
+                            <span data-i18n="history_menu">History</span>
                         </a>
                     </li>
                     <li>
                         <a href="#">
                             <i class="ri-trophy-line"></i>
-                            <span>Rewards</span>
+                            <span data-i18n="rewards_menu">Rewards</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="special-waste.html">
+                            <i class="ri-alert-line"></i>
+                            <span data-i18n="special_waste_menu">Special Waste</span>
                         </a>
                     </li>
                     <li>
                         <a href="profile.html">
                             <i class="ri-settings-4-line"></i>
-                            <span>Profile</span>
+                            <span data-i18n="profile_menu">Profile</span>
                         </a>
                     </li>
                 </ul>
@@ -56,7 +62,7 @@
             <div class="sidebar-footer">
                 <button id="logoutBtn" class="logout-btn">
                     <i class="ri-logout-box-line"></i>
-                    <span>Logout</span>
+                    <span data-i18n="logout_btn">Logout</span>
                 </button>
             </div>
         </aside>
@@ -67,10 +73,19 @@
             <header class="top-header">
                 <div class="header-search">
                     <i class="ri-search-line"></i>
-                    <input type="text" placeholder="Search for waste items...">
+                    <input type="text" placeholder="Search for waste items..." data-i18n="search_placeholder">
                 </div>
 
                 <div class="header-profile">
+                    <!-- Language Switcher Creative -->
+                    <div class="language-pill" title="Select Language">
+                        <i class="ri-global-line"></i>
+                        <select id="langSwitcher" onchange="setLanguage(this.value)">
+                            <option value="ENGLISH">English</option>
+                            <option value="MALAYALAM">മലയാളം</option>
+                        </select>
+                    </div>
+
                     <div class="notification-badge">
                         <i class="ri-notification-3-line"></i>
                         <span class="dot"></span>
@@ -80,6 +95,14 @@
                             alt="Profile">
                     </div>
                 </div>
+
+                <!-- Notification Panel -->
+                <div class="notification-panel" id="notificationPanel">
+                    <div class="notif-header">Notifications</div>
+                    <div class="notif-list" id="notifList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
             </header>
 
             <!-- Dashboard Content -->
@@ -87,8 +110,9 @@
                 <!-- Welcome Section -->
                 <section class="welcome-section">
                     <div class="welcome-text">
-                        <h1>Welcome <span id="welcomeName" class="gradient-text">User</span></h1>
-                        <p>Ready to make a difference today? Let's sort smarter.</p>
+                        <h1><span data-i18n="welcome_intro">Welcome</span> <span id="welcomeName"
+                                class="gradient-text">User</span></h1>
+                        <p data-i18n="welcome_msg">Ready to make a difference today? Let's sort smarter.</p>
                     </div>
                 </section>
 
@@ -99,56 +123,109 @@
                             <div class="icon-circle">
                                 <i class="ri-ai-generate"></i>
                             </div>
-                            <h3>AI Waste Identifier</h3>
-                            <p>Upload or snap a photo of your waste</p>
+                            <h3 data-i18n="identify_waste">AI Waste Identifier</h3>
+                            <p data-i18n="upload_text">Upload or snap a photo of your waste</p>
                             <a href="identify.html" class="upload-btn"
                                 style="text-decoration: none; display: inline-block; text-align: center;">
-                                <i class="ri-camera-fill"></i> Analyze Image
+                                <i class="ri-camera-fill"></i> <span data-i18n="identify_waste">Analyze Image</span>
                             </a>
                             <!-- Input removed as we redirect -->
                         </div>
                     </div>
 
                     <div class="manual-card">
-                        <h3>Quick Search</h3>
+                        <h3 data-i18n="quick_search_title">Quick Search</h3>
                         <div class="manual-input-wrapper">
-                            <input type="text" placeholder="e.g. Plastic Bottle" class="waste-name-input">
+                            <input type="text" placeholder="e.g. Plastic Bottle" class="waste-name-input"
+                                data-i18n="quick_search_placeholder">
                             <button class="search-btn"><i class="ri-arrow-right-line"></i></button>
                         </div>
-                        <p class="hint">Not sure? Type it out.</p>
+                        <p class="hint" data-i18n="quick_search_hint">Not sure? Type it out.</p>
+                    </div>
+                </section>
+
+                <!-- Pickup Request Section -->
+                <section class="pickup-section">
+                    <div class="pickup-card">
+                        <div class="pickup-header">
+                            <h3 data-i18n="pickup_request_title">Schedule Pickup</h3>
+                            <div class="pickup-status-badge" id="pickupStatusBadge" style="display:none;">
+                                <span class="status-dot"></span>
+                                <span id="pickupStatusText" data-i18n="status_pending">Pending</span>
+                            </div>
+                        </div>
+                        <div class="pickup-form-wrapper" id="pickupFormWrapper">
+                            <!-- Section 1: Waste Type Dropdown -->
+                            <div class="form-group full-width">
+                                <label data-i18n="waste_type_label" style="display:block; margin-bottom:0.8rem;">Waste
+                                    Type</label>
+                                <select id="pickupWasteType" class="pickup-input"
+                                    style="width:100%; background:rgba(30, 41, 59, 0.6); border:1px solid rgba(255,255,255,0.1); padding:0.8rem; border-radius:12px; color:white; outline:none; font-family:inherit; cursor:pointer;">
+                                    <option value="" disabled selected>Select Waste Type</option>
+                                    <option value="Plastic" data-i18n="plastic" style="background:#1e293b;">Plastic
+                                    </option>
+                                    <option value="Paper" data-i18n="paper" style="background:#1e293b;">Paper</option>
+                                    <option value="Organic" data-i18n="organic" style="background:#1e293b;">Organic
+                                    </option>
+                                    <option value="Metal" data-i18n="metal" style="background:#1e293b;">Metal</option>
+                                    <option value="Glass" data-i18n="glass" style="background:#1e293b;">Glass</option>
+                                    <option value="E-Waste" data-i18n="ewaste" style="background:#1e293b;">E-Waste
+                                    </option>
+                                    <option value="Hazardous" data-i18n="hazardous" style="background:#1e293b;">
+                                        Hazardous</option>
+                                </select>
+                            </div>
+
+                            <!-- Section 2: Bottom Row (Quantity + Button) -->
+                            <div class="pickup-row-bottom">
+                                <div class="form-group">
+                                    <label data-i18n="quantity_label">Quantity (kg)</label>
+                                    <input type="number" id="pickupQuantity" class="pickup-input" placeholder="5"
+                                        min="1">
+                                </div>
+                                <button id="requestPickupBtn" class="primary-btn">
+                                    <i class="ri-truck-line"></i> <span data-i18n="request_pickup_btn">Request
+                                        Pickup</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="pickupSuccessMsg" class="pickup-success" style="display: none;">
+                            <i class="ri-checkbox-circle-line"></i>
+                            <p data-i18n="pickup_request_success">Request submitted successfully!</p>
+                        </div>
                     </div>
                 </section>
 
                 <!-- Categories -->
                 <section class="categories-section">
                     <div class="section-header">
-                        <h2>Categories</h2>
-                        <a href="#" class="view-all">View All</a>
+                        <h2 data-i18n="categories_title">Categories</h2>
+                        <a href="#" class="view-all" data-i18n="view_all_btn">View All</a>
                     </div>
                     <div class="categories-grid">
                         <div class="category-card plastic">
                             <div class="cat-icon"><i class="ri-recycle-line"></i></div>
-                            <span>Plastic</span>
+                            <span data-i18n="plastic">Plastic</span>
                         </div>
                         <div class="category-card organic">
                             <div class="cat-icon"><i class="ri-plant-line"></i></div>
-                            <span>Organic</span>
+                            <span data-i18n="organic">Organic</span>
                         </div>
                         <div class="category-card paper">
                             <div class="cat-icon"><i class="ri-file-paper-2-line"></i></div>
-                            <span>Paper</span>
+                            <span data-i18n="paper">Paper</span>
                         </div>
                         <div class="category-card glass">
                             <div class="cat-icon"><i class="ri-cup-line"></i></div>
-                            <span>Glass</span>
+                            <span data-i18n="glass">Glass</span>
                         </div>
                         <div class="category-card e-waste">
                             <div class="cat-icon"><i class="ri-battery-charge-line"></i></div>
-                            <span>E-Waste</span>
+                            <span data-i18n="ewaste">E-Waste</span>
                         </div>
                         <div class="category-card hazardous">
                             <div class="cat-icon"><i class="ri-skull-line"></i></div>
-                            <span>Hazardous</span>
+                            <span data-i18n="hazardous">Hazardous</span>
                         </div>
                     </div>
                 </section>
@@ -157,6 +234,7 @@
     </div>
 
     <script src="../js/config.js"></script>
+    <script src="../js/translations.js"></script>
     <script src="../js/dashboard.js"></script>
 </body>
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { getCategories, identifyWaste, saveWasteImage } from '../controllers/wasteController.js';
+import { getCategories, identifyWaste, saveWasteImage, searchWaste } from '../controllers/wasteController.js';
 import multer from 'multer';
 
 import path from 'path';
@@ -39,5 +39,6 @@ const router = express.Router();
 router.get('/categories', getCategories);
 router.post('/identify', upload.single('image'), identifyWaste);
 router.post('/image', saveWasteImage);
+router.post('/search', searchWaste);
 
 export default router;

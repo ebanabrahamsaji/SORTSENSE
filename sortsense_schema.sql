@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS tbl_item_images (
 CREATE TABLE IF NOT EXISTS tbl_collection_centers (
     center_id INT AUTO_INCREMENT PRIMARY KEY,
     center_name VARCHAR(100) NOT NULL,
+    type VARCHAR(50),
     latitude DECIMAL(10, 8) NOT NULL,
     longitude DECIMAL(11, 8) NOT NULL,
     address TEXT,

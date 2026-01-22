@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request Management - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        .admin-sidebar {
+            background: rgba(30, 30, 40, 0.95);
+        }
+
+        .table-action-btn {
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            color: white;
+            margin-right: 5px;
+            font-size: 0.8rem;
+        }
+
+        .btn-approve {
+            background: #10B981;
+        }
+
+        .btn-reject {
+            background: #EF4444;
+        }
+
+        .btn-schedule {
+            background: #3B82F6;
+        }
+
+        .btn-complete {
+            background: #8B5CF6;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+            background: #1e293b;
+            color: white;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1rem;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        .tab-btn.active {
+            color: #10B981;
+            border-bottom: 2px solid #10B981;
+        }
+
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Sort Sense</span>
+                    <span class="badge"
+                        style="background: var(--accent-color); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">ADMIN</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="admin-dashboard.html"><i class="ri-dashboard-3-line"></i><span>Overview</span></a></li>
+                    <li class="active"><a href="#"><i class="ri-folder-reduce-line"></i><span>Request
+                                Management</span></a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <h2>Request Management</h2>
+                <div class="header-profile">
+                    <div class="user-info">
+                        <span style="font-weight: 600;">Admin User</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-content" style="padding: 2rem;">
+
+                <!-- Tabs -->
+                <div class="tab-container">
+                    <button class="tab-btn active" onclick="switchTab('special')">Special Waste</button>
+                    <button class="tab-btn" onclick="switchTab('regular')">Regular Pickup</button>
+                </div>
+
+                <!-- Special Waste View -->
+                <div id="specialView" class="view-section active">
+                    <div class="filters">
+                        <select id="filterStatus" class="filter-select">
+                            <option value="All">All Status</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Scheduled">Scheduled</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                        <select id="filterCategory" class="filter-select">
+                            <option value="All">All Categories</option>
+                            <option value="Biomedical">Biomedical</option>
+                            <option value="Hazardous">Hazardous</option>
+                            <option value="E-waste">E-waste</option>
+                            <option value="Festival">Festival</option>
+                            <option value="Methods">Medicines</option>
+                            <option value="Construction Debris">Construction Debris</option>
+                        </select>
+                    </div>
+
+                    <div class="section-card"
+                        style="background: rgba(30, 41, 59, 0.5); padding: 1.5rem; border-radius: 16px;">
+                        <table class="recent-table" style="width: 100%; border-collapse: collapse; color: #e2e8f0;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #334155; text-align: left;">
+                                    <th style="padding: 10px;">Date</th>
+                                    <th style="padding: 10px;">User</th>
+                                    <th style="padding: 10px;">Category</th>
+                                    <th style="padding: 10px;">Details & Location</th>
+                                    <th style="padding: 10px;">Assigned</th>
+                                    <th style="padding: 10px;">Status</th>
+                                    <th style="padding: 10px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminSwTableBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Regular Pickup View -->
+                <div id="regularView" class="view-section">
+                    <div class="filters">
+                        <select id="regFilterStatus" class="filter-select">
+                            <option value="All">All Status</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Approved">Approved</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="section-card"
+                        style="background: rgba(30, 41, 59, 0.5); padding: 1.5rem; border-radius: 16px;">
+                        <table class="recent-table" style="width: 100%; border-collapse: collapse; color: #e2e8f0;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #334155; text-align: left;">
+                                    <th style="padding: 10px;">Date</th>
+                                    <th style="padding: 10px;">User</th>
+                                    <th style="padding: 10px;">Waste Type</th>
+                                    <th style="padding: 10px;">Qty</th>
+                                    <th style="padding: 10px;">Center</th>
+                                    <th style="padding: 10px;">Status</th>
+                                    <th style="padding: 10px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminRegTableBody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Special Waste Notes/Center -->
+    <div id="notesModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div style="background:#1e293b; padding:2rem; border-radius:12px; width:400px; max-width:90%;">
+            <h3 style="color:white; margin-bottom:1rem;">Update Request Status</h3>
+            <p style="color:#cbd5e1; margin-bottom:1rem;" id="modalActionText"></p>
+
+            <div id="centerSelectWrapper" style="display:none; margin-bottom:1rem;">
+                <label style="color:#cbd5e1; display:block; margin-bottom:0.5rem; font-size:0.9rem;">Assign Collection
+                    Center</label>
+                <select id="modalCenterSelect"
+                    style="width:100%; padding:10px; background:#334155; border:none; color:white; border-radius:8px;">
+                    <option value="">Select Center...</option>
+                </select>
+            </div>
+
+            <textarea id="modalNotes" placeholder="Enter notes (optional)..."
+                style="width:100%; height:100px; background:#334155; border:none; color:white; padding:10px; border-radius:8px; margin-bottom:1rem;"></textarea>
+
+            <div style="text-align:right;">
+                <button onclick="closeModal()"
+                    style="padding:8px 16px; background:transparent; color:white; border:1px solid #475569; border-radius:6px; cursor:pointer;">Cancel</button>
+                <button id="confirmBtn"
+                    style="padding:8px 16px; background:#3B82F6; color:white; border:none; border-radius:6px; cursor:pointer; margin-left:10px;">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Request Details & Edit -->
+    <!-- Modal for Request Details & Edit -->
+    <div id="editRequestModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div style="background:#1e293b; padding:2rem; border-radius:12px; width:600px; max-width:95%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="color:white; margin:0;" id="editRequestTitle">Request Details</h3>
+                <span id="detailsStatusBadge"
+                    style="padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:600;">STATUS</span>
+            </div>
+
+            <div id="detailsForm">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                    <div>
+                        <label
+                            style="color:#94a3b8; display:block; margin-bottom:0.5rem; font-size:0.9rem;">Category</label>
+                        <select id="detCategory" disabled
+                            style="width:100%; padding:10px; background:#334155; border:none; color:white; border-radius:8px;">
+                            <option value="Biomedical">Biomedical</option>
+                            <option value="Hazardous">Hazardous</option>
+                            <option value="E-waste">E-waste</option>
+                            <option value="Festival">Festival</option>
+                            <option value="Medicines">Medicines</option>
+                            <option value="Construction Debris">Construction Debris</option>
+                            <option value="Bulk">Bulk</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            style="color:#94a3b8; display:block; margin-bottom:0.5rem; font-size:0.9rem;">Quantity</label>
+                        <div style="display:flex; gap:5px;">
+                            <input type="number" id="detQuantity" disabled
+                                style="width:100%; padding:10px; background:#334155; border:none; color:white; border-radius:8px;">
+                            <span id="detUnit"
+                                style="padding:10px; background:#334155; color:#94a3b8; border-radius:8px; display:flex; align-items:center;">kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                    <div>
+                        <label style="color:#94a3b8; display:block; margin-bottom:0.5rem; font-size:0.9rem;">Preferred
+                            Date</label>
+                        <input type="date" id="detDate" disabled
+                            style="width:100%; padding:10px; background:#334155; border:none; color:white; border-radius:8px;">
+                    </div>
+                    <div>
+                        <label
+                            style="color:#94a3b8; display:block; margin-bottom:0.5rem; font-size:0.9rem;">Location</label>
+                        <input type="text" id="detLocation" disabled
+                            style="width:100%; padding:10px; background:#334155; border:none; color:white; border-radius:8px;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom:1.5rem;">
+                    <label
+                        style="color:#94a3b8; display:block; margin-bottom:0.5rem; font-size:0.9rem;">Description</label>
+                    <textarea id="detDescription" disabled
+                        style="width:100%; height:80px; background:#334155; border:none; color:white; padding:10px; border-radius:8px;"></textarea>
+                </div>
+            </div>
+
+            <!-- View Mode Buttons -->
+            <div id="viewModeBtns" style="text-align:right;">
+                <button onclick="closeEditRequestModal()"
+                    style="padding:8px 16px; background:transparent; color:#94a3b8; border:1px solid #475569; border-radius:6px; cursor:pointer; margin-right:10px;">Close</button>
+
+                <span id="pendingActions">
+                    <button onclick="enableEditMode()"
+                        style="padding:8px 16px; background:#F59E0B; color:white; border:none; border-radius:6px; cursor:pointer; margin-left:10px;">Edit</button>
+                    <button id="detApproveBtn"
+                        style="padding:8px 16px; background:#10B981; color:white; border:none; border-radius:6px; cursor:pointer; margin-left:10px;">Approve</button>
+                    <button id="detRejectBtn"
+                        style="padding:8px 16px; background:#EF4444; color:white; border:none; border-radius:6px; cursor:pointer; margin-left:10px;">Reject</button>
+                </span>
+            </div>
+
+            <!-- Edit Mode Buttons -->
+            <div id="editModeBtns" style="text-align:right; display:none;">
+                <button onclick="cancelEdit()"
+                    style="padding:8px 16px; background:transparent; color:white; border:1px solid #475569; border-radius:6px; cursor:pointer;">Cancel</button>
+                <button id="saveChangesBtn" onclick="saveChanges()"
+                    style="padding:8px 16px; background:#3B82F6; color:white; border:none; border-radius:6px; cursor:pointer; margin-left:10px;">Save
+                    Changes</button>
+            </div>
+        </div>
+
+        <script src="../js/config.js"></script>
+        <script src="../js/admin-special-waste.js"></script>
+</body>
+
+</html>

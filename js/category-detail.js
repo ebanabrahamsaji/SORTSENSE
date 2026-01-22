@@ -1,7 +1,12 @@
 
-import { CATEGORY_DATA } from '../js/category-data.js';
+import { CATEGORY_DATA, CATEGORY_DATA_ML } from '../js/category-data.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Apply static translations from translations.js
+    if (typeof window.applyTranslations === 'function') {
+        window.applyTranslations();
+    }
+
     // 1. Get Category from URL
     const urlParams = new URLSearchParams(window.location.search);
     const categoryKey = urlParams.get('category');
@@ -21,7 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const data = CATEGORY_DATA[categoryKey];
+    const lang = localStorage.getItem('userLanguage');
+    const data = (lang === 'MALAYALAM' && CATEGORY_DATA_ML && CATEGORY_DATA_ML[categoryKey])
+        ? CATEGORY_DATA_ML[categoryKey]
+        : CATEGORY_DATA[categoryKey];
+    console.log("Loading data for:", categoryKey, "Language:", lang);
     console.log("Loading data for:", categoryKey);
 
     // 2. Populate Header / Hero

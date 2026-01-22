@@ -11,66 +11,110 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Leaflet Routing Machine CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+
     <style>
+        /* Main Layout Restructure */
         .analysis-container {
-            max-width: 800px;
-            margin: 40px auto;
+            max-width: 1280px;
+            margin: 30px auto;
             padding: 30px;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        @media (min-width: 1080px) {
+            .analysis-grid {
+                grid-template-columns: 360px 1fr;
+            }
         }
 
         .result-header {
-            text-align: center;
-            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #f1f5f9;
         }
 
+        .result-header h2 {
+            font-size: 1.5rem;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Left Panel Cards */
         .waste-image-preview {
             width: 100%;
-            height: 300px;
+            height: 280px;
             object-fit: contain;
-            /* Changed to contain to show full image */
-            border-radius: 12px;
+            border-radius: 16px;
             margin-bottom: 20px;
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
         }
 
         .category-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 16px;
+            padding: 6px 16px;
             border-radius: 50px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin-bottom: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
         }
 
         .confidence-meter {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
+            gap: 8px;
             color: #64748b;
             font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 20px;
         }
 
         .info-card {
-            background: #f8fafc;
-            border-radius: 12px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
             padding: 20px;
-            margin-bottom: 20px;
-            border-left: 4px solid #10b981;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+
+        .info-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         }
 
         .info-card h4 {
-            color: #1e293b;
-            margin-bottom: 10px;
+            color: #334155;
+            margin-bottom: 12px;
+            font-size: 1rem;
             display: flex;
             align-items: center;
             gap: 8px;
+            font-weight: 600;
         }
 
         .btn-group {
@@ -96,6 +140,252 @@
             color: #10b981;
             margin-top: 3px;
         }
+
+        /* Right Panel: Map & Navigation */
+        .right-panel-header {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .right-panel-header h3 {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        #mapWrapper {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 620px;
+            /* Visually balanced */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            position: relative;
+        }
+
+        #mapWrapper:fullscreen {
+            height: 100vh !important;
+            border-radius: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 9999;
+        }
+
+        #mapControls {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.98);
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .btn-live-loc {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-live-loc:hover {
+            background: #059669;
+        }
+
+        /* Filter & GPS Group */
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-scroll {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding: 2px 2px 8px 2px;
+            scrollbar-width: thin;
+        }
+
+        .filter-chip {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-chip.active {
+            background: #0f172a;
+            color: white;
+            border-color: #0f172a;
+            box-shadow: 0 2px 4px rgba(15, 23, 42, 0.2);
+        }
+
+        #gpsStatus {
+            font-size: 0.8rem;
+            color: #64748b;
+            padding-left: 4px;
+            min-height: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        #map {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            background: #f1f5f9;
+        }
+
+        .notification-toast {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .nav-info-panel {
+            background: #1e293b;
+            color: white;
+            padding: 10px 16px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .marker-pin {
+            width: 30px;
+            height: 30px;
+            border-radius: 50% 50% 50% 0;
+            background: #3b82f6;
+            position: absolute;
+            transform: rotate(-45deg);
+            left: 50%;
+            top: 50%;
+            margin: -15px 0 0 -15px;
+            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .marker-pin::after {
+            content: '';
+            width: 14px;
+            height: 14px;
+            margin: 8px 0 0 8px;
+            background: #fff;
+            position: absolute;
+            border-radius: 50%;
+        }
+
+        .marker-pin.nearest {
+            background: #22c55e;
+            animation: bounce 1s infinite alternate;
+        }
+
+        @keyframes bounce {
+            from {
+                transform: rotate(-45deg) translateY(0);
+            }
+
+            to {
+                transform: rotate(-45deg) translateY(-5px);
+            }
+        }
+
+        .leaflet-popup-content {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .popup-status {
+            font-size: 0.8em;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .popup-status.open {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        /* ... existing styles ... */
+        .popup-status.closed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* GRID LAYOUT FOR CENTERS */
+        #centerDetails {
+            display: grid;
+            grid-template-columns: 1fr;
+            /* Mobile: Single column */
+            gap: 16px;
+            margin-top: 25px;
+        }
+
+        @media (min-width: 700px) {
+            #centerDetails {
+                grid-template-columns: repeat(2, 1fr);
+                /* Tablet: 2 columns */
+            }
+        }
+
+        @media (min-width: 1400px) {
+            #centerDetails {
+                grid-template-columns: repeat(3, 1fr);
+                /* Wide screens: 3 columns */
+            }
+        }
+
+        .center-item {
+            display: flex !important;
+            /* Force flex */
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+            margin-bottom: 0 !important;
+            /* Grid handles gap */
+        }
     </style>
 </head>
 
@@ -104,39 +394,148 @@
         <div class="analysis-container">
             <div class="result-header">
                 <a href="dashboard.html" style="float: left; color: #64748b; text-decoration: none;">
-                    <i class="ri-arrow-left-line"></i> Back
+                    <i class="ri-arrow-left-line"></i> <span data-i18n="back_dashboard">Back</span>
                 </a>
-                <h2>Analysis Result</h2>
+                <h2><span data-i18n="results_title">Analysis Result</span> <span
+                        style="font-size: 0.6em; background:#f1f5f9; padding:4px 8px; border-radius:12px; color:#475569; vertical-align:middle;">Live
+                        Map v2.1</span></h2>
             </div>
 
-            <img id="analyzedImage" class="waste-image-preview" src="" alt="Analyzed Waste">
+            <div class="analysis-grid">
+                <!-- LEFT PANEL: Image & Info -->
+                <div class="left-panel">
+                    <img id="analyzedImage" class="waste-image-preview" src="" alt="Analyzed Waste">
 
-            <div style="text-align: center;">
-                <div id="categoryBadge" class="category-badge">
-                    <span id="categoryName">Loading...</span>
+                    <div style="text-align: left; margin-bottom: 20px;">
+                        <div id="categoryBadge" class="category-badge">
+                            <span id="categoryName">Loading...</span>
+                        </div>
+                        <div class="confidence-meter" style="justify-content: flex-start;">
+                            <i class="ri-search-eye-line"></i>
+                            AI Confidence: <span id="confidenceScore">--%</span>
+                        </div>
+                    </div>
+
+                    <div class="info-card" style="margin-top: 10px; background: #ecfdf5; border: none; border-left: 0;">
+                        <h4 data-i18n="disposal_guide" style="color: #065f46;"><i class="ri-delete-bin-line"></i>
+                            Disposal Guide</h4>
+                        <div id="disposalMethod" class="disposal-steps" style="color: #064e3b;"></div>
+                    </div>
+
+                    <div class="info-card" style="background: #fff7ed; border: none; border-left: 0;">
+                        <h4 data-i18n="kerala_rule" style="color: #9a3412;"><i class="ri-book-open-line"></i> Kerala
+                            Specific Rule</h4>
+                        <p id="rulesDescription" style="color: #7c2d12;">Loading rules...</p>
+                    </div>
                 </div>
-                <div class="confidence-meter">
-                    <i class="ri-search-eye-line"></i>
-                    AI Confidence: <span id="confidenceScore">--%</span>
-                </div>
-            </div>
 
-            <div class="info-card" style="margin-top: 25px;">
-                <h4><i class="ri-delete-bin-line"></i> Disposal Method</h4>
-                <div id="disposalMethod" class="disposal-steps"></div>
-            </div>
+                <!-- RIGHT PANEL: Map & Logic -->
+                <div class="right-panel">
 
-            <div class="info-card" style="border-left-color: #f59e0b;">
-                <h4><i class="ri-book-open-line"></i> Rules & Guidelines</h4>
-                <p id="rulesDescription">Loading rules...</p>
-            </div>
+                    <!-- Wrapper controlled primarily by JS logic (display:none initially) -->
+                    <div id="centerCard" style="display: none;">
 
-            <div class="info-card" id="centerCard" style="border-left-color: #3b82f6; display: none;">
-                <h4><i class="ri-map-pin-line"></i> Nearest Collection Center</h4>
-                <div id="centerDetails">
-                    <p>Searching nearby...</p>
-                </div>
-            </div>
+                        <div class="right-panel-header">
+                            <h3 data-i18n="nearest_centers">
+                                <i class="ri-map-2-line" style="color: #3b82f6;"></i> Nearest Collection Centers
+                            </h3>
+                        </div>
+
+                        <!-- Map Wrapper -->
+                        <div id="mapWrapper">
+
+                            <!-- Controls Section -->
+                            <div id="mapControls">
+                                <button class="btn-live-loc" onclick="window.enableLiveLocation()">
+                                    <i class="ri-focus-3-fill"></i> Use My Live Location
+                                </button>
+
+                                <div class="controls-group">
+                                    <div class="filter-scroll" id="filterContainer">
+                                        <button class="filter-chip active"
+                                            onclick="window.setFilter('all', this)">All</button>
+                                        <button class="filter-chip" onclick="window.setFilter('Plastic', this)"><i
+                                                class="ri-recycle-line"></i> Plastic</button>
+                                        <button class="filter-chip" onclick="window.setFilter('Organic', this)"><i
+                                                class="ri-leaf-line"></i> Organic</button>
+                                        <button class="filter-chip" onclick="window.setFilter('E-waste', this)"><i
+                                                class="ri-computer-line"></i> E-Waste</button>
+                                        <button class="filter-chip" onclick="window.setFilter('Glass', this)"><i
+                                                class="ri-goblet-line"></i> Glass</button>
+                                        <button class="filter-chip" onclick="window.setFilter('Metal', this)"><i
+                                                class="ri-hammer-line"></i> Metal</button>
+                                        <button class="filter-chip" onclick="window.setFilter('Hazardous', this)"><i
+                                                class="ri-skull-line"></i> Hazardous</button>
+                                        <button class="filter-chip" onclick="window.setFilter('Paper', this)"><i
+                                                class="ri-file-paper-2-line"></i> Paper</button>
+                                    </div>
+                                    <div id="gpsStatus"></div>
+                                </div>
+                            </div>
+
+                            <!-- Interactive Overlays -->
+                            <div id="navInfoPanel" class="nav-info-panel">
+                                <div id="navStats" style="display: flex; align-items: center; gap: 15px;">
+                                    <div style="display:flex; align-items:center; gap:5px;">
+                                        <i class="ri-timer-flash-line" style="color:#4ade80;"></i>
+                                        <span style="font-weight: bold; font-size: 1.1em;" id="navTime">-- min</span>
+                                    </div>
+                                    <span style="opacity: 0.6;">|</span>
+                                    <span style="opacity: 0.9;" id="navDist">-- km</span>
+                                    <!-- Travel Mode Toggle -->
+                                    <div
+                                        style="background: rgba(255,255,255,0.1); padding: 2px; border-radius: 6px; display:flex;">
+                                        <button id="modeDrive" onclick="window.switchMode('driving-car')"
+                                            style="background: #3b82f6; border:none; color:white; padding: 4px 8px; border-radius: 4px; cursor: pointer;"><i
+                                                class="ri-car-fill"></i></button>
+                                        <button id="modeWalk" onclick="window.switchMode('foot-walking')"
+                                            style="background: transparent; border:none; color:rgba(255,255,255,0.7); padding: 4px 8px; border-radius: 4px; cursor: pointer;"><i
+                                                class="ri-walk-fill"></i></button>
+                                    </div>
+                                </div>
+                                <button onclick="window.clearRoute()"
+                                    style="background: rgba(255,255,255,0.2); color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Exit</button>
+                            </div>
+
+                            <!-- Manual Location Input (Hidden by default) -->
+                            <div id="manualLocDiv" style="display:none; padding: 0 12px 12px 12px;">
+                                <div
+                                    style="display:flex; gap:10px; background: #fff7ed; padding: 10px; border-radius: 10px; border: 1px solid #fdba74;">
+                                    <input type="text" id="manualLocInput" placeholder="Enter City (e.g. Kanjirapally)"
+                                        style="flex:1; padding: 8px; border: 1px solid #fdba74; border-radius: 6px; outline: none; font-size: 0.9rem;">
+                                    <button onclick="searchCustomLocation(window.currentCategory)"
+                                        style="background: #f97316; color: white; border: none; padding: 0 15px; border-radius: 6px; cursor: pointer; font-weight: 600;">Search</button>
+                                </div>
+                            </div>
+
+                            <div id="arrivalNotification" class="notification-toast">
+                                🎉 You have reached your destination!
+                            </div>
+
+                            <div id="map"></div>
+
+                            <button onclick="window.toggleFullscreen()"
+                                style="position: absolute; bottom: 15px; right: 15px; z-index: 400; background: white; width: 36px; height: 36px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                <i class="ri-fullscreen-line" style="font-size: 1.2rem; color: #475569;"></i>
+                            </button>
+                        </div>
+
+                        <div
+                            style="margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+                            <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b; display: flex; align-items: center; gap: 10px;"
+                                data-i18n="nearby_locations">
+                                <i class="ri-building-line" style="color: #64748b;"></i> Nearby Collection Centers
+                            </h4>
+                            <span style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;">Sorted by
+                                distance</span>
+                        </div>
+
+                        <div id="centerDetails" style="margin-top: 0;">
+                            <p style="color: #64748b;">Searching nearby...</p>
+                        </div>
+                    </div>
+                </div> <!-- End of Right Panel -->
+            </div> <!-- End of Grid -->
 
             <div class="btn-group">
                 <a href="dashboard.html" class="btn btn-outline-primary">Analyze Another</a>
@@ -146,30 +545,61 @@
         </div>
     </div>
 
+    <!-- Translations -->
+    <script src="../js/translations.js"></script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet Routing Machine JS -->
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
     <script type="module">
         import { CATEGORY_DATA } from '../js/category-data.js';
+
+        // ORS API Key
+        const ORS_API_KEY = "5b3ce3597851110001cf624860915b96c39844318a57130d723af648";
+
+        // Global State - CLIENT SIDE MASTER LIST
+        window.allCenterMarkers = []; // Stores { lat, lng, type, data }
+        window.userLat = null;
+        window.userLng = null;
+        window.currentCategory = 'all';
+        window.travelMode = 'driving-car';
+        window.destinationCoords = null;
+        window.destinationName = null;
+        window.hasReached = false;
+
+        let map = null;
+        let markersLayer = L.layerGroup();
+        let userMarker = null;
+        let watchId = null;
+        let routeControl = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             const rawResult = sessionStorage.getItem('analysisResult');
             const wasteImage = sessionStorage.getItem('wasteImage');
+            const imgEl = document.getElementById('analyzedImage');
 
             if (wasteImage) {
-                document.getElementById('analyzedImage').src = wasteImage;
+                imgEl.src = wasteImage;
+                imgEl.style.display = 'block';
+            } else {
+                imgEl.style.display = 'none';
             }
 
             if (rawResult) {
                 const result = JSON.parse(rawResult);
-                let data = result; // result is the flat object from server usually (category, confidence, etc)
-                // Note: Previous code used result.data in some places, but server sends flat JSON. 
-                // Let's standarize on 'data' being the object with properties.
-
-                // Initial Render
-                renderResult(data);
-
+                renderResult(result);
             } else {
                 alert("No analysis result found. Redirecting...");
                 window.location.href = 'dashboard.html';
             }
+
+            // Auto-Start GPS
+            setTimeout(() => {
+                if (window.enableLiveLocation) window.enableLiveLocation();
+            }, 800);
         });
 
         function renderResult(data) {
@@ -180,153 +610,670 @@
             const rulesDescription = document.getElementById('rulesDescription');
             const centerCard = document.getElementById('centerCard');
 
-            // --- 1. Header & Confidence (Status) ---
             if (data.is_uncertain || (data.status && data.status.includes("Confirm"))) {
-                // UI for Uncertainty
                 catBadge.style.backgroundColor = '#fef3c7';
                 catBadge.style.color = '#d97706';
                 categoryName.innerText = "Needs Review: " + (data.category || "Unknown");
                 confidenceScore.innerHTML = `<span style="color: #dc2626; font-weight: bold;">🔴 ${data.confidence} (${data.status})</span>`;
-
-                // Add "Help AI" Section
-                renderManualSelection();
-
             } else {
-                // Success UI
                 const isLikely = data.status === "Likely Identified";
-                const color = isLikely ? '#eab308' : '#10b981'; // Yellow-Green or Pure Green
+                const color = isLikely ? '#eab308' : '#10b981';
                 const icon = isLikely ? '🟡' : '🟢';
 
                 catBadge.style.backgroundColor = color + '20';
                 catBadge.style.color = color;
                 categoryName.textContent = (data.category || 'Unknown').toUpperCase();
                 confidenceScore.innerHTML = `<span style="color: ${color}; font-weight: bold;">${icon} ${data.confidence} (${data.status})</span>`;
-
-                // Remove manual selector
-                const existingManual = document.getElementById('manualSelector');
-                if (existingManual) existingManual.remove();
             }
 
-            // --- 2. Reasoning (New!) ---
             if (data.material_reasoning) {
-                // Insert reasoning below badge if not exists
                 let reasonDiv = document.getElementById('reasonDiv');
                 if (!reasonDiv) {
                     reasonDiv = document.createElement('div');
                     reasonDiv.id = 'reasonDiv';
-                    reasonDiv.style = "margin: 15px 0; color: #475569; font-style: italic; font-size: 0.95rem; text-align: center;";
+                    reasonDiv.style = "margin-top: 12px; color: #64748b; font-style: italic; font-size: 0.95rem; text-align: center; max-width: 90%; margin-left: auto; margin-right: auto;";
                     catBadge.parentElement.appendChild(reasonDiv);
                 }
                 reasonDiv.innerHTML = `"${data.material_reasoning}"`;
             }
 
-            // --- 3. Disposal Content ---
+            // Updated Logic to handle nested details object
             if (data.disposal_method) {
                 disposalMethod.innerHTML = `
-                    <div style="margin-bottom: 10px;">${data.disposal_method}</div>
-                    ${data.user_action ? `<div style="background: #eff6ff; padding: 10px; border-radius: 6px; color: #1e40af; border: 1px solid #bfdbfe;"><strong>👉 Next Action:</strong> ${data.user_action}</div>` : ''}
+                    <div style="margin-bottom: 12px; font-size: 1rem; line-height: 1.6;">${data.disposal_method}</div>
+                    ${data.user_action ? `
+                        <div style="background: #eff6ff; padding: 12px 16px; border-radius: 8px; color: #1e40af; border-left: 4px solid #3b82f6; display: flex; align-items: start; gap: 10px;">
+                            <i class="ri-lightbulb-flash-line" style="font-size: 1.2rem; margin-top: -2px;"></i>
+                            <div><strong>Recommended Action:</strong><br>${data.user_action}</div>
+                        </div>` : ''}
                  `;
+            } else if (data.details && data.details.disposal_guideline) {
+                disposalMethod.innerHTML = `
+                    <div style="font-size: 1rem; line-height: 1.6;">${data.details.disposal_guideline}</div>
+                `;
             } else if (data.disposal) {
-                disposalMethod.innerHTML = data.disposal; // Fallback to old format
+                disposalMethod.innerHTML = `
+                    <div style="font-size: 1rem; line-height: 1.6;">${data.disposal}</div>
+                `;
+            } else {
+                disposalMethod.innerHTML = `<span style="color:#94a3b8;">No specific disposal methods available.</span>`;
             }
 
-            // --- 4. Rules (Kerala Context) ---
             if (data.kerala_rule) {
                 rulesDescription.innerHTML = `<strong>🌴 Kerala Rule:</strong> ${data.kerala_rule}`;
+            } else if (data.details && data.details.kerala_mandate) {
+                rulesDescription.innerHTML = `<strong>🌴 Kerala Rule:</strong> ${data.details.kerala_mandate}`;
             } else if (data.rules) {
                 rulesDescription.textContent = data.rules;
+            } else {
+                rulesDescription.innerHTML = "Follow general waste management rules.";
             }
 
-            // --- 5. Nearest Center (Live Location) ---
-            if (data.category && data.category !== 'unknown' && data.category !== 'mixed' && data.category !== 'Uncertain') {
-                getLiveLocationAndFetchCenter(data.category);
+            // --- Translation Override (Client-Side) ---
+            if (window.getTranslation && data.category) {
+                const simpleCat = data.category.split(' ')[0].toLowerCase();
+                const disposalKey = simpleCat + '_disposal';
+                const ruleKey = simpleCat + '_rule';
+
+                // Try getting translation
+                // getTranslation returns the key if not found, usually. 
+                // Let's verify translations.js logic: returns key if not found (in step 37 lines 185)
+
+                const tDisposal = window.getTranslation(disposalKey);
+                const tRule = window.getTranslation(ruleKey);
+
+                // If translation is different from key, it means we found one
+                if (tDisposal && tDisposal !== disposalKey) {
+                    disposalMethod.innerHTML = tDisposal;
+                }
+                if (tRule && tRule !== ruleKey) {
+                    rulesDescription.innerHTML = `<strong>🌴 Kerala Rule:</strong> ${tRule}`;
+                }
+            }
+
+            if (data.category && data.category !== 'unknown') {
+                const simpleCat = data.category.split(' ')[0];
+                window.currentCategory = simpleCat; // Use simple category for map/filters
+
+                setTimeout(() => {
+                    const chips = document.querySelectorAll('.filter-chip');
+                    chips.forEach(c => {
+                        c.classList.remove('active');
+                        if (c.innerText.toLowerCase().includes(simpleCat.toLowerCase())) {
+                            c.classList.add('active');
+                        }
+                    });
+                }, 100);
+
+                startSmartMapSystem(simpleCat);
             } else {
-                centerCard.style.display = 'none';
+                startSmartMapSystem('');
             }
         }
 
-        function getLiveLocationAndFetchCenter(category) {
-            const centerCard = document.getElementById('centerCard');
-            const centerDetails = document.getElementById('centerDetails');
+        function startSmartMapSystem(initialCategory) {
+            if (initialCategory) window.currentCategory = initialCategory;
 
-            centerDetails.innerHTML = '<div style="color: #64748b;">Finding your location... <i class="ri-loader-4-line ri-spin"></i></div>';
+            const centerCard = document.getElementById('centerCard');
             centerCard.style.display = 'block';
 
+            map = L.map('map').setView([9.9312, 76.2673], 13); // Default Kochi
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; SortSense' }).addTo(map);
+            markersLayer.addTo(map);
+
+            // Initial Fetch without user location (Load static map)
+            fetchAndStoreCenters();
+        }
+
+        let gpsRetryCount = 0;
+        const MAX_GPS_RETRIES = 3;
+
+        window.enableLiveLocation = async function () {
+            const gpsStatus = document.getElementById('gpsStatus');
+            gpsStatus.innerHTML = '<span style="color:#2563eb;"><i class="ri-loader-4-line ri-spin"></i> Getting exact location...</span>';
+
+            // 1. Permission Check
+            if (navigator.permissions) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'geolocation' });
+                    if (status.state === 'denied') {
+                        gpsStatus.innerHTML = '<span style="color:#dc2626;">❌ Location Permission Denied</span>';
+                        alert("Please enable Location access in your browser settings (Lock icon in URL bar) to use this feature.");
+                        return;
+                    }
+                } catch (e) {
+                    console.log("Permission Query not supported", e);
+                }
+            }
+
             if (!navigator.geolocation) {
-                // Fallback if not supported
-                fetchCenter(category, 8.5241, 76.9366); // Trivandrum
+                alert("Geolocation is not supported by your browser.");
+                const gpsStatus = document.getElementById('gpsStatus');
+                gpsStatus.innerHTML = '<span style="color:#dc2626;">❌ Not Supported</span>';
                 return;
+            }
+
+            attemptGPS();
+        };
+
+        function attemptGPS(highAccuracy = true) {
+            const gpsStatus = document.getElementById('gpsStatus');
+            const options = { enableHighAccuracy: highAccuracy, timeout: 20000, maximumAge: 0 };
+
+            if (highAccuracy) {
+                gpsStatus.innerHTML = '<span style="color:#2563eb;"><i class="ri-loader-4-line ri-spin"></i> Connecting to Satellites...</span>';
+            } else {
+                gpsStatus.innerHTML = '<span style="color:#f59e0b;"><i class="ri-loader-2-line ri-spin"></i> Trying Network Location...</span>';
             }
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     // Success
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    fetchCenter(category, lat, lng);
+                    gpsRetryCount = 0;
+                    handleLocationSuccess(position);
+
+                    // Switch to Watch for updates (keep same accuracy setting)
+                    if (watchId) navigator.geolocation.clearWatch(watchId);
+                    watchId = navigator.geolocation.watchPosition(handleLocationSuccess, (e) => console.warn("Watch warn", e), options);
                 },
                 (error) => {
-                    // Error / Denied -> Fallback
-                    console.warn("Geolocation denied or error:", error);
-                    centerDetails.innerHTML = `
-                        <div style="color: #f59e0b; margin-bottom: 8px;">
-                            <i class="ri-map-pin-user-line"></i> Location access denied. Showing results for Trivandrum.
-                        </div>
-                    `;
-                    // Brief delay then fetch fallback
-                    setTimeout(() => fetchCenter(category, 8.5241, 76.9366), 1000);
-                }
+                    console.warn(`GPS Fail (HighAcc: ${highAccuracy})`, error);
+
+                    // Fallback to low accuracy if high failed
+                    if (highAccuracy) {
+                        console.log("High accuracy failed, trying low accuracy...");
+                        attemptGPS(false);
+                        return;
+                    }
+
+                    if (gpsRetryCount < MAX_GPS_RETRIES) {
+                        gpsRetryCount++;
+                        gpsStatus.innerHTML = `<span style="color:#dc2626;"><i class="ri-signal-wifi-off-line"></i> Signal lost. Retrying (${gpsRetryCount}/${MAX_GPS_RETRIES})...</span>`;
+                        setTimeout(() => attemptGPS(true), 3000); // Retry high accuracy after delay
+                    } else {
+                        handleGPSError(error);
+                    }
+                },
+                options
             );
         }
 
-        function fetchCenter(category, lat, lng) {
-            // Map nice title (e.g. "Plastic Waste") back to key ("plastic") roughly
-            const simpleCat = category.split(' ')[0].toLowerCase();
+        function handleLocationSuccess(position) {
+            const gpsStatus = document.getElementById('gpsStatus');
+            const prevLat = window.userLat;
+            const prevLng = window.userLng;
 
-            fetch(`http://localhost:8000/api/centers?lat=${lat}&lng=${lng}&category=${simpleCat}`)
+            window.userLat = position.coords.latitude;
+            window.userLng = position.coords.longitude;
+
+            gpsStatus.innerHTML = `<span style="color:#10b981; font-weight:600;">✅ GPS Active: ${window.userLat.toFixed(4)}, ${window.userLng.toFixed(4)}</span>`;
+            const btn = document.querySelector('.btn-live-loc');
+            if (btn) {
+                btn.innerHTML = '✅ Location Active';
+                btn.style.background = '#10b981';
+            }
+
+            updateUserMarker(position.coords.accuracy);
+
+            const distMoved = prevLat ? getDistanceFromLatLonInKm(prevLat, prevLng, window.userLat, window.userLng) : 100;
+
+            // Threshold: 50 meters
+            if (distMoved > 0.05) {
+                map.setView([window.userLat, window.userLng], 15);
+                console.log("📍 Precise Location Updated. Refetching centers...");
+                fetchAndStoreCenters();
+            } else {
+                // FORCE visual update to ensure nearest is highlighted/opened now that we have GPS
+                if (!window.destinationCoords) {
+                    forceVisualUpdates();
+                }
+            }
+        }
+
+        function handleGPSError(error) {
+            const gpsStatus = document.getElementById('gpsStatus');
+            let msg = "Unknown Error";
+            if (error.code === 1) msg = "Permission Denied";
+            else if (error.code === 2) msg = "Position Unavailable";
+            else if (error.code === 3) msg = "Connection Timeout";
+
+            gpsStatus.innerHTML = `<span style="color:#dc2626;">❌ GPS Failed: ${msg}. <a href="#" style="text-decoration:underline;" onclick="window.enableLiveLocation()">Retry</a> or use Manual Search.</span>`;
+        }
+
+        function updateUserMarker(accuracy) {
+            if (!map || !window.userLat) return;
+
+            if (userMarker) map.removeLayer(userMarker);
+
+            const userIcon = L.divIcon({
+                className: 'user-marker',
+                html: '<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.4); animation: pulse 2s infinite;"></div>',
+                iconSize: [20, 20],
+            });
+            userMarker = L.marker([window.userLat, window.userLng], { icon: userIcon }).addTo(map).bindPopup("<b>You are here</b>");
+
+            if (window.destinationCoords && !window.hasReached) {
+                const dist = getDistanceFromLatLonInKm(window.userLat, window.userLng, window.destinationCoords.lat, window.destinationCoords.lng) * 1000;
+                if (dist < 50) {
+                    window.hasReached = true;
+                    const notif = document.getElementById('arrivalNotification');
+                    notif.innerText = `🎉 You have reached ${window.destinationName}!`;
+                    notif.style.display = 'block';
+                    setTimeout(() => { notif.style.display = 'none'; }, 5000);
+                }
+            }
+        }
+
+        function fetchAndStoreCenters() {
+            // Pass userLat if available, otherwise default/empty
+            const lat = window.userLat || 9.9312;
+            const lng = window.userLng || 76.2673;
+            // Use current category, defaulting to empty if 'all'
+            const cat = (window.currentCategory && window.currentCategory !== 'all') ? window.currentCategory : '';
+
+            // console.log(`Fetching centers for [${lat}, ${lng}] - Category: ${cat}`);
+
+            const url = `http://localhost:8000/api/centers?lat=${lat}&lng=${lng}&category=${encodeURIComponent(cat)}`;
+            fetch(url)
                 .then(res => res.json())
-                .then(centers => {
-                    const centerCard = document.getElementById('centerCard');
-                    const centerDetails = document.getElementById('centerDetails');
-
-                    // Handle Array Response (API returns sorted array)
-                    const center = Array.isArray(centers) && centers.length > 0 ? centers[0] : null;
-
-                    if (center) {
-                        centerCard.style.display = 'block';
-                        // Generate Google Maps Embed or Link
-                        const mapLink = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${center.latitude},${center.longitude}`;
-
-                        centerDetails.innerHTML = `
-                            <div style="display:flex; justify-content:space-between; align-items:start;">
-                                <div>
-                                    <strong style="font-size: 1.1rem; color: #1e293b;">${center.center_name}</strong><br>
-                                    <span style="font-size: 0.9em; color: #64748b;">${center.address}</span>
-                                </div>
-                                <div style="text-align:right;">
-                                    <span class="badge" style="background: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-size: 0.85em; font-weight:600;">
-                                        ${center.distance} km
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <div style="margin-top: 12px; display:flex; gap: 10px;">
-                                <a href="${mapLink}" target="_blank" class="btn btn-sm" style="background: #3b82f6; color: white; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; flex: 1; text-align: center;">
-                                    <i class="ri-direction-fill"></i> Get Directions
-                                </a>
-                            </div>
-                            <div style="margin-top: 5px; font-size: 0.8em; color: #94a3b8; text-align: center;">
-                                * Nearest of ${centers.length} found
-                            </div>
-                        `;
-                    } else {
-                        centerDetails.innerHTML = `<span style="color: #64748b;">No specific collection centers found nearby for ${category}.</span>`;
+                .then(data => {
+                    if (Array.isArray(data)) {
+                        window.allCenterMarkers = data;
+                        forceVisualUpdates();
                     }
                 })
-                .catch(e => {
-                    console.error("Center fetch error", e);
-                    document.getElementById('centerDetails').innerText = "Unable to fetch nearby centers.";
+                .catch(e => console.error("Fetch Error", e));
+        }
+
+        function forceVisualUpdates() {
+            const centerDetails = document.getElementById('centerDetails');
+            markersLayer.clearLayers();
+
+            // Add route back if exists
+            if (routeControl) {
+                routeControl.addTo(markersLayer);
+            }
+
+            if (userMarker) userMarker.addTo(map);
+            centerDetails.innerHTML = '';
+
+            let filtered = window.allCenterMarkers; // Already filtered by backend
+
+            // Ensure distance calculation for precise sorting if user moved
+            if (window.userLat) {
+                filtered.forEach(c => {
+                    c._distance = getDistanceFromLatLonInKm(window.userLat, window.userLng, c.latitude, c.longitude);
                 });
+                filtered.sort((a, b) => a._distance - b._distance);
+            }
+
+            const top10 = filtered.slice(0, 10);
+            const bounds = L.latLngBounds(window.userLat ? [[window.userLat, window.userLng]] : []);
+
+            if (top10.length === 0) {
+                centerDetails.innerHTML = '<p style="text-align:center; padding:20px; color:#64748b;">No matching centers found nearby.</p>';
+            }
+
+            top10.forEach((center, index) => {
+                const isNearest = (window.userLat && index === 0);
+                const distKm = window.userLat ? center._distance.toFixed(1) : '--';
+
+                // Visual Polish: Fade if routing and this is not the destination
+                let opacity = 1.0;
+                let zIndex = 2000 - index;
+                if (window.destinationCoords) {
+                    // Check if this center is the destination
+                    const isDest = (Math.abs(center.latitude - window.destinationCoords.lat) < 0.0001 &&
+                        Math.abs(center.longitude - window.destinationCoords.lng) < 0.0001);
+                    if (!isDest) {
+                        opacity = 0.5;
+                        zIndex = 1;
+                    } else {
+                        zIndex = 3000; // Destination is King
+                    }
+                }
+
+                const iconHtml = isNearest
+                    ? `<div class="marker-pin nearest"><i class="ri-star-fill" style="color:#fff; font-size:12px; transform: rotate(45deg);"></i></div>`
+                    : `<div class="marker-pin"><i class="ri-map-pin-2-fill" style="color:#fff; font-size:12px; transform: rotate(45deg);"></i></div>`;
+
+                const customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: iconHtml,
+                    iconSize: [30, 42],
+                    iconAnchor: [15, 42],
+                    popupAnchor: [0, -35]
+                });
+
+                const navAction = `window.calculateRoute(${center.latitude}, ${center.longitude}, '${center.center_name.replace(/'/g, "\\'")}')`;
+                const isOpen = (new Date().getHours() >= 9 && new Date().getHours() < 18);
+                const statusHtml = isOpen ? '<span class="popup-status open">Open Now</span>' : '<span class="popup-status closed">Closed</span>';
+
+                const popupHtml = `
+                    <div style="font-family: Inter, sans-serif; min-width: 200px;">
+                        <strong style="color: #0f172a; font-size: 1.1em;">${center.center_name}</strong><br>
+                        <div style="margin: 5px 0 8px 0;">${statusHtml} • <span style="color:#64748b;">${distKm} km away</span></div>
+                        <div style="font-size: 0.85em; color: #475569; margin-bottom: 8px;">
+                            <i class="ri-phone-line"></i> ${center.phone || 'No phone'}<br>
+                            <i class="ri-recycle-line"></i> ${center.type}
+                        </div>
+                        <button onclick="${navAction}" style="width:100%; background: #22c55e; color: white; border:none; padding: 8px; border-radius: 6px; cursor: pointer; font-weight:600;">
+                            <i class="ri-direction-fill"></i> Navigate
+                        </button>
+                    </div>
+                `;
+
+                const marker = L.marker([center.latitude, center.longitude], {
+                    icon: customIcon,
+                    opacity: opacity,
+                    zIndexOffset: zIndex
+                })
+                    .bindPopup(popupHtml)
+                    .addTo(markersLayer);
+
+                // Auto open nearest if no route is active
+                if (isNearest && !window.destinationCoords) marker.openPopup();
+
+                // If this IS the destination, ensure it's open
+                if (window.destinationCoords) {
+                    const isDest = (Math.abs(center.latitude - window.destinationCoords.lat) < 0.0001 &&
+                        Math.abs(center.longitude - window.destinationCoords.lng) < 0.0001);
+                    if (isDest) marker.openPopup();
+                }
+
+                bounds.extend([center.latitude, center.longitude]);
+
+                const div = document.createElement('div');
+                div.className = 'center-item';
+
+                // Card Styles - Grid Optimized
+                const cardHighlight = isNearest
+                    ? 'border: 2px solid #3b82f6; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.15);'
+                    : 'border: 1px solid #f1f5f9; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02);';
+
+                // Note: margin-bottom is removed because CSS Grid gap handles spacing
+                div.style.cssText = `
+                    ${cardHighlight}
+                    border-radius: 16px; 
+                    padding: 16px; 
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    cursor: pointer;
+                    position: relative;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                `;
+
+                // Hover Effects - Lift Card
+                div.onmouseover = () => {
+                    div.style.transform = "translateY(-3px)";
+                    if (!isNearest) div.style.boxShadow = "0 8px 20px rgba(0,0,0,0.06)";
+                };
+                div.onmouseout = () => {
+                    div.style.transform = "translateY(0)";
+                    if (!isNearest) div.style.boxShadow = "0 2px 4px rgba(0,0,0,0.02)";
+                };
+
+                div.innerHTML = `
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;">
+                            <div style="flex:1; padding-right:8px;">
+                                <div class="center-name" style="font-size:1.05rem; font-weight:700; color:#0f172a; line-height:1.2; display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
+                                    ${center.center_name} 
+                                    ${isNearest ? '<span style="background:linear-gradient(135deg, #f59e0b, #d97706); color:white; font-size:0.6rem; padding:2px 6px; border-radius:4px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2); white-space:nowrap;"><i class="ri-star-fill"></i> Nearest</span>' : ''}
+                                </div>
+                            </div>
+                            <div class="distance-badge" style="background:${isNearest ? '#eff6ff' : '#f8fafc'}; color:${isNearest ? '#2563eb' : '#64748b'}; padding:4px 8px; border-radius:8px; font-size:0.8rem; font-weight:700; white-space:nowrap; display:flex; align-items:center; gap:4px; border: 1px solid ${isNearest ? '#dbeafe' : '#f1f5f9'};">
+                                <i class="ri-pin-distance-line"></i> ${distKm} km
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom: 12px;">
+                            <span style="background:#ecfdf5; color:#059669; font-size:0.75rem; padding: 3px 8px; border-radius:6px; font-weight:600; display:flex; align-items:center; gap:4px; border:1px solid #d1fae5;">
+                                <i class="ri-recycle-line" style="font-size:0.9rem;"></i> ${center.type}
+                            </span>
+                            <span style="color:#94a3b8; font-size:0.8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                                <i class="ri-map-pin-line"></i> ${center.address ? center.address.split(',')[0] : 'Loc unavailable'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px; margin-top: auto; border-top:1px solid ${isNearest ? 'rgba(59, 130, 246, 0.1)' : '#f1f5f9'}; padding-top:12px;">
+                         <button onclick="${navAction}" style="flex: 2; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border: 0; padding: 10px; border-radius: 8px; cursor: pointer; font-weight:600; font-size:0.85rem; display:flex; align-items:center; justify-content:center; gap:6px; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 6px rgba(15, 23, 42, 0.1);">
+                            <i class="ri-direction-fill"></i> Nav
+                        </button>
+                        <a href="tel:${center.phone}" onclick="event.stopPropagation()" style="flex: 1; background: white; color: #475569; border:1px solid #e2e8f0; padding: 10px; border-radius: 8px; text-decoration: none; display:flex; align-items:center; justify-content:center; gap:6px; font-weight:600; font-size:0.85rem; transition: all 0.2s;">
+                            <i class="ri-phone-line"></i> Call
+                        </a>
+                    </div>
+                `;
+
+                // Button Micro-interactions
+                const navBtn = div.querySelector('button');
+                const callBtn = div.querySelector('a');
+
+                navBtn.onmouseover = () => {
+                    navBtn.style.transform = "translateY(-2px)";
+                    navBtn.style.boxShadow = "0 6px 12px rgba(15, 23, 42, 0.2)";
+                };
+                navBtn.onmouseout = () => {
+                    navBtn.style.transform = "translateY(0)";
+                    navBtn.style.boxShadow = "0 4px 6px rgba(15, 23, 42, 0.1)";
+                };
+
+                callBtn.onmouseover = () => {
+                    callBtn.style.borderColor = "#94a3b8";
+                    callBtn.style.color = "#1e293b";
+                    callBtn.style.background = "#f8fafc";
+                };
+                callBtn.onmouseout = () => {
+                    callBtn.style.borderColor = "#e2e8f0";
+                    callBtn.style.color = "#475569";
+                    callBtn.style.background = "white";
+                };
+
+                // SYNC: Click List Item -> Open Map Popup
+                div.addEventListener('click', (e) => {
+                    // Don't trigger if button/link was clicked
+                    if (e.target.closest('button') || e.target.closest('a')) return;
+                    marker.openPopup();
+                    map.setView([center.latitude, center.longitude], 15);
+                });
+
+                centerDetails.appendChild(div);
+            });
+
+            if (top10.length > 0 && bounds.isValid() && !window.destinationCoords) {
+                // Fit bounds only if not navigating, to keep view stable
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        // --- Mock Navigation / Routing (User requested In-Map) ---
+        // --- Mock Navigation / Routing (User requested In-Map) ---
+        window.calculateRoute = function (lat, lng, name) {
+            if (!window.userLat) {
+                alert("Please enable 'Use My Live Location' first to calculate a route.");
+                return;
+            }
+
+            // Clear previous route (BUT keep the destination info)
+            if (routeControl) {
+                map.removeLayer(routeControl);
+                routeControl = null;
+            }
+
+            window.destinationCoords = { lat, lng };
+            window.destinationName = name;
+            window.hasReached = false;
+
+            // Trigger visual update to fade others
+            forceVisualUpdates();
+
+            document.getElementById('navInfoPanel').style.display = 'flex';
+            document.getElementById('navTime').innerText = "Routing...";
+            document.getElementById('navDist').innerText = "...";
+
+            // ORS Routing
+            // Profile: driving-car or foot-walking
+            const profile = window.travelMode;
+            const start = [window.userLng, window.userLat];
+            const end = [lng, lat]; // ORS takes [lon, lat]
+
+            fetch(`https://api.openrouteservice.org/v2/directions/${profile}/geojson`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': ORS_API_KEY,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    coordinates: [start, end]
+                })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.features && data.features.length > 0) {
+                        const feature = data.features[0];
+                        const coords = feature.geometry.coordinates.map(c => [c[1], c[0]]); // Flip to [lat, lng]
+                        const props = feature.properties;
+
+                        // Draw Line
+                        routeControl = L.polyline(coords, {
+                            color: '#3b82f6',
+                            weight: 6,
+                            opacity: 0.9,
+                            lineCap: 'round',
+                            dashArray: '10, 10',
+                            dashOffset: '0'
+                        }).addTo(map);
+
+                        map.fitBounds(routeControl.getBounds(), { padding: [50, 50] });
+
+                        // Update Stats
+                        const minutes = Math.round(props.summary.duration / 60);
+                        const km = (props.summary.distance / 1000).toFixed(1);
+
+                        document.getElementById('navTime').innerText = `${minutes} min`;
+                        document.getElementById('navDist').innerText = `${km} km`;
+
+                        // Highlight the destination marker
+                        // (Optional: Pulse effect)
+                    } else {
+                        alert("Could not find a route.");
+                    }
+                })
+                .catch(err => {
+                    console.error("Routing Error", err);
+                    alert("Routing failed. Please try again.");
+                });
+        };
+
+
+        window.clearRoute = function () {
+            if (routeControl) {
+                map.removeLayer(routeControl);
+                routeControl = null;
+            }
+            document.getElementById('navInfoPanel').style.display = 'none';
+            window.destinationCoords = null;
+            window.destinationName = null;
+            // Reset view to bounds of all markers or user
+            forceVisualUpdates();
+        };
+
+        window.switchMode = function (mode) {
+            window.travelMode = mode;
+            // Update UI buttons
+            if (mode === 'driving-car') {
+                document.getElementById('modeDrive').style.background = '#3b82f6';
+                document.getElementById('modeDrive').style.color = 'white';
+                document.getElementById('modeWalk').style.background = 'transparent';
+                document.getElementById('modeWalk').style.color = 'rgba(255,255,255,0.7)';
+            } else {
+                document.getElementById('modeWalk').style.background = '#3b82f6';
+                document.getElementById('modeWalk').style.color = 'white';
+                document.getElementById('modeDrive').style.background = 'transparent';
+                document.getElementById('modeDrive').style.color = 'rgba(255,255,255,0.7)';
+            }
+
+            // Recalculate if route is active
+            if (window.destinationCoords) {
+                window.calculateRoute(window.destinationCoords.lat, window.destinationCoords.lng, window.destinationName);
+            }
+        };
+
+        // Filter Logic
+        window.setFilter = function (category, btn) {
+            window.currentCategory = category;
+
+            // UI Update
+            document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            // Always fetch fresh data from backend to respect category & location
+            fetchAndStoreCenters();
+        };
+
+        // Manual Location
+        window.searchCustomLocation = function (category) {
+            const locName = document.getElementById('manualLocInput').value.trim().toLowerCase();
+            if (!locName) return;
+
+            // Mock Geocoding
+            let coords = null;
+            if (locName.includes('kanjirapally')) coords = { lat: 9.5549, lng: 76.7902 };
+            else if (locName.includes('kochi')) coords = { lat: 9.9312, lng: 76.2673 };
+            else if (locName.includes('trivandrum') || locName.includes('thiruvananthapuram')) coords = { lat: 8.5241, lng: 76.9366 };
+            else if (locName.includes('erumely')) coords = { lat: 9.4795, lng: 76.8373 };
+            else if (locName.includes('kottayam')) coords = { lat: 9.5916, lng: 76.5222 };
+            else if (locName.includes('koovapally')) coords = { lat: 9.5815, lng: 76.8184 };
+
+            if (coords) {
+                // STOP GPS WATCH if manual location is set
+                if (watchId) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                    const btn = document.querySelector('.btn-live-loc');
+                    if (btn) btn.innerHTML = '📍 Use My Live Location';
+                    if (btn) btn.style.background = '#2563eb';
+                }
+
+                window.userLat = coords.lat;
+                window.userLng = coords.lng;
+
+                // Reset nav
+                window.destinationCoords = null;
+                window.hasReached = false;
+
+                // Update UI
+                map.setView([window.userLat, window.userLng], 14);
+                updateUserMarker(); // Ensure user marker moves
+                fetchAndStoreCenters();
+
+                document.getElementById('gpsStatus').innerText = `Location manually set to: ${locName}`;
+            } else {
+                alert("Location not found in our database yet! Try Kanjirapally or Kochi.");
+            }
+        }
+
+
+        // Distance Haversine
+        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Radius of the earth in km
+            var dLat = deg2rad(lat2 - lat1);
+            var dLon = deg2rad(lon2 - lon1);
+            var a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            var d = R * c; // Distance in km
+            return d;
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI / 180);
         }
 
     </script>

@@ -12,19 +12,51 @@ function handleGoogleSignIn(response) {
         const payload = JSON.parse(atob(credential.split('.')[1]));
         console.log('User authenticated:', payload);
 
-        // Show success message with user details
-        alert(`Welcome ${payload.name}!\n\nEmail: ${payload.email}\n\nYou have successfully signed in with Google!`);
+        // Validate and Login with Backend
+        fetch('/api/auth/google-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: payload.email,
+                name: payload.name,
+                picture: payload.picture
+            })
+        })
+            .then(res => {
+                if (res.status === 403) {
+                    throw new Error("Google Login is disabled for Admin/Center accounts.");
+                }
+                if (!res.ok) {
+                    throw new Error("Server login failed.");
+                }
+                return res.json();
+            })
+            .then(data => {
+                // Success - Proceed
+                console.log("Google Login Success, DB User:", data.user);
 
-        // Store user info in localStorage
-        localStorage.setItem('userEmail', payload.email);
-        localStorage.setItem('userName', payload.name);
-        localStorage.setItem('userPicture', payload.picture);
-        localStorage.setItem('googleCredential', credential);
+                // Show success message with user details
+                alert(`Welcome ${data.user.name}!\n\nEmail: ${data.user.email}\n\nYou have successfully signed in with Google!`);
 
-        // Redirect to home page after 1.5 seconds
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 1500);
+                // Store user info in localStorage
+                localStorage.setItem('userId', data.user.user_id); // CRITICAL FIX
+                localStorage.setItem('userEmail', data.user.email);
+                localStorage.setItem('userName', data.user.name);
+                localStorage.setItem('userPicture', data.user.profile_picture);
+                localStorage.setItem('googleCredential', credential);
+                localStorage.setItem('userRole', 'USER');
+
+                // Redirect to home page after 1.5 seconds
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            })
+            .catch(err => {
+                console.error('Google Auth Validation Error:', err);
+                alert(err.message || 'Login failed.');
+                // Clear local storage if any
+                localStorage.clear();
+            });
 
     } catch (error) {
         console.error('Error processing Google Sign-In:', error);

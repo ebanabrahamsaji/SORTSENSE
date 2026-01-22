@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Settings - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        .settings-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 2rem;
+        }
+
+        .settings-card {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            /* backdrop-filter: blur(10px); REMOVED */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+        }
+
+        .card-header h3 {
+            font-size: 1.25rem;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.6rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-left: 0.2rem;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.9rem 1rem 0.9rem 2.8rem;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #10B981;
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-input:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            background: rgba(255, 255, 255, 0.02);
+            border-style: dashed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            margin-top: 1rem;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.25);
+            color: white;
+        }
+
+        .logout-btn-red {
+            background: rgba(239, 68, 68, 0.1) !important;
+            color: #ef4444 !important;
+            border: 1px solid rgba(239, 68, 68, 0.2) !important;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .logout-btn-red:hover {
+            background: rgba(239, 68, 68, 0.2) !important;
+            color: white !important;
+        }
+
+        @media (max-width: 900px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Center Admin</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="center-dashboard.html"><i class="ri-truck-line"></i> Requests</a></li>
+                    <li class="active"><a href="#"><i class="ri-settings-4-line"></i> Settings</a></li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer" style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button id="logoutBtn" class="logout-btn-red">
+                    <i class="ri-logout-box-r-line"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h1>Account Settings</h1>
+                    <p style="color:var(--text-muted); font-size:0.9rem;">Manage your profile and security preferences
+                    </p>
+                </div>
+            </header>
+
+            <div class="settings-wrapper">
+                <div class="settings-grid">
+                    <!-- Column 1: Profile Info -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3><i class="ri-user-settings-line" style="color:#10B981;"></i> Profile Information</h3>
+                        </div>
+                        <form id="profileForm">
+                            <div class="form-group">
+                                <label>Username (Login Name)</label>
+                                <div class="input-group">
+                                    <i class="ri-user-star-line"></i>
+                                    <input type="text" id="username" class="form-input" placeholder="e.g. Center1">
+                                </div>
+                                <small
+                                    style="display:block; margin-top:0.5rem; color:var(--text-muted); font-size:0.8rem;">
+                                    This will be used as your login username.
+                                </small>
+                            </div>
+                            <div class="form-group">
+                                <label>Email Address</label>
+                                <div class="input-group">
+                                    <i class="ri-mail-line"></i>
+                                    <input type="email" id="email" class="form-input" disabled>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary">
+                                <i class="ri-save-line"></i> Save Changes
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Column 2: Security -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3><i class="ri-shield-key-line" style="color:#60a5fa;"></i> Security</h3>
+                        </div>
+                        <form id="passwordForm">
+                            <div class="form-group">
+                                <label>Current Password</label>
+                                <div class="input-group">
+                                    <i class="ri-lock-unlock-line"></i>
+                                    <input type="password" id="currentPassword" class="form-input"
+                                        placeholder="••••••••" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>New Password</label>
+                                <div class="input-group">
+                                    <i class="ri-lock-password-line"></i>
+                                    <input type="password" id="newPassword" class="form-input" placeholder="••••••••"
+                                        required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Confirm New Password</label>
+                                <div class="input-group">
+                                    <i class="ri-lock-check-line"></i>
+                                    <input type="password" id="confirmPassword" class="form-input"
+                                        placeholder="••••••••" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary"
+                                style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                                <i class="ri-key-2-line"></i> Update Password
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Auth Check (Center Context)
+            let centerId = localStorage.getItem('center_sys_id');
+            const centerEmail = localStorage.getItem('center_sys_email');
+
+            // Fallback for immediate migration if needed
+            if (!centerId && localStorage.getItem('userId') && localStorage.getItem('userRole') === 'CENTER') {
+                centerId = localStorage.getItem('userId');
+                localStorage.setItem('center_sys_id', centerId);
+                localStorage.setItem('center_sys_email', localStorage.getItem('userEmail'));
+                localStorage.setItem('center_sys_role', 'CENTER');
+            }
+
+            if (!centerId) {
+                window.location.href = 'login-user.html';
+                return;
+            }
+
+            // Load Info
+            // We use center_sys_name for Center Name
+            const storedCenterName = localStorage.getItem('center_sys_name') || localStorage.getItem('centerName');
+
+            document.getElementById('email').value = centerEmail;
+
+            // Pre-fill username/name if available, otherwise fetch
+            if (storedCenterName) {
+                document.getElementById('username').value = storedCenterName;
+            } else {
+                // Fetch profile to get name
+                fetch(`/api/auth/profile?email=${encodeURIComponent(centerEmail)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.user) {
+                            document.getElementById('username').value = data.user.name;
+                            localStorage.setItem('center_sys_name', data.user.name); // Store as Center Name
+                        }
+                    });
+            }
+
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                if (confirm("Logout from Center Admin?")) {
+                    localStorage.removeItem('center_sys_id');
+                    localStorage.removeItem('center_sys_email');
+                    localStorage.removeItem('center_sys_role');
+                    localStorage.removeItem('center_sys_name');
+                    localStorage.removeItem('centerName');
+                    // Legacy
+                    localStorage.removeItem('userId');
+                    localStorage.removeItem('userEmail');
+
+                    window.location.href = 'login-user.html';
+                }
+            });
+
+            // Handle Profile Update
+            document.getElementById('profileForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Saving...';
+                btn.disabled = true;
+
+                const name = document.getElementById('username').value;
+
+                try {
+                    const res = await fetch('/api/auth/update-profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, fullname: name })
+                    });
+                    const data = await res.json();
+
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+
+                    if (res.ok) {
+                        alert("Profile updated successfully!");
+                        localStorage.setItem('centerName', name); // Cache as Center Name
+                    }
+                    else alert(data.message);
+                } catch (err) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert("Error updating profile.");
+                }
+            });
+
+            // Handle Password Change
+            document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const btn = e.target.querySelector('button');
+                const originalText = btn.innerHTML;
+
+
+                const currentPass = document.getElementById('currentPassword').value;
+                const newPass = document.getElementById('newPassword').value;
+                const confirmPass = document.getElementById('confirmPassword').value;
+
+                if (newPass !== confirmPass) {
+                    alert("New passwords do not match.");
+                    return;
+                }
+
+                btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Updating...';
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch('/api/auth/change-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId, currentPassword: currentPass, newPassword: newPass })
+                    });
+                    const data = await res.json();
+
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+
+                    if (res.ok) {
+                        alert("Password changed successfully!");
+                        document.getElementById('passwordForm').reset();
+                    }
+                    else alert(data.message);
+                } catch (err) {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert("Error changing password.");
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

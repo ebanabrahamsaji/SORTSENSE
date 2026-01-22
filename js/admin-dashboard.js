@@ -24,27 +24,35 @@ async function populateRecentActivity() {
     if (!activityTableBody) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/activities`);
+        const response = await fetch(`${API_BASE_URL}/api/admin/activities`);
         const activities = await response.json();
 
         activityTableBody.innerHTML = activities.map(activity => `
             <tr>
                 <td>
-                    <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; padding-right: 1.5rem;">
                         <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(activity.user)}&background=random&color=fff&size=32" style="border-radius: 50%;" alt="${activity.user}">
                         <span>${activity.user}</span>
                     </div>
                 </td>
-                <td>
-                    ${activity.action.includes('Scanned') ?
-                `<img src="https://images.unsplash.com/photo-1595278069441-2cf29f8005e4?auto=format&fit=crop&q=80&w=64&h=64" style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);" alt="Waste">` :
-                '<span style="color: var(--text-secondary);">-</span>'}
-                </td>
                 <td>${activity.action}</td>
                 <td style="color: var(--text-secondary);">${activity.time}</td>
-                <td><span class="status-badge status-${activity.status === 'verified' || activity.status === 'completed' ? 'active' : 'pending'}">${activity.statusLabel}</span></td>
+                <td><span class="status-badge status-${(activity.status || '').toLowerCase()} status-${(activity.statusLabel || '').toLowerCase()}">${activity.statusLabel}</span></td>
             </tr>
         `).join('');
+
+        // Helper to fix classes if data is inconsistent
+        document.querySelectorAll('.status-badge').forEach(badge => {
+            const txt = badge.innerText.toLowerCase();
+            badge.className = 'status-badge'; // Reset
+
+            if (txt.includes('pending') || txt.includes('review')) badge.classList.add('status-pending');
+            else if (txt.includes('analyzed')) badge.classList.add('status-analyzed');
+            else if (txt.includes('approved') || txt.includes('verified')) badge.classList.add('status-approved');
+            else if (txt.includes('completed')) badge.classList.add('status-completed');
+            else if (txt.includes('rejected')) badge.classList.add('status-rejected');
+            else badge.classList.add('status-pending'); // Fallback
+        });
     } catch (error) {
         console.error("Error fetching activities:", error);
         activityTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center;">Failed to load activities.</td></tr>`;
@@ -59,7 +67,7 @@ function setupInteractions() {
         logoutBtn.addEventListener('click', function () {
             if (confirm('Are you sure you want to logout from Admin Panel?')) {
                 localStorage.removeItem('adminUser');
-                window.location.href = 'login-admin.html'; // Redirect to Admin Login
+                window.location.href = 'login-user.html'; // Redirect to Unified Login
             }
         });
     }

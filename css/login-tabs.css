@@ -1,0 +1,305 @@
+/* Login Two-Column Layout */
+
+body {
+    background: #0f172a;
+    /* Deep matte navy */
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: block;
+    /* Override flex */
+    background-image: none;
+    /* Reset main bg */
+}
+
+/* Container */
+.auth-split-layout {
+    display: grid;
+    grid-template-columns: 45% 55%;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* Left Panel */
+.auth-left-panel {
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 5rem 4rem;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Branding */
+.brand-title {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.auth-headline {
+    font-family: var(--font-heading);
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+}
+
+.auth-subtext {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 3rem;
+    opacity: 0.95;
+    max-width: 90%;
+}
+
+/* Feature List */
+.feature-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.check-item i {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    padding: 4px;
+    font-size: 1.2rem;
+}
+
+/* Decorative Icons */
+.floating-icon-bg {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.1);
+    font-size: 8rem;
+    bottom: 10%;
+    right: 10%;
+    transform: rotate(-15deg);
+}
+
+
+/* Right Panel */
+.auth-right-panel {
+    background: #0a1019;
+    /* Very Dark Navy */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+    box-shadow: inset 10px 0 20px -10px rgba(0, 0, 0, 0.5);
+    /* Shadow from left panel */
+}
+
+/* The Login Wrapper inside Right Panel */
+.login-wrapper {
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Tabs */
+.role-tabs {
+    display: flex;
+    background: rgba(30, 41, 59, 0.3);
+    padding: 0.3rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.role-tab {
+    flex: 1;
+    padding: 0.6rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.role-tab:hover {
+    color: white;
+}
+
+.role-tab.active {
+    background: var(--primary-color);
+    /* #10b981 */
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    font-weight: 600;
+}
+
+/* Card - Made transparent for split layout so it floats on bg */
+.login-card {
+    background: rgba(30, 41, 59, 0.0);
+    border: none;
+    box-shadow: none;
+    padding: 1rem 0;
+}
+
+.card-header {
+    text-align: left;
+    /* Align left usually looks better in split screen */
+    margin-bottom: 2rem;
+}
+
+.card-header h2 {
+    font-family: var(--font-heading);
+    font-size: 2rem;
+    color: white;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.card-header p {
+    color: var(--text-muted);
+    font-size: 1rem;
+}
+
+/* Form Elements */
+.form-group label {
+    display: block;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.input-with-icon input {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 100%;
+    padding: 1rem 3rem;
+    border-radius: 12px;
+}
+
+.input-with-icon {
+    position: relative;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.input-with-icon .toggle-password {
+    left: auto;
+    right: 1rem;
+    cursor: pointer;
+}
+
+/* Footer */
+.form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.remember-me input {
+    accent-color: var(--primary-color);
+}
+
+.forgot-password {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.auth-submit-btn {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 50px;
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+    margin-bottom: 1.5rem;
+}
+
+.auth-submit-btn:hover {
+    background: var(--primary-dark);
+}
+
+.auth-switch {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.auth-switch a {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Google */
+.g_id_signin {
+    margin-bottom: 1.5rem;
+    height: 48px;
+}
+
+.auth-divider {
+    text-align: center;
+    color: var(--text-muted);
+    margin: 1.5rem 0;
+    font-size: 0.8rem;
+    position: relative;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    display: inline-block;
+    width: 40%;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    vertical-align: middle;
+}
+
+.auth-divider span {
+    padding: 0 10px;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+    .auth-split-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-left-panel {
+        display: none;
+    }
+}

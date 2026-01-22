@@ -19,11 +19,24 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadProfileData() {
-    const userName = localStorage.getItem('userName') || 'User';
-    const userEmail = localStorage.getItem('userEmail') || 'test@example.com';
-    const userPicture = localStorage.getItem('userPicture');
+    const role = localStorage.getItem('userRole') || 'USER';
+    const backLink = document.getElementById('backLink');
 
-    currentProfilePictureUrl = userPicture; // Initialize
+    if (role === 'CENTER') {
+        if (backLink) backLink.href = 'center-dashboard.html';
+        const nameLabel = document.querySelector('label[for="fullName"]'); // Heuristic
+        if (nameLabel) nameLabel.textContent = "Center Name";
+    } else if (role === 'ADMIN') {
+        if (backLink) backLink.href = 'admin-dashboard.html';
+    }
+
+    // 1. Initial State from Cache (for instant load/fallback)
+    const userId = localStorage.getItem('userId');
+    const userEmail = localStorage.getItem('userEmail');
+    let userName = localStorage.getItem('userName') || 'User';
+    let userPicture = localStorage.getItem('userPicture');
+
+    currentProfilePictureUrl = userPicture;
 
     // Populate Fields
     const nameInput = document.getElementById('fullName');
@@ -36,7 +49,7 @@ function loadProfileData() {
     const headerName = document.getElementById('headerUserName');
 
     if (nameInput) nameInput.value = userName;
-    if (emailInput) emailInput.value = userEmail;
+    if (emailInput) emailInput.value = userEmail || '';
     if (phoneInput) phoneInput.value = localStorage.getItem('userPhone') || '';
     if (cityInput) cityInput.value = localStorage.getItem('userCity') || '';
     if (stateInput) stateInput.value = localStorage.getItem('userState') || '';
@@ -45,6 +58,47 @@ function loadProfileData() {
     if (headerName) headerName.textContent = userName;
 
     updateAvatarImages(userPicture, userName);
+
+    // 2. Fetch Fresh Data (Strict Sync)
+    // If userId is present, use it.
+    const fetchUrl = userId
+        ? `/api/user/profile?userId=${userId}`
+        : `/api/user/profile?email=${encodeURIComponent(userEmail)}`;
+
+    if (fetchUrl && (userId || userEmail)) {
+        fetch(fetchUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (data.user) {
+                    // Update LocalStorage fields
+                    localStorage.setItem('userName', data.user.name);
+                    localStorage.setItem('userEmail', data.user.email); // Ensure email aligns
+                    if (data.user.phone) localStorage.setItem('userPhone', data.user.phone);
+                    if (data.user.city) localStorage.setItem('userCity', data.user.city);
+                    if (data.user.state) localStorage.setItem('userState', data.user.state);
+                    if (data.user.zip) localStorage.setItem('userZip', data.user.zip);
+                    if (data.user.country) localStorage.setItem('userCountry', data.user.country);
+                    if (data.user.profile_picture) localStorage.setItem('userPicture', data.user.profile_picture);
+
+                    // Update UI inputs with fresh data
+                    if (nameInput) nameInput.value = data.user.name;
+                    if (emailInput) emailInput.value = data.user.email;
+                    if (phoneInput) phoneInput.value = data.user.phone || '';
+                    if (cityInput) cityInput.value = data.user.city || '';
+                    if (stateInput) stateInput.value = data.user.state || '';
+                    if (zipInput) zipInput.value = data.user.zip || '';
+                    if (countryInput) countryInput.value = data.user.country || '';
+
+                    // Update Header Name
+                    if (headerName) headerName.textContent = data.user.name;
+
+                    // Update Avatar
+                    updateAvatarImages(data.user.profile_picture, data.user.name);
+                    currentProfilePictureUrl = data.user.profile_picture;
+                }
+            })
+            .catch(e => console.error("Profile sync error:", e));
+    }
 }
 
 function updateAvatarImages(url, name) {
@@ -58,7 +112,7 @@ function updateAvatarImages(url, name) {
             if (url) {
                 img.src = url;
             } else {
-                const initials = name.split(' ').map(n => n[0]).join('');
+                const initials = name ? name.split(' ').map(n => n[0]).join('') : 'U';
                 img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=10b981&color=fff`;
             }
         }
@@ -81,7 +135,7 @@ async function handleAvatarUpload(event) {
     btn.disabled = true;
 
     try {
-        const response = await fetch('/api/upload-avatar', {
+        const response = await fetch('/api/auth/upload-avatar', {
             method: 'POST',
             body: formData
         });
@@ -130,7 +184,7 @@ async function handleProfileUpdate(e) {
     saveBtn.disabled = true;
 
     try {
-        const response = await fetch('/update-profile', {
+        const response = await fetch('/api/auth/update-profile', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -151,13 +205,16 @@ async function handleProfileUpdate(e) {
 
         if (response.ok) {
             // Update LocalStorage
-            localStorage.setItem('userName', data.user.fullname);
+            localStorage.setItem('userName', data.user.name);
             if (data.user.phone) localStorage.setItem('userPhone', data.user.phone);
             if (data.user.city) localStorage.setItem('userCity', data.user.city);
             if (data.user.state) localStorage.setItem('userState', data.user.state);
             if (data.user.zip) localStorage.setItem('userZip', data.user.zip);
             if (data.user.country) localStorage.setItem('userCountry', data.user.country);
-            if (data.user.profilePicture) localStorage.setItem('userPicture', data.user.profilePicture);
+
+            // Handle profile picture (DB uses snake_case)
+            const pic = data.user.profile_picture || data.user.profilePicture;
+            if (pic) localStorage.setItem('userPicture', pic);
 
             alert('Profile updated successfully!');
             loadProfileData(); // Refresh UI

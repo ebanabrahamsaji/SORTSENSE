@@ -162,6 +162,7 @@ def normalize_category(raw_name):
 
     return None
 
+
 @app.route('/analyze', methods=['POST'])
 def analyze_image():
     try:

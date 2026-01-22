@@ -130,24 +130,8 @@
 
     <script src="../js/script.js"></script>
     <script>
-        // Admin login form handler
-        document.getElementById('adminLoginForm').addEventListener('submit', function (e) {
-            e.preventDefault();
-
-            const adminId = document.getElementById('adminId').value;
-            const password = document.getElementById('password').value;
-            const securityCode = document.getElementById('securityCode').value;
-
-            // TODO: Implement actual admin authentication
-            console.log('Admin login attempt:', { adminId, hasSecurityCode: !!securityCode });
-
-            // Simulate admin authentication
-            localStorage.setItem('adminUser', adminId);
-            localStorage.setItem('isAuthenticated', 'true');
-
-            // Redirect to admin dashboard
-            window.location.href = 'admin-dashboard.html';
-        });
+        // Inline script removed to use global script.js logic
+        console.log("Admin Login Page Loaded");
     </script>
 </body>
 

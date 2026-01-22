@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Special Waste - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard_fix.css">
+    <link rel="stylesheet" href="../css/toast.css">
+    <style>
+        /* Contextual Hints */
+        .hint-text {
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .hint-warning {
+            color: #fbbf24;
+        }
+
+        .hint-info {
+            color: #94a3b8;
+        }
+
+        /* Modal for Details */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Sort Sense</span>
+                    <i class="ri-leaf-fill logo-icon"></i>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html"><i class="ri-dashboard-line"></i><span>Dashboard</span></a></li>
+                    <li><a href="#"><i class="ri-history-line"></i><span>History</span></a></li>
+                    <li><a href="#"><i class="ri-trophy-line"></i><span>Rewards</span></a></li>
+                    <li class="active"><a href="special-waste.html"><i class="ri-alert-line"></i><span>Special
+                                Waste</span></a></li>
+                    <li><a href="profile.html"><i class="ri-settings-4-line"></i><span>Profile</span></a></li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="ri-logout-box-line"></i><span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <h2 style="color:white;">Special Waste Management</h2>
+                <div class="header-profile">
+                    <div class="user-info">
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=10b981&color=fff"
+                            alt="Profile">
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-grid" style="grid-template-columns: 1fr;">
+
+                <!-- Create Request Section -->
+                <section class="pickup-section" style="margin-top: 20px;">
+                    <div class="pickup-card">
+                        <div class="pickup-header">
+                            <h3>Create Special Request</h3>
+                            <p style="font-size: 0.9rem; color: #94a3b8;">Handle non-regular waste types with care.</p>
+                        </div>
+                        <form id="specialWasteForm">
+                            <div class="form-group full-width" style="margin-bottom: 1rem;">
+                                <label style="display:block; margin-bottom:0.5rem; color:#e2e8f0;">Waste
+                                    Category</label>
+                                <select id="swCategory" class="pickup-input" style="width:100%;" required>
+                                    <option value="" disabled selected>Select Category</option>
+                                    <option value="E-waste">E-waste (Electronics)</option>
+                                    <option value="Biomedical">Biomedical (Restricted)</option>
+                                    <option value="Hazardous">Hazardous (Chemicals/Paint)</option>
+                                    <option value="Festival">Festival Waste</option>
+                                    <option value="Bulk">Bulk Waste</option>
+                                    <option value="Medicines">Expired Medicines</option>
+                                    <option value="Construction Debris">Construction Debris</option>
+                                </select>
+                                <p id="swSafetyHint" class="hint-text hint-warning" style="display:none;"></p>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                                <div class="form-group">
+                                    <label style="display:block; margin-bottom:0.5rem; color:#e2e8f0;">Quantity (<span
+                                            id="swUnitLabel" style="color:#10B981;">kg</span>)</label>
+                                    <input type="number" id="swQuantity" class="pickup-input" placeholder="Amount"
+                                        step="0.1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label style="display:block; margin-bottom:0.5rem; color:#e2e8f0;">Preferred
+                                        Date</label>
+                                    <input type="date" id="swDate" class="pickup-input" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group full-width" style="margin-bottom: 1rem;">
+                                <label style="display:block; margin-bottom:0.5rem; color:#e2e8f0;">
+                                    Location
+                                    <span id="useMyLocationBtn"
+                                        style="float:right; cursor:pointer; color:#3B82F6; font-size:0.85rem;">
+                                        <i class="ri-map-pin-user-fill"></i> Use My Location
+                                    </span>
+                                </label>
+                                <input type="text" id="swLocation" class="pickup-input"
+                                    placeholder="Complete Address / Landmarks" required>
+                            </div>
+
+                            <!-- Image Upload (Initially Hidden) -->
+                            <div id="swImageWrapper" class="form-group full-width"
+                                style="margin-bottom: 1rem; display:none;">
+                                <label style="display:block; margin-bottom:0.5rem; color:#e2e8f0;">Upload Image
+                                    (Optional)</label>
+                                <input type="file" id="swImageInput" class="pickup-input" accept="image/*"
+                                    style="padding: 5px;">
+                                <p class="hint-text hint-info">Upload a clear image to assist approval.</p>
+                            </div>
+
+                            <div class="form-group full-width" style="margin-bottom: 1rem;">
+                                <label style="display:block; margin-bottom:0.5rem; color:#e2e8f0;">Description</label>
+                                <textarea id="swDescription" class="pickup-input" rows="3" maxlength="200"
+                                    placeholder="Describe items (e.g. 2 CRT Monitors)..."></textarea>
+                            </div>
+
+                            <!-- Processing Time Indicator -->
+                            <div style="margin-bottom: 1rem;">
+                                <p id="swProcTime" class="hint-text hint-info"
+                                    style="display:none; font-style: italic;">
+                                    <i class="ri-time-line"></i> <span>Estimated processing time: 24–48 hours after
+                                        approval</span>
+                                </p>
+                            </div>
+
+                            <button type="submit" class="primary-btn" style="width: 100%;">
+                                <i class="ri-file-add-line"></i> Submit Request
+                            </button>
+                            <p id="swMsg" style="margin-top:10px; text-align:center;"></p>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- History Section -->
+                <section class="history-section" style="margin-top: 20px;">
+                    <div class="pickup-card">
+                        <h3>Your Request History</h3>
+                        <div style="overflow-x: auto; margin-top: 15px;">
+                            <table style="width: 100%; border-collapse: collapse; color: #e2e8f0;">
+                                <thead>
+                                    <tr style="border-bottom: 1px solid #334155; text-align: left;">
+                                        <th style="padding: 10px;"></th> <!-- Icon -->
+                                        <th style="padding: 10px;">Date</th>
+                                        <th style="padding: 10px;">Category</th>
+                                        <th style="padding: 10px;">Status</th>
+                                        <th style="padding: 10px;">Action</th> <!-- View Details -->
+                                    </tr>
+                                </thead>
+                                <tbody id="swHistoryBody">
+                                    <!-- Populated by JS -->
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; padding:20px;">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Request Details Modal -->
+    <div id="detailsModal" class="modal-overlay">
+        <div
+            style="background:#1e293b; padding:2rem; border-radius:12px; width:500px; max-width:90%; border:1px solid #334155;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h3 style="color:white; margin:0;">Request Details</h3>
+                <button onclick="closeDetailsModal()"
+                    style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;"><i
+                        class="ri-close-line"></i></button>
+            </div>
+            <div id="detailsContent" style="color:#cbd5e1;">
+                <!-- Content -->
+            </div>
+            <div id="modalFooter" style="text-align:right; margin-top:1.5rem;">
+                <button onclick="closeDetailsModal()"
+                    style="padding:8px 16px; background:#475569; color:white; border:none; border-radius:6px; cursor:pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/special-waste.js"></script>
+</body>
+
+</html>

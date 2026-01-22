@@ -87,9 +87,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(({ status, body }) => {
                     if (status === 200 || status === 201) { // Accept 200 or 201
                         console.log('✅ Login successful', body);
+
+                        // Strict Auth: Save ONLY ID and Auth Tokens (simulated via ID/Email here)
+                        // Removing detailed profile data from localStorage to enforce fresh fetch on dashboard load.
+                        localStorage.setItem('userId', body.user.user_id); // Ensure user_id matches DB field if returned, typically 'userId' in register but here 'user' object has 'user_id' or 'id'. Let's check query. 'SELECT *' returns user_id (snake_case). 
                         localStorage.setItem('userEmail', body.user.email);
-                        localStorage.setItem('userName', body.user.name);
-                        window.location.href = 'dashboard.html';
+                        localStorage.setItem('userLanguage', body.user.language_pref || 'ENGLISH');
+                        // Store Role
+                        localStorage.setItem('userRole', body.user.role || 'USER');
+
+                        // Clear old/stale data to force fetch
+                        localStorage.removeItem('userName');
+                        localStorage.removeItem('userPicture');
+                        localStorage.removeItem('userPhone');
+
+                        // Role-Based Redirection
+                        const role = body.user.role || 'USER';
+                        if (role === 'ADMIN') {
+                            window.location.href = 'pages/admin-dashboard.html';
+                        } else if (role === 'CENTER') {
+                            window.location.href = 'pages/center-dashboard.html';
+                        } else {
+                            // Default User
+                            window.location.href = 'dashboard.html';
+                        }
                     } else {
                         alert('Login failed: ' + (body.message || 'Invalid credentials'));
                     }
@@ -153,8 +174,39 @@ document.addEventListener('DOMContentLoaded', () => {
             const adminId = document.getElementById('adminId').value;
             const password = document.getElementById('password').value;
 
-            console.log('Admin Login Attempt:', { adminId, password });
-            alert('Admin login functionality would go here.\nAdmin ID: ' + adminId);
+            console.log('Admin Login Attempt:', { adminId });
+
+            // Call Backend Login (Treating AdminID as Email)
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: adminId, password })
+            })
+                .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                .then(({ status, body }) => {
+                    if (status === 200) {
+                        // Check Role
+                        const role = body.user.role || 'USER';
+                        if (role !== 'ADMIN') {
+                            alert("Access Denied: You are not an Administrator.");
+                            return;
+                        }
+
+                        console.log('✅ Admin Login successful');
+                        localStorage.setItem('userId', body.user.user_id);
+                        localStorage.setItem('userEmail', body.user.email);
+                        localStorage.setItem('userRole', role);
+
+                        // Redirect
+                        window.location.href = 'admin-dashboard.html'; // Relative to pages/
+                    } else {
+                        alert('Login failed: ' + (body.message || 'Invalid credentials'));
+                    }
+                })
+                .catch(err => {
+                    console.error("Admin Login Error:", err);
+                    alert("Connection error.");
+                });
         });
     }
 
