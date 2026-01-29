@@ -15,7 +15,9 @@ const dbConfig = {
 
 // --- Mock Database (In-Memory) ---
 const mockData = {
-    users: [],
+    users: [
+        { user_id: 1, name: 'Admin Demo', email: 'admin@sortsense.com', role: 'ADMIN', status: 'active' }
+    ],
     categories: [
         { category_id: 1, category_name: 'Plastic', description: 'All types of rigid and flexible plastics.' },
         { category_id: 2, category_name: 'Glass', description: 'Bottles, jars, and broken glass.' },
@@ -32,6 +34,9 @@ const mockData = {
         { item_id: 3, category_id: 5, item_name: 'Battery', disposal_guideline: 'Hand over to e-waste centers.', safety_instructions: 'Do not dismantle.' }
     ],
     images: [],
+    waste_records: [
+        { record_id: 1, user_id: 1, user_name: 'Admin Demo', user_email: 'admin@sortsense.com', waste_type: 'Plastic Bottle', category: 'Plastic', weight: 1.2, quantity: 2, location: 'Kochi', scan_method: 'SCAN', status: 'Scanned', created_at: new Date() }
+    ],
     collection_centers: [
         { center_id: 1, center_name: 'Kochi Corporation Bio-Plant', type: 'Organic', latitude: 9.969248, longitude: 76.270523, address: 'Brahmapuram, Kochi, Kerala' },
         { center_id: 2, center_name: 'CleanKerala MCF Edappally', type: 'Plastic', latitude: 10.026676, longitude: 76.308777, address: 'Edappally Toll, Kochi' },
@@ -107,7 +112,28 @@ class MockPool {
             return [mockData.categories];
         }
 
-        // 5. Waste: Identify/Details (LIKE search)
+        // 5. Waste: Items SELECT
+        if (lowerSql.includes('from tbl_waste_items')) {
+            if (lowerSql.includes('where category_id = ? and item_name = ?')) {
+                const existing = mockData.waste_items.filter(i => i.category_id == params[0] && i.item_name == params[1]);
+                return [existing];
+            }
+            return [mockData.waste_items];
+        }
+
+        // 6. Waste: Items INSERT
+        if (lowerSql.includes('insert into tbl_waste_items')) {
+            const newItem = {
+                item_id: mockData.waste_items.length + 1,
+                category_id: params[0],
+                item_name: params[1],
+                disposal_guideline: params[2],
+                safety_instructions: params[3]
+            };
+            mockData.waste_items.push(newItem);
+            return [{ insertId: newItem.item_id }];
+        }
+
         if (lowerSql.includes('from tbl_categories c')) {
             // Simplified return for any category search
             // We return a generic safe response based on the search term in params
@@ -158,6 +184,53 @@ class MockPool {
                 });
             }
             return [results];
+        }
+
+        // 8. Waste Records: SELECT
+        if (lowerSql.includes('from tbl_waste_records')) {
+            let results = [...mockData.waste_records];
+
+            // Basic filtering for search/status
+            if (lowerSql.includes('where')) {
+                // Simplified mock filter logic
+                if (params.includes('%')) { /* search */ }
+            }
+            return [results];
+        }
+
+        // 9. Waste Records: INSERT
+        if (lowerSql.includes('insert into tbl_waste_records')) {
+            const newRecord = {
+                record_id: mockData.waste_records.length + 1,
+                user_id: params[0],
+                waste_type: params[1],
+                category: params[2],
+                weight: params[3],
+                quantity: params[4],
+                location: params[5],
+                scan_method: params[6],
+                pickup_id: params[7],
+                status: params[8],
+                comments: params[9],
+                created_at: new Date()
+            };
+            mockData.waste_records.push(newRecord);
+            return [{ insertId: newRecord.record_id }];
+        }
+
+        // 10. Waste Records: UPDATE
+        if (lowerSql.includes('update tbl_waste_records')) {
+            const id = params[params.length - 1];
+            const record = mockData.waste_records.find(r => r.record_id == id);
+            if (record) {
+                // Update based on common params
+                if (params.length >= 4) {
+                    record.weight = params[0];
+                    record.status = params[3];
+                }
+                return [{ affectedRows: 1 }];
+            }
+            return [{ affectedRows: 0 }];
         }
 
         // Default empty

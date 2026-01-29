@@ -39,7 +39,14 @@ function handleGoogleSignIn(response) {
                 alert(`Welcome ${data.user.name}!\n\nEmail: ${data.user.email}\n\nYou have successfully signed in with Google!`);
 
                 // Store user info in localStorage
-                localStorage.setItem('userId', data.user.user_id); // CRITICAL FIX
+                // Standardize with Unified Login keys
+                localStorage.setItem('app_user_id', data.user.user_id);
+                localStorage.setItem('app_user_email', data.user.email);
+                localStorage.setItem('app_user_role', 'USER');
+                localStorage.setItem('app_user_name', data.user.name);
+
+                // Legacy keys (keep for compatibility)
+                localStorage.setItem('userId', data.user.user_id);
                 localStorage.setItem('userEmail', data.user.email);
                 localStorage.setItem('userName', data.user.name);
                 localStorage.setItem('userPicture', data.user.profile_picture);

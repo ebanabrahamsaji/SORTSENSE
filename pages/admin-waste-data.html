@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waste Data Management - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        .admin-sidebar {
+            background: rgba(30, 30, 40, 0.95);
+        }
+
+        .admin-waste-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 3rem;
+            align-items: start;
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            clear: both;
+            /* Prevent any floating interference */
+        }
+
+        .admin-category-card {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 1.75rem;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            height: 480px;
+            box-sizing: border-box;
+            position: relative;
+            /* Ensure stacking context for each card */
+            z-index: 2;
+            overflow: hidden;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        .admin-category-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            z-index: 20;
+            /* Lift above neighbors on hover */
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .category-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .category-description {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.25rem;
+            height: 2.5rem;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            line-clamp: 2;
+            flex-shrink: 0;
+        }
+
+        .item-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 1.25rem;
+            padding-right: 8px;
+        }
+
+        /* Scrollbar styling */
+        .item-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .item-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .item-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .item-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 0.6rem;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 6px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-btn:hover {
+            color: var(--primary-color);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .icon-btn.delete:hover {
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .add-item-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(var(--primary-rgb), 0.05);
+            color: var(--primary-color);
+            border: 1px dashed rgba(var(--primary-rgb), 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+
+        .add-item-btn:hover {
+            background: rgba(var(--primary-rgb), 0.1);
+            border-style: solid;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Sort Sense</span>
+                    <span class="badge"
+                        style="background: var(--accent-color); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; margin-left: 8px;">ADMIN</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="admin-dashboard.html">
+                            <i class="ri-dashboard-3-line"></i>
+                            <span>Overview</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="admin-users.html">
+                            <i class="ri-user-settings-line"></i>
+                            <span>User Management</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="admin-recent-activity.html">
+                            <i class="ri-history-line"></i>
+                            <span>Recent Activity</span>
+                        </a>
+                    </li>
+                    <li class="active">
+                        <a href="admin-waste-data.html">
+                            <i class="ri-delete-bin-2-line"></i>
+                            <span>Waste Data</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="admin-special-waste.html">
+                            <i class="ri-alert-fill"></i>
+                            <span>Special Waste Requests</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <i class="ri-bar-chart-box-line"></i>
+                            <span>Analytics</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="ri-logout-box-line"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-search">
+                    <i class="ri-search-line"></i>
+                    <input type="text" id="wasteSearch" placeholder="Search categories or items...">
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="showModal('addCategoryModal')">
+                        <i class="ri-add-line"></i> Add Category
+                    </button>
+                </div>
+            </header>
+
+            <div class="dashboard-content" style="padding: 2rem;">
+                <section class="welcome-section" style="margin-bottom: 2rem;">
+                    <h1>Waste <span class="gradient-text">Management Center</span></h1>
+                    <p style="color: var(--text-secondary);">Manage waste item definitions and track live transactional
+                        data records.</p>
+                </section>
+
+                <!-- Tabs -->
+                <div class="tabs-header"
+                    style="display: flex; gap: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 2rem;">
+                    <button class="tab-btn active" onclick="switchTab('library')"
+                        style="padding: 1rem 0; background: none; border: none; color: white; border-bottom: 2px solid var(--primary-color); cursor: pointer; font-family: 'Outfit'; font-weight: 600;">
+                        WASTE LIBRARY </button>
+                    <button class="tab-btn" onclick="switchTab('records')"
+                        style="padding: 1rem 0; background: none; border: none; color: var(--text-secondary); cursor: pointer; font-family: 'Outfit'; font-weight: 600;">
+                        WASTE RECORDS </button>
+                </div>
+
+                <div id="librarySection">
+                    <div id="wasteDataContainer" class="admin-waste-grid">
+                        <!-- Categories will be loaded here -->
+                        <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                            <i class="ri-loader-4-line ri-spin"
+                                style="font-size: 2rem; color: var(--primary-color);"></i>
+                            <p>Loading waste definitions...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="recordsSection" style="display: none;">
+                    <!-- Filter Bar -->
+                    <div class="filter-bar"
+                        style="background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label
+                                style="display:block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Search</label>
+                            <input type="text" id="recordSearch" placeholder="User, email, or item..."
+                                style="width: 100%; padding: 10px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label
+                                style="display:block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Status</label>
+                            <select id="filterStatus"
+                                style="padding: 10px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px;">
+                                <option value="">All Statuses</option>
+                                <option value="Scanned">Scanned</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Verified">Verified</option>
+                                <option value="Approved">Approved</option>
+                                <option value="Picked">Picked</option>
+                                <option value="Recycled">Recycled</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                style="display:block; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Method</label>
+                            <select id="filterMethod"
+                                style="padding: 10px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 8px;">
+                                <option value="">All Methods</option>
+                                <option value="SCAN">Camera Scan</option>
+                                <option value="PICKUP">Pickup Request</option>
+                                <option value="MANUAL">Manual Entry</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="loadWasteRecords()">Apply Filter</button>
+                    </div>
+
+                    <div class="section-card"
+                        style="background: rgba(255,255,255,0.03); border-radius: 16px; overflow-x: auto;">
+                        <table class="recent-table" style="width: 100%; border-collapse: collapse;">
+                            <thead style="background: rgba(255,255,255,0.05);">
+                                <tr style="text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                    <th style="padding: 1.25rem;">Date</th>
+                                    <th style="padding: 1.25rem;">User</th>
+                                    <th style="padding: 1.25rem;">Item / Type</th>
+                                    <th style="padding: 1.25rem;">Data</th>
+                                    <th style="padding: 1.25rem;">Status</th>
+                                    <th style="padding: 1.25rem;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recordsTableBody">
+                                <!-- Records loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Category Modal -->
+    <div id="categoryModal" class="modal-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div class="modal-content"
+            style="background:#1e293b; padding:2rem; border-radius:16px; width:500px; max-width:95%;">
+            <h3 id="categoryModalTitle" style="color:white; margin-bottom:1.5rem;">Add Category</h3>
+            <form id="categoryForm">
+                <input type="hidden" id="categoryId">
+                <div style="margin-bottom:1rem;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:0.5rem;">Category
+                        Name</label>
+                    <input type="text" id="categoryName" required
+                        style="width:100%; padding:10px; background:#334155; border:none; color:white; border-radius:8px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:0.5rem;">Description</label>
+                    <textarea id="categoryDescription" required
+                        style="width:100%; height:100px; padding:10px; background:#334155; border:none; color:white; border-radius:8px;"></textarea>
+                </div>
+                <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeModal('categoryModal')" class="btn btn-outline"
+                        style="border:1px solid #475569; color:white;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Item Modal -->
+    <div id="itemModal" class="modal-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div class="modal-content"
+            style="background:#1e293b; padding:2rem; border-radius:16px; width:500px; max-width:95%;">
+            <h3 id="itemModalTitle" style="color:white; margin-bottom:1.5rem;">Add Item</h3>
+            <form id="itemForm">
+                <input type="hidden" id="itemId">
+                <input type="hidden" id="itemCategoryId">
+                <div style="margin-bottom:1rem;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:0.5rem;">Item Name</label>
+                    <input type="text" id="itemName" required placeholder="e.g. Milk Carton"
+                        style="width:100%; padding:10px; background:#334155; border:none; color:white; border-radius:8px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:0.5rem;">Disposal
+                        Guideline</label>
+                    <textarea id="itemDisposal" required placeholder="How to dispose?"
+                        style="width:100%; height:80px; padding:10px; background:#334155; border:none; color:white; border-radius:8px;"></textarea>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <label style="color:var(--text-secondary); display:block; margin-bottom:0.5rem;">Safety
+                        Instructions</label>
+                    <textarea id="itemSafety" placeholder="Any safety precautions?"
+                        style="width:100%; height:60px; padding:10px; background:#334155; border:none; color:white; border-radius:8px;"></textarea>
+                </div>
+                <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeModal('itemModal')" class="btn btn-outline"
+                        style="border:1px solid #475569; color:white;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer"
+        style="position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px;">
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/admin-waste-data.js"></script>
+</body>
+
+</html>

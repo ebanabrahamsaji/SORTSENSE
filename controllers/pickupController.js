@@ -1,4 +1,5 @@
 import db from '../db.js';
+import { syncWasteRecord } from './adminController.js';
 
 // 1. Create Pickup Request (Finds Nearest Center)
 export const createPickupRequest = async (req, res) => {
@@ -77,6 +78,19 @@ export const createPickupRequest = async (req, res) => {
         });
 
         await Promise.all(itemQueries);
+
+        // --- Transactional Sync ---
+        syncWasteRecord({
+            userId: userId,
+            wasteType: wasteType,
+            category: 'Pick-up',
+            weight: quantity,
+            quantity: types.length,
+            location: `${lat}, ${lng}`,
+            scanMethod: 'PICKUP',
+            pickupId: requestId,
+            status: 'Pending'
+        });
 
         // D. High Priority Notification (Immediate logic)
         // If High Priority (Organic), we can auto-notify user that it's "Scheduled/Received High Priority"
@@ -235,6 +249,21 @@ export const updatePickupStatus = async (req, res) => {
         params.push(requestId);
 
         await db.query(updateQuery, params);
+
+        // --- Transactional Sync Update ---
+        try {
+            // Map pickup status to record status lifecycle
+            let recordStatus = status;
+            if (status === 'Approved') recordStatus = 'Verified';
+            else if (status === 'Completed') recordStatus = 'Picked';
+
+            await db.query(
+                "UPDATE tbl_waste_records SET status = ?, updated_at = NOW() WHERE pickup_id = ?",
+                [recordStatus, requestId]
+            );
+        } catch (syncErr) {
+            console.error("Transactional Sync Fail:", syncErr);
+        }
 
         // --- Notification Logic ---
         // Need user_id to notify

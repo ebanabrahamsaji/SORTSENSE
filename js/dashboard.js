@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Auth Check (Role-based)
     let userId = localStorage.getItem('app_user_id');
-    const userEmail = localStorage.getItem('app_user_email');
+    let userEmail = localStorage.getItem('app_user_email');
 
     // Migration/Fallback logic for existing sessions (optional, but requested to fix root cause, so we should be strict)
     // If we want to support old sessions without immediate logout loops, we could check 'userId' but that risks contamination.
@@ -13,7 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Auto-migrate old User session
         userId = localStorage.getItem('userId');
         localStorage.setItem('app_user_id', userId);
-        localStorage.setItem('app_user_email', localStorage.getItem('userEmail'));
+        const legEmail = localStorage.getItem('userEmail');
+        localStorage.setItem('app_user_email', legEmail);
+        userEmail = legEmail;
     }
 
     if (!userEmail || !userId) {

@@ -1,4 +1,5 @@
 import db from '../db.js';
+import { syncWasteRecord } from './adminController.js';
 
 
 // Get Waste Categories
@@ -73,6 +74,18 @@ export const identifyWaste = async (req, res) => {
             details: details,
             is_hazardous: category === 'hazardous'
         });
+
+        // Sync to Transactional Records
+        if (req.body.userId) {
+            syncWasteRecord({
+                userId: req.body.userId,
+                wasteType: categoryDisplay,
+                category: categoryDisplay,
+                scanMethod: 'SCAN',
+                location: req.body.location || 'Scan Location',
+                status: 'Scanned'
+            });
+        }
 
         // Record History
         if (req.body.userId) {

@@ -4,6 +4,12 @@
     "Tables_in_sortsense_db": "tbl_accepted_categories"
   },
   {
+    "Tables_in_sortsense_db": "tbl_admin_audit_logs"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_ai_performance_logs"
+  },
+  {
     "Tables_in_sortsense_db": "tbl_categories"
   },
   {
@@ -13,10 +19,31 @@
     "Tables_in_sortsense_db": "tbl_item_images"
   },
   {
+    "Tables_in_sortsense_db": "tbl_notifications"
+  },
+  {
     "Tables_in_sortsense_db": "tbl_pickup_items"
   },
   {
     "Tables_in_sortsense_db": "tbl_pickup_requests"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_security_logs"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_special_waste_requests"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_suspicious_flags"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_system_events"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_system_health_logs"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_user_history"
   },
   {
     "Tables_in_sortsense_db": "tbl_users"

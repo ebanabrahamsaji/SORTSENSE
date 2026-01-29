@@ -170,7 +170,13 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#">
+                        <a href="admin-recent-activity.html">
+                            <i class="ri-history-line"></i>
+                            <span>Recent Activity</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="admin-waste-data.html">
                             <i class="ri-delete-bin-2-line"></i>
                             <span>Waste Data</span>
                         </a>
@@ -279,82 +285,209 @@
                 </div>
 
                 <!-- Recent Activity & Quick Actions -->
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
-
-                    <!-- Activity Table -->
-                    <div class="section-card">
-                        <div class="section-title">
-                            <h3>Recent User Activity</h3>
-                            <a href="admin-activity-log.html"
-                                style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">View
-                                All</a>
-                        </div>
-                        <table class="recent-table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Action</th>
-                                    <th>Time</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="activityTableBody">
-                                <!-- Populated by JS -->
-                                <tr>
-                                    <td>John Doe</td>
-                                    <td>Scanned Plastic Bottle</td>
-                                    <td>2 mins ago</td>
-                                    <td><span class="status-badge status-active">Verified</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Sarah Smith</td>
-                                    <td>Scanned Glass Jar</td>
-                                    <td>15 mins ago</td>
-                                    <td><span class="status-badge status-pending">Pending</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Mike Ross</td>
-                                    <td>Updated Profile</td>
-                                    <td>1 hour ago</td>
-                                    <td><span class="status-badge status-active">Completed</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Emma Wilson</td>
-                                    <td>Reported Issue</td>
-                                    <td>3 hours ago</td>
-                                    <td><span class="status-badge status-pending">Review</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- Quick Actions Section -->
+                <div class="section-card">
+                    <div class="section-title">
+                        <h3>Quick Actions</h3>
                     </div>
-
-                    <!-- Quick Actions -->
-                    <div class="section-card">
-                        <div class="section-title">
-                            <h3>Quick Actions</h3>
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 1rem;">
-                            <button class="btn btn-primary" style="width: 100%; justify-content: center;">
-                                <i class="ri-user-add-line"></i> Add New User
-                            </button>
-                            <button class="btn btn-outline"
-                                style="width: 100%; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary); background: transparent;">
-                                <i class="ri-add-circle-line"></i> Add Category
-                            </button>
-                            <button class="btn btn-outline"
-                                style="width: 100%; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary); background: transparent;">
-                                <i class="ri-download-cloud-line"></i> Export Reports
-                            </button>
-                            <button class="btn btn-outline"
-                                style="width: 100%; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary); background: transparent;">
-                                <i class="ri-shut-down-line"></i> Invalidate Sessions
-                            </button>
-                        </div>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+                        <button id="btnAddUser" class="btn btn-primary"
+                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px;">
+                            <i class="ri-user-add-line" style="font-size: 1.5rem;"></i>
+                            <span style="font-size: 1.1rem;">Add New User</span>
+                        </button>
+                        <button id="btnAddCategory" class="btn btn-outline"
+                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
+                            <i class="ri-add-circle-line" style="font-size: 1.5rem;"></i>
+                            <span style="font-size: 1.1rem;">Add Category</span>
+                        </button>
+                        <button id="btnExportReports" class="btn btn-outline"
+                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
+                            <i class="ri-download-cloud-line" style="font-size: 1.5rem;"></i>
+                            <span style="font-size: 1.1rem;">Export Reports</span>
+                        </button>
+                        <button id="btnInvalidateSessions" class="btn btn-outline"
+                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
+                            <i class="ri-shut-down-line" style="font-size: 1.5rem;"></i>
+                            <span style="font-size: 1.1rem;">Invalidate Sessions</span>
+                        </button>
                     </div>
-
                 </div>
             </div>
         </main>
+    </div>
+
+    <!-- Add New User Modal -->
+    <div id="addUserModal" class="modal-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div class="modal-content"
+            style="background:#1e293b; padding:2rem; border-radius:16px; width:500px; max-width:95%; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="color:white; margin:0;">Add New User</h3>
+                <button onclick="closeModal('addUserModal')"
+                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.5rem;"><i
+                        class="ri-close-line"></i></button>
+            </div>
+            <form id="addUserForm">
+                <div style="margin-bottom:1rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Full
+                        Name</label>
+                    <input type="text" name="name" required
+                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Email
+                        Address</label>
+                    <input type="email" name="email" required
+                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                    <div>
+                        <label
+                            style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Role</label>
+                        <select name="role" required
+                            style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                            <option value="USER">User</option>
+                            <option value="CENTER_ADMIN">Center Admin</option>
+                            <option value="ADMIN">Super Admin</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Status</label>
+                        <select name="status" required
+                            style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Password</label>
+                    <input type="password" name="password" required minlength="6"
+                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                </div>
+                <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeModal('addUserModal')" class="btn btn-outline"
+                        style="border:1px solid #475569; color:white;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Category Modal -->
+    <div id="addCategoryModal" class="modal-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div class="modal-content"
+            style="background:#1e293b; padding:2rem; border-radius:16px; width:450px; max-width:95%; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="color:white; margin:0;">Add New Category</h3>
+                <button onclick="closeModal('addCategoryModal')"
+                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.5rem;"><i
+                        class="ri-close-line"></i></button>
+            </div>
+            <form id="addCategoryForm">
+                <div style="margin-bottom:1rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Category
+                        Name</label>
+                    <input type="text" name="name" required placeholder="e.g. Hazardous Waste"
+                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                </div>
+                <div style="margin-bottom:1rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Description</label>
+                    <textarea name="description" required placeholder="Describe the type of waste in this category..."
+                        style="width:100%; height:100px; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;"></textarea>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Status</label>
+                    <select name="status" required
+                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                        <option value="Active">Active</option>
+                        <option value="Disabled">Disabled</option>
+                    </select>
+                </div>
+                <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeModal('addCategoryModal')" class="btn btn-outline"
+                        style="border:1px solid #475569; color:white;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Export Reports Modal -->
+    <div id="exportReportsModal" class="modal-overlay"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        <div class="modal-content"
+            style="background:#1e293b; padding:2rem; border-radius:16px; width:450px; max-width:95%; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h3 style="color:white; margin:0;">Export System Reports</h3>
+                <button onclick="closeModal('exportReportsModal')"
+                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.5rem;"><i
+                        class="ri-close-line"></i></button>
+            </div>
+            <form id="exportReportsForm">
+                <div style="margin-bottom:1rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Report
+                        Type</label>
+                    <select name="type" required
+                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                        <option value="users">Users Report</option>
+                        <option value="activity">Activity Logs</option>
+                        <option value="pickups">Pickup Requests</option>
+                        <option value="system">System Usage</option>
+                    </select>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                    <div>
+                        <label
+                            style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">From
+                            Date</label>
+                        <input type="date" name="fromDate" required
+                            style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                    </div>
+                    <div>
+                        <label
+                            style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">To
+                            Date</label>
+                        <input type="date" name="toDate" required
+                            style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                    </div>
+                </div>
+                <div style="margin-bottom:1.5rem;">
+                    <label
+                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Export
+                        Format</label>
+                    <select name="format" required
+                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                        <option value="csv">CSV (Comma Separated)</option>
+                        <option value="excel">Excel (.xlsx)</option>
+                        <option value="pdf">PDF Document</option>
+                    </select>
+                </div>
+                <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
+                    <button type="button" onclick="closeModal('exportReportsModal')" class="btn btn-outline"
+                        style="border:1px solid #475569; color:white;">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="ri-download-line"></i> Generate &
+                        Download</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer"
+        style="position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px;">
     </div>
 
     <script src="../js/config.js"></script>
