@@ -1,0 +1,2 @@
+Fields in tbl_pickup_requests: request_id, user_id, center_id, waste_type, quantity, status, created_at, updated_at, priority_score, scheduled_at, notes, rejection_reason, estimated_pickup_time
+Fields in tbl_users: user_id, name, email, password_hash, language_pref, green_score, leaderboard_rank, created_at, profile_picture, phone, city, state, zip, country, role, status

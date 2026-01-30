@@ -174,25 +174,36 @@ export const getRecentActivity = async (req, res) => {
 };
 
 export const getAllActivities = async (req, res) => {
-    // Similar logic but without limits and with filters (Not fully implemented for prototype, reusing basic logic)
-    // For now, return a larger set
     try {
-        // Reusing logic for now but returning raw list without slice
-        // Ideally this would be refactored into a shared internal function.
-        // For speed, I'll copy-paste the query part with higher limits.
-
-        const [h] = await db.query(`SELECT u.name, u.role, h.activity_type, h.details, h.created_at, 'Analyzed' as status FROM tbl_user_history h JOIN tbl_users u ON h.user_id = u.user_id ORDER BY h.created_at DESC LIMIT 500`);
-        const [r] = await db.query(`SELECT u.name, u.role, 'Request' as activity_type, waste_type as details, r.created_at, r.status FROM tbl_pickup_requests r JOIN tbl_users u ON r.user_id = u.user_id ORDER BY r.created_at DESC LIMIT 500`);
-        const [s] = await db.query(`SELECT u.name, u.role, 'Special Request' as activity_type, category as details, r.created_at, r.status FROM tbl_special_waste_requests r JOIN tbl_users u ON r.user_id = u.user_id ORDER BY r.created_at DESC LIMIT 500`);
+        const [h] = await db.query(`
+            SELECT h.history_id as id, u.name, u.role, h.activity_type, h.details, h.created_at, 'Analyzed' as status 
+            FROM tbl_user_history h 
+            JOIN tbl_users u ON h.user_id = u.user_id 
+            ORDER BY h.created_at DESC LIMIT 500
+        `);
+        const [r] = await db.query(`
+            SELECT r.request_id as id, u.name, u.role, 'Request' as activity_type, waste_type as details, r.created_at, r.status 
+            FROM tbl_pickup_requests r 
+            JOIN tbl_users u ON r.user_id = u.user_id 
+            ORDER BY r.created_at DESC LIMIT 500
+        `);
+        const [s] = await db.query(`
+            SELECT r.request_id as id, u.name, u.role, 'Special Request' as activity_type, category as details, r.created_at, r.status 
+            FROM tbl_special_waste_requests r 
+            JOIN tbl_users u ON r.user_id = u.user_id 
+            ORDER BY r.created_at DESC LIMIT 500
+        `);
 
         let list = [];
-        const merge = (arr) => arr.forEach(x => {
+        const merge = (arr, type) => arr.forEach(x => {
             let action = x.activity_type;
             if (x.activity_type === 'SCAN') try { action = "Scanned: " + JSON.parse(x.details).result } catch (e) { }
             else if (x.activity_type === 'SEARCH') try { action = "Searched: " + JSON.parse(x.details).query } catch (e) { }
             else if (x.activity_type.includes('Request')) action = x.activity_type + ": " + x.details;
 
             list.push({
+                id: x.id,
+                type: type, // 'HISTORY', 'PICKUP', 'SPECIAL'
                 user: x.name,
                 role: x.role,
                 action: action,
@@ -201,12 +212,36 @@ export const getAllActivities = async (req, res) => {
             })
         });
 
-        merge(h); merge(r); merge(s);
+        merge(h, 'HISTORY');
+        merge(r, 'PICKUP');
+        merge(s, 'SPECIAL');
+
         list.sort((a, b) => new Date(b.time) - new Date(a.time));
 
         res.json(list);
 
     } catch (e) { res.status(500).json([]); }
+};
+
+export const deleteActivity = async (req, res) => {
+    const { type, id } = req.params;
+    console.log(`Deleting Activity: Type=${type}, ID=${id}`);
+
+    try {
+        if (type === 'HISTORY') {
+            await db.query("DELETE FROM tbl_user_history WHERE history_id = ?", [id]);
+        } else if (type === 'PICKUP') {
+            await db.query("DELETE FROM tbl_pickup_requests WHERE request_id = ?", [id]);
+        } else if (type === 'SPECIAL') {
+            await db.query("DELETE FROM tbl_special_waste_requests WHERE request_id = ?", [id]);
+        } else {
+            return res.status(400).json({ message: "Invalid activity type" });
+        }
+        res.json({ message: "Activity deleted successfully" });
+    } catch (e) {
+        console.error("Delete Activity Error:", e);
+        res.status(500).json({ message: "Failed to delete activity" });
+    }
 };
 
 export const getAllUsers = async (req, res) => {

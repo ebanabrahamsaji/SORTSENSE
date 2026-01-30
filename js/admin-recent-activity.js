@@ -85,7 +85,11 @@ window.showActivityDetails = function (itemData) {
     modalBody.innerHTML = `
         <div style="margin-bottom:1rem;">
             <label style="display:block; font-size:0.8rem; color:var(--text-secondary);">User</label>
-            <div style="color:white; font-size:1.1rem;">${item.user}</div>
+            <div style="color:white; font-size:1.1rem;">${item.user || 'Unknown'}</div>
+        </div>
+        <div style="margin-bottom:1rem;">
+            <label style="display:block; font-size:0.8rem; color:var(--text-secondary);">Role</label>
+            <span style="background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:4px; font-size:0.85rem;">${item.role || 'N/A'}</span>
         </div>
         <div style="margin-bottom:1rem;">
             <label style="display:block; font-size:0.8rem; color:var(--text-secondary);">Action Taken</label>
@@ -99,9 +103,53 @@ window.showActivityDetails = function (itemData) {
             <label style="display:block; font-size:0.8rem; color:var(--text-secondary);">Current Status</label>
             <span class="status-badge status-${(item.status || 'Analyzed').toLowerCase()}">${item.status || 'Analyzed'}</span>
         </div>
+        
+        <div style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; text-align: right;">
+             <button onclick="deleteActivity('${item.type}', '${item.id}')" 
+                class="delete-btn"
+                style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+                 <i class="ri-delete-bin-line"></i> Delete Log Entry
+             </button>
+        </div>
     `;
 
     modal.style.display = 'flex';
+};
+
+window.deleteActivity = async function (type, id) {
+    if (!type || !id || type === 'undefined' || id === 'undefined') {
+        alert("Cannot delete this system generated log.");
+        return;
+    }
+
+    if (!confirm("Are you sure you want to permanently delete this activity log?")) return;
+
+    try {
+        // Change button state
+        const btn = document.querySelector('.delete-btn');
+        if (btn) {
+            btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Deleting...';
+            btn.disabled = true;
+        }
+
+        const res = await fetch(`/api/admin/activities/${type}/${id}`, { method: 'DELETE' });
+        const body = await res.json();
+
+        if (res.ok) {
+            closeModal();
+            loadActivities(); // Refresh list
+            // Optional: Show toast
+        } else {
+            alert("Failed to delete: " + (body.message || "Unknown error"));
+            if (btn) {
+                btn.innerHTML = '<i class="ri-delete-bin-line"></i> Delete Log Entry';
+                btn.disabled = false;
+            }
+        }
+    } catch (error) {
+        console.error("Delete Error:", error);
+        alert("Error communicating with server.");
+    }
 };
 
 window.closeModal = function () {

@@ -25,4 +25,7 @@ router.get('/center-requests', getCenterRequests);
 router.post('/update-status', updateStatus);
 router.post('/update-details', updateRequestDetails);
 
+import { deleteRequest } from '../controllers/specialWasteController.js';
+router.delete('/:id', deleteRequest);
+
 export default router;

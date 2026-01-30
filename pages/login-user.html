@@ -212,12 +212,12 @@
                 return;
             }
 
-            // 2. Format Check (Relaxed - Allow Username or Email)
-            // if (currentRole === 'user' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            //     errorMsg.innerText = "Please enter a valid email address.";
-            //     errorMsg.style.display = 'block';
-            //     return;
-            // }
+            // 2. Format Check (Strict for Users)
+            if (currentRole === 'user' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                errorMsg.innerText = "Please enter a valid email address.";
+                errorMsg.style.display = 'block';
+                return;
+            }
 
             const btn = document.querySelector('.auth-submit-btn');
 

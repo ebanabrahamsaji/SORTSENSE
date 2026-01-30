@@ -1235,71 +1235,124 @@ select.pickup-input option {
     color: white;
 }
 
-/* Layout Alignment Fixes for Pickup Form */
+/* --- Optimized Pickup Form Styles --- */
 .pickup-form-wrapper {
     display: flex;
     flex-wrap: wrap;
-    /* Allow wrapping on small screens */
     gap: 1.5rem;
     align-items: flex-end;
-    /* Align inputs and button at the bottom */
+    margin-top: 1rem;
 }
 
-/* Dropdown Container */
+/* Waste Type Select (Full Width on wrapper) */
 .pickup-form-wrapper .form-group.full-width {
-    flex: 2;
-    /* Take up more space */
-    min-width: 200px;
-    margin-bottom: 0;
+    flex: 1 1 100%;
 }
 
-/* Right Side Group (Quantity + Button) */
 .pickup-row-bottom {
     display: flex;
-    flex: 2;
-    /* Take up remaining space */
-    gap: 1.5rem;
+    flex: 1 1 100%;
+    gap: 1.2rem;
     align-items: flex-end;
+    flex-wrap: wrap;
 }
 
-/* Quantity Input Container */
-.pickup-row-bottom .form-group {
-    width: 120px;
-    /* Fixed width for quantity */
-    margin-bottom: 0;
+.pickup-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
 }
 
-/* Button */
-#requestPickupBtn {
-    height: 50px !important;
-    /* Force match input height */
-    padding: 0 1.5rem;
+.pickup-label {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 2px;
+}
+
+.pickup-input,
+.location-btn {
+    height: 52px;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    color: white;
+    font-family: inherit;
+    font-size: 0.95rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pickup-input:focus {
+    outline: none;
+    border-color: #10b981;
+    background: rgba(15, 23, 42, 0.6);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.location-btn {
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    white-space: nowrap;
-    margin-bottom: 0;
+    gap: 0.8rem;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 0 1.2rem;
 }
 
-/* Responsive adjustment */
-@media (max-width: 768px) {
-    .pickup-form-wrapper {
+.location-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.location-btn.active {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: #10b981;
+    color: #10b981;
+    font-weight: 600;
+}
+
+.location-btn.error {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.primary-btn#requestPickupBtn {
+    height: 52px;
+    padding: 0 2rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+    white-space: nowrap;
+    font-family: var(--font-heading);
+}
+
+.primary-btn#requestPickupBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+    filter: brightness(1.1);
+}
+
+.primary-btn#requestPickupBtn:active {
+    transform: scale(0.98);
+}
+
+@media (max-width: 1024px) {
+    .pickup-row-bottom {
         flex-direction: column;
         align-items: stretch;
-    }
-
-    .pickup-row-bottom {
-        width: 100%;
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .pickup-row-bottom .form-group {
-        flex: 1;
-    }
-
-    #requestPickupBtn {
-        flex: 1;
     }
 }

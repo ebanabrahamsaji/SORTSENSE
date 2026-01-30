@@ -3,67 +3,115 @@ import { syncWasteRecord } from './adminController.js';
 
 // 1. Create Pickup Request (Finds Nearest Center)
 export const createPickupRequest = async (req, res) => {
-    const { userId, wasteType, quantity, lat, lng } = req.body;
+    let { userId, wasteType, quantity, lat, lng, address } = req.body;
 
-    if (!userId || !wasteType || !quantity || !lat || !lng) {
+    if (!userId || !wasteType || !quantity) {
         return res.status(400).json({ message: "Missing required fields." });
     }
 
-    // Priority & Threshold Logic
-    const MIN_THRESHOLD = 5; // 5kg for Normal
-    const isOrganic = wasteType.toLowerCase().includes('organic');
-    let priority = 'Normal';
-    let status = 'Pending';
-
-    // 1. Organic = High Priority (Automatic)
-    if (isOrganic) {
-        priority = 'High';
-        if (quantity < 1) {
-            return res.status(400).json({ message: "High Priority (Organic) requires minimum 1kg." });
-        }
-        // "Scheduled immediately" -> In this system, we set to Pending but it will be flagged High Priority
-    }
-    // 2. Non-Organic
-    else {
-        if (quantity < MIN_THRESHOLD) {
-            // "Held and Aggregated"
-            // We accept it, but effectively it's low priority / held.
-            // visual status in dashboard will reflect this.
-            priority = 'Held';
-        }
-    }
-
     try {
-        // A. Find Nearest Center
+        // Fallback Logic if Location is Missing
+        if (!lat || !lng) {
+            console.log(`⚠️ No location provided for User ${userId}. Attempting fallback...`);
+
+            // Try last known location from waste records
+            const [history] = await db.query(
+                "SELECT location FROM tbl_waste_records WHERE user_id = ? AND location IS NOT NULL AND location != 'Unknown' ORDER BY created_at DESC LIMIT 1",
+                [userId]
+            );
+
+            if (history.length > 0 && history[0].location.includes(',')) {
+                const parts = history[0].location.split(',');
+                if (parts.length === 2) {
+                    lat = parseFloat(parts[0].trim());
+                    lng = parseFloat(parts[1].trim());
+                    console.log(`✅ Used Last Known Location: ${lat}, ${lng}`);
+                }
+            }
+        }
+
+        // If still no location, default to a central point (e.g., Kerala center or specific Default) 
+        // OR Select Center with ID 1 (Default) if explicit routing fails.
+        // For robustness, let's assume if we can't find a location, we pick the first available center.
+
+        let nearestCenter = null;
+        let primaryType = wasteType.split(',')[0].trim(); // Handle "Plastic, Paper"
+
+        // A. Find Nearest Center (Filtered by Waste Type)
+        // Kochi Coords as default for distance calculation if user location is missing
+        const defaultLat = 9.9312;
+        const defaultLng = 76.2673;
+
         const findCenterQuery = `
-            SELECT center_id, center_name, 
+            SELECT DISTINCT cc.center_id, cc.center_name, 
             (6371 * acos(
-                cos(radians(?)) * cos(radians(latitude)) * 
-                cos(radians(longitude) - radians(?)) + 
-                sin(radians(?)) * sin(radians(latitude))
+                cos(radians(?)) * cos(radians(cc.latitude)) * 
+                cos(radians(cc.longitude) - radians(?)) + 
+                sin(radians(?)) * sin(radians(cc.latitude))
             )) AS distance
-            FROM tbl_collection_centers
+            FROM tbl_collection_centers cc
+            LEFT JOIN tbl_accepted_categories ac ON cc.center_id = ac.center_id
+            LEFT JOIN tbl_categories cat ON ac.category_id = cat.category_id
+            WHERE (cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.type LIKE '%Haritha%')
             ORDER BY distance ASC
             LIMIT 1
         `;
 
-        const [centers] = await db.query(findCenterQuery, [lat, lng, lat]);
+        const searchType = `%${primaryType}%`;
+        const [centers] = await db.query(findCenterQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat, searchType, searchType]);
 
-        if (centers.length === 0) {
-            return res.status(404).json({ message: "No collection centers found nearby." });
+        if (centers.length > 0) {
+            nearestCenter = centers[0];
+        } else {
+            // Fallback: If no specific center found, try finding ANY nearest center (General HKS)
+            // This handles cases where category mapping might be missing but a center exists.
+            const fallbackQuery = `
+                SELECT center_id, center_name, 
+                (6371 * acos(
+                    cos(radians(?)) * cos(radians(latitude)) * 
+                    cos(radians(longitude) - radians(?)) + 
+                    sin(radians(?)) * sin(radians(latitude))
+                )) AS distance
+                FROM tbl_collection_centers
+                ORDER BY distance ASC LIMIT 1
+            `;
+            const [fallbackCenters] = await db.query(fallbackQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat]);
+            if (fallbackCenters.length > 0) nearestCenter = fallbackCenters[0];
         }
 
-        const nearestCenter = centers[0];
+
+        if (!nearestCenter) {
+            return res.status(404).json({ message: "No collection centers available." });
+        }
+
+
+        // Priority & Threshold Logic
+        const MIN_THRESHOLD = 5; // 5kg for Normal
+        const isOrganic = wasteType.toLowerCase().includes('organic');
+        let priority = 'Normal';
+        let status = 'Pending';
+
+        // 1. Organic = High Priority (Automatic)
+        if (isOrganic) {
+            priority = 'High';
+            if (quantity < 1) {
+                return res.status(400).json({ message: "High Priority (Organic) requires minimum 1kg." });
+            }
+        }
+        // 2. Non-Organic
+        else {
+            if (quantity < MIN_THRESHOLD) {
+                priority = 'Held';
+            }
+        }
 
         // B. Insert Request
-        // Note: DB Schema doesn't have 'priority', so we infer it or store it in metadata if possible.
-        // We stick to standard schema. Priority is derived logic.
         const insertQuery = `
-            INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-        const [result] = await db.query(insertQuery, [userId, nearestCenter.center_id, wasteType, quantity, status]);
+        const [result] = await db.query(insertQuery, [userId, nearestCenter.center_id, wasteType, quantity, status, lat, lng, address || null]);
         const requestId = result.insertId;
 
         // C. Insert Items
@@ -92,23 +140,14 @@ export const createPickupRequest = async (req, res) => {
             status: 'Pending'
         });
 
-        // D. High Priority Notification (Immediate logic)
-        // If High Priority (Organic), we can auto-notify user that it's "Scheduled/Received High Priority"
-        if (priority === 'High') {
-            // Optional: Trigger a "High Priority Pickup Logged" notification?
-            // Prompt says "Status updates... trigger... notifications". 
-            // Creation is 201, not an update. But we can send a "Received" notif if we want.
-            // Leaving standard flow for now.
-        }
-
         res.status(201).json({
             message: priority === 'Held'
                 ? "Request Received. Quantity below 5kg; will be aggregated."
                 : "Pickup request created successfully.",
             requestId: requestId,
             assignedCenter: nearestCenter.center_name,
-            priority: priority, // Return for frontend
-            distance: nearestCenter.distance.toFixed(2)
+            priority: priority,
+            distance: nearestCenter.distance ? parseFloat(nearestCenter.distance).toFixed(2) : "N/A"
         });
 
     } catch (error) {
@@ -127,7 +166,7 @@ export const getUserRequests = async (req, res) => {
 
     try {
         const query = `
-            SELECT r.*, c.center_name, c.latitude, c.longitude
+            SELECT r.*, c.center_name, c.latitude as center_lat, c.longitude as center_lng
             FROM tbl_pickup_requests r
             JOIN tbl_collection_centers c ON r.center_id = c.center_id
             WHERE r.user_id = ?
@@ -154,24 +193,41 @@ export const getCenterRequests = async (req, res) => {
     const { centerId } = req.query;
 
     try {
-        let query = `
-            SELECT r.request_id, r.user_id, r.center_id, r.waste_type, r.quantity, r.status, r.created_at, r.rejection_reason, r.estimated_pickup_time,
-                   u.name as user_name, u.email as user_email
+        // Optimized Strategy:
+        // 1. Fetch ALL Active Requests (Pending, Approved, Scheduled) - Critical for action
+        // 2. Fetch Limited History (Completed, Rejected, Cancelled) - To prevent lag
+
+        const activeQuery = `
+            SELECT r.*, u.name as user_name, u.email as user_email, u.phone as user_phone
             FROM tbl_pickup_requests r
             JOIN tbl_users u ON r.user_id = u.user_id
-            WHERE r.status != 'Pending'
+            WHERE r.status NOT IN ('Completed', 'Rejected', 'Cancelled')
+            ${centerId ? 'AND r.center_id = ?' : ''}
+            ORDER BY r.created_at DESC
         `;
 
-        const params = [];
-        if (centerId) {
-            query += " AND r.center_id = ?";
-            params.push(centerId);
-        }
+        const historyQuery = `
+            SELECT r.*, u.name as user_name, u.email as user_email, u.phone as user_phone
+            FROM tbl_pickup_requests r
+            JOIN tbl_users u ON r.user_id = u.user_id
+            WHERE r.status IN ('Completed', 'Rejected', 'Cancelled')
+            ${centerId ? 'AND r.center_id = ?' : ''}
+            ORDER BY r.created_at DESC
+            LIMIT 50
+        `;
 
-        query += " ORDER BY r.created_at DESC";
+        const params = centerId ? [centerId] : [];
 
-        const [requests] = await db.query(query, params);
-        res.json(requests);
+        // Execute in parallel
+        const [activeReqs, historyReqs] = await Promise.all([
+            db.query(activeQuery, params).then(res => res[0]),
+            db.query(historyQuery, params).then(res => res[0])
+        ]);
+
+        // Combine
+        const allRequests = [...activeReqs, ...historyReqs];
+
+        res.json(allRequests);
 
     } catch (error) {
         console.error("Get Center Requests Error:", error);
@@ -184,7 +240,7 @@ export const getAllPickupRequests = async (req, res) => {
     try {
         // Admin sees EVERYTHING
         const query = `
-            SELECT r.*, u.name as user_name, u.email as user_email, c.center_name 
+            SELECT r.*, u.name as user_name, u.email as user_email, u.phone as user_phone, c.center_name 
             FROM tbl_pickup_requests r
             JOIN tbl_users u ON r.user_id = u.user_id
             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
@@ -366,10 +422,10 @@ export const addItemToRequest = async (req, res) => {
 
             // 1. Create New Request
             const insertQuery = `
-                INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status)
-                VALUES (?, ?, ?, ?, 'Pending')
+                INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address)
+                VALUES (?, ?, ?, ?, 'Pending', ?, ?, ?)
             `;
-            const [result] = await db.query(insertQuery, [request.user_id, request.center_id, wasteType, quantity]);
+            const [result] = await db.query(insertQuery, [request.user_id, request.center_id, wasteType, quantity, request.latitude, request.longitude, request.address]);
             const newRequestId = result.insertId;
 
             // 2. Insert Item into New Request

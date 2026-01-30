@@ -132,12 +132,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
 
+            // Email Validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Please enter a valid email address.');
+                return;
+            }
+
             if (password !== confirmPassword) {
                 alert('Passwords do not match!');
                 return;
             }
 
             console.log('User Registration:', { fullname, email });
+
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters long!');
+                return;
+            }
 
             // Send to Backend
             fetch('/api/auth/register', {
@@ -148,10 +160,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(res => res.json().then(data => ({ status: res.status, body: data })))
                 .then(({ status, body }) => {
                     if (status === 201 || status === 200) {
-                        console.log('✅ Registration successful');
+                        console.log('✅ Registration successful', body);
+
                         // Store user data
                         localStorage.setItem('userEmail', email);
                         localStorage.setItem('userName', fullname);
+
+                        // Critical Fix: Store User ID to prevent dashboard redirect loop
+                        if (body.userId) {
+                            localStorage.setItem('userId', body.userId);
+                            localStorage.setItem('app_user_id', body.userId);
+                            localStorage.setItem('app_user_email', email);
+                            localStorage.setItem('userRole', 'USER'); // Default role
+                        } else {
+                            console.error("Warning: Backend did not return userId on register");
+                        }
 
                         // Redirect to dashboard
                         window.location.href = 'dashboard.html';

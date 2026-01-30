@@ -651,93 +651,167 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialize Waste Type Chips (Kept for reference if needed, but unused with select)
-    // initWasteChips(); 
-});
+    /* --- "Use My Location" Button Logic --- */
+    const useLocationBtn = document.getElementById('useUserLocationBtn');
+    const latInput = document.getElementById('pickupLat');
+    const lngInput = document.getElementById('pickupLng');
 
-// function initWasteChips() {
-//     const chips = document.querySelectorAll('.waste-chip');
-//     const hiddenInput = document.getElementById('pickupWasteType');
+    if (useLocationBtn) {
+        // Clear hidden coords if user types manually
+        const addressInput = document.getElementById('pickupAddress');
+        if (addressInput) {
+            addressInput.addEventListener('input', () => {
+                if (latInput) latInput.value = "";
+                if (lngInput) lngInput.value = "";
+                useLocationBtn.classList.remove('active');
+                const locationText = document.getElementById('locationText');
+                if (locationText) locationText.innerText = "Use GPS";
+            });
+        }
 
-//     if (!hiddenInput) return;
+        useLocationBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
 
-//     chips.forEach(chip => {
-//         chip.addEventListener('click', () => {
-//             // 1. Toggle active class
-//             chip.classList.toggle('active');
+            useLocationBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Detecting...';
+            useLocationBtn.disabled = true;
 
-//             // 2. Gather all active values
-//             const activeChips = Array.from(document.querySelectorAll('.waste-chip.active'));
-//             const values = activeChips.map(c => c.getAttribute('data-value'));
+            // Reset State
+            useLocationBtn.classList.remove('active', 'error');
 
-//             // 3. Update hidden input with comma-separated string
-//             hiddenInput.value = values.join(',');
-//         });
-//     });
-// }
+            navigator.geolocation.getCurrentPosition(
+                async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
 
-function checkPickupStatus() {
-    const userId = localStorage.getItem('userId');
-    if (!userId) return;
+                    if (latInput) latInput.value = lat;
+                    if (lngInput) lngInput.value = lng;
 
-    fetch(`/api/pickup/user/${userId}`)
-        .then(res => res.json())
-        .then(data => {
-            // data will be null if no active request, or the request object
-            updatePickupUI(data);
-        })
-        .catch(err => console.error("Status Check Error:", err));
-}
+                    try {
+                        useLocationBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Fetching Address...';
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                        const data = await response.json();
 
-function handlePickupRequest() {
-    const typeSelect = document.getElementById('pickupWasteType'); // Now a SELECT element
-    const quantityInput = document.getElementById('pickupQuantity');
-    const btn = document.getElementById('requestPickupBtn');
+                        const addressInput = document.getElementById('pickupAddress');
+                        if (addressInput) addressInput.value = data.display_name || "";
 
-    const wasteType = typeSelect.value;
-    const quantity = parseFloat(quantityInput.value);
-    const userId = localStorage.getItem('userId');
+                        let displayLoc = "Location Set";
+                        if (data.address) {
+                            // Try to find the most relevant part
+                            displayLoc = data.address.road || data.address.suburb || data.address.residential || data.address.neighbourhood || data.address.city || data.address.town || data.address.village;
 
-    // 1. Validate Selection
-    if (!wasteType) {
-        alert("Please select a waste type.");
-        return;
+                            // If still generic or empty, try display_name first part
+                            if (!displayLoc && data.display_name) {
+                                displayLoc = data.display_name.split(',')[0];
+                            }
+                            if (!displayLoc) displayLoc = "Unknown Loc";
+                        }
+
+                        // Truncate if too long
+                        if (displayLoc.length > 25) displayLoc = displayLoc.substring(0, 23) + '..';
+
+                        useLocationBtn.innerHTML = `<i class="ri-map-pin-user-fill"></i> ${displayLoc}`;
+                        useLocationBtn.title = data.display_name || "Current Location";
+
+                        useLocationBtn.classList.add('active');
+                    } catch (error) {
+                        // Fallback
+                        useLocationBtn.innerHTML = `<i class="ri-map-pin-user-fill"></i> ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                        useLocationBtn.classList.add('active');
+                    }
+
+                    useLocationBtn.disabled = false;
+                },
+                (err) => {
+                    console.error("Geo Error:", err);
+                    useLocationBtn.innerHTML = '<i class="ri-error-warning-line"></i> Failed';
+                    useLocationBtn.classList.add('error');
+
+                    setTimeout(() => {
+                        useLocationBtn.innerHTML = '<i class="ri-map-pin-line"></i> Use My Location';
+                        useLocationBtn.classList.remove('error');
+                        useLocationBtn.disabled = false;
+                    }, 2000);
+                },
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        });
     }
 
-    // 2. Validate Quantity
-    if (!quantity || quantity <= 0) {
-        alert("Please enter a valid positive quantity in kg.");
-        return;
+    // function initWasteChips() {
+    //     const chips = document.querySelectorAll('.waste-chip');
+    //     const hiddenInput = document.getElementById('pickupWasteType');
+
+    //     if (!hiddenInput) return;
+
+    //     chips.forEach(chip => {
+    //         chip.addEventListener('click', () => {
+    //             // 1. Toggle active class
+    //             chip.classList.toggle('active');
+
+    //             // 2. Gather all active values
+    //             const activeChips = Array.from(document.querySelectorAll('.waste-chip.active'));
+    //             const values = activeChips.map(c => c.getAttribute('data-value'));
+
+    //             // 3. Update hidden input with comma-separated string
+    //             hiddenInput.value = values.join(',');
+    //         });
+    //     });
+    // }
+
+    function checkPickupStatus() {
+        const userId = localStorage.getItem('userId');
+        if (!userId) return;
+
+        fetch(`/api/pickup/user/${userId}`)
+            .then(res => res.json())
+            .then(data => {
+                // data will be null if no active request, or the request object
+                updatePickupUI(data);
+            })
+            .catch(err => console.error("Status Check Error:", err));
     }
 
-    // 3. Organic Rule: Min 2kg if Organic is selected
-    if (wasteType === 'Organic' && quantity < 2) {
-        alert("Organic waste pickup requires a minimum of 2kg.");
-        return;
-    }
+    function handlePickupRequest() {
+        const typeSelect = document.getElementById('pickupWasteType'); // Now a SELECT element
+        const quantityInput = document.getElementById('pickupQuantity');
+        const btn = document.getElementById('requestPickupBtn');
 
-    if (!userId) {
-        alert("Please login first.");
-        return;
-    }
+        const wasteType = typeSelect.value;
+        const quantity = parseFloat(quantityInput.value);
+        const userId = localStorage.getItem('userId');
 
-    const originalText = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Finding Center...';
+        // 1. Validate Selection
+        if (!wasteType) {
+            alert("Please select a waste type.");
+            return;
+        }
 
-    // 4. Get Location & Submit
-    if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
-        resetBtn();
-        return;
-    }
+        // 2. Validate Quantity
+        if (!quantity || quantity <= 0) {
+            alert("Please enter a valid positive quantity in kg.");
+            return;
+        }
 
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
+        // 3. Organic Rule: Min 2kg if Organic is selected
+        if (wasteType === 'Organic' && quantity < 2) {
+            alert("Organic waste pickup requires a minimum of 2kg.");
+            return;
+        }
 
-            // Submit to Backend (Sends single wasteType)
+        if (!userId) {
+            alert("Please login first.");
+            return;
+        }
+
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Finding Center...';
+
+        // 4. Get Location & Submit (with Fallback)
+        const submitPickup = (lat, lng, manualAddress = null) => {
             fetch('/api/pickup/request', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -746,7 +820,8 @@ function handlePickupRequest() {
                     wasteType: wasteType,
                     quantity: quantity,
                     lat: lat,
-                    lng: lng
+                    lng: lng,
+                    address: manualAddress || (document.getElementById('pickupAddress') ? document.getElementById('pickupAddress').value : "")
                 })
             })
                 .then(res => res.json())
@@ -773,117 +848,153 @@ function handlePickupRequest() {
                     alert("Server error. Please try again.");
                 })
                 .finally(() => {
-                    resetBtn();
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
                 });
-        },
-        (error) => {
-            console.error("Geo Error:", error);
-            alert("Unable to retrieve your location. Location is required.");
-            resetBtn();
+        };
+
+        const manualLat = document.getElementById('pickupLat') ? document.getElementById('pickupLat').value : null;
+        const manualLng = document.getElementById('pickupLng') ? document.getElementById('pickupLng').value : null;
+        const manualAddress = document.getElementById('pickupAddress') ? document.getElementById('pickupAddress').value : "";
+
+        if (manualLat && manualLng) {
+            console.log("Using GPS set location:", manualLat, manualLng);
+            submitPickup(parseFloat(manualLat), parseFloat(manualLng));
         }
-    );
+        else if (manualAddress && manualAddress.trim().length > 0) {
+            // User typed an address manually but no coordinates
+            console.log("Using manually typed address:", manualAddress);
+            submitPickup(null, null, manualAddress);
+        }
+        else if (!navigator.geolocation) {
+            console.warn("Geolocation not supported. Proceeding with fallback.");
+            submitPickup(null, null);
+        } else {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
 
-    function resetBtn() {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
-}
+                    let fetchedAddress = "";
+                    try {
+                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                        const data = await response.json();
+                        fetchedAddress = data.display_name || "";
+                    } catch (e) {
+                        console.warn("Auto-geocoding address fetch failed:", e);
+                    }
 
-// Refactored to handle ARRAY of requests
-function updatePickupUI(data) {
-    const formWrapper = document.getElementById('pickupFormWrapper');
-    let infoContainer = document.getElementById('pickupInfoContainer');
-
-    // 1. Setup Container
-    if (!infoContainer) {
-        infoContainer = document.createElement('div');
-        infoContainer.id = 'pickupInfoContainer';
-        infoContainer.style.display = 'flex';
-        infoContainer.style.flexDirection = 'column';
-        infoContainer.style.gap = '1.5rem';
-        infoContainer.style.width = '100%';
-        const header = document.querySelector('.pickup-header');
-        if (header) header.after(infoContainer);
-    }
-
-    // 2. Clear Previous
-    infoContainer.innerHTML = '';
-
-    // 3. Check State
-    let requests = [];
-    if (Array.isArray(data)) {
-        requests = data;
-    } else if (data && !data.message) {
-        // Only treat as single object if it's NOT an error message
-        requests = [data];
-    }
-
-    // Filter out 'Completed' if we don't want to clutter (Optional)
-    // Safe check for status property
-    // Filter out 'Completed' if we don't want to clutter (Optional)
-    // Safe check for status property. Keep 'Rejected' so user sees the decision.
-    const activeRequests = requests.filter(r => r && r.status && r.status !== 'Completed' && r.status !== 'Cancelled');
-
-    // If no active requests, show Form
-    if (activeRequests.length === 0) {
-        if (formWrapper) formWrapper.style.display = 'flex';
-        infoContainer.style.display = 'none';
-        return;
-    } else {
-        if (formWrapper) formWrapper.style.display = 'none';
-        infoContainer.style.display = 'flex';
-    }
-
-    // 4. Render Cards
-    const t = (k) => typeof getTranslation === 'function' ? getTranslation(k) : k;
-
-    activeRequests.forEach(req => {
-        // Create Card
-        const card = document.createElement('div');
-        card.className = 'pickup-card';
-        card.style.background = 'rgba(255,255,255,0.05)';
-        card.style.border = '1px solid rgba(255,255,255,0.1)';
-        card.style.borderRadius = '12px';
-        card.style.padding = '1.5rem';
-        card.style.position = 'relative';
-
-        // Badge Logic - Explicit handling for Rejected
-        const statusClass = req.status.toLowerCase();
-        let statusBadgeInfo = { text: req.status, color: '#fff', bg: 'rgba(255,255,255,0.1)' };
-
-        if (statusClass === 'pending') {
-            statusBadgeInfo = { text: t('status_pending'), color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)' };
-        } else if (statusClass === 'approved') {
-            statusBadgeInfo = { text: t('status_approved'), color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.15)' };
-        } else if (statusClass === 'rejected') {
-            statusBadgeInfo = { text: 'Rejected', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' };
+                    submitPickup(lat, lng, fetchedAddress);
+                },
+                (error) => {
+                    console.warn("Unable to retrieve location. Proceeding with fallback strategy.", error);
+                    submitPickup(null, null);
+                },
+                { timeout: 5000, enableHighAccuracy: true }
+            );
         }
 
-        const statusLabel = statusBadgeInfo.text;
+        function resetBtn() {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
 
-        // --- NEW: Extra Info Logic (ETA / Rejection Reason) ---
-        let extraInfoHtml = '';
-        if (req.status === 'Rejected' && req.rejection_reason) {
-            extraInfoHtml = `
+    // Refactored to handle ARRAY of requests
+    function updatePickupUI(data) {
+        const formWrapper = document.getElementById('pickupFormWrapper');
+        let infoContainer = document.getElementById('pickupInfoContainer');
+
+        // 1. Setup Container
+        if (!infoContainer) {
+            infoContainer = document.createElement('div');
+            infoContainer.id = 'pickupInfoContainer';
+            infoContainer.style.display = 'flex';
+            infoContainer.style.flexDirection = 'column';
+            infoContainer.style.gap = '1.5rem';
+            infoContainer.style.width = '100%';
+            const header = document.querySelector('.pickup-header');
+            if (header) header.after(infoContainer);
+        }
+
+        // 2. Clear Previous
+        infoContainer.innerHTML = '';
+
+        // 3. Check State
+        let requests = [];
+        if (Array.isArray(data)) {
+            requests = data;
+        } else if (data && !data.message) {
+            // Only treat as single object if it's NOT an error message
+            requests = [data];
+        }
+
+        // Filter out 'Completed' if we don't want to clutter (Optional)
+        // Safe check for status property
+        // Filter out 'Completed' if we don't want to clutter (Optional)
+        // Safe check for status property. Keep 'Rejected' so user sees the decision.
+        const activeRequests = requests.filter(r => r && r.status && r.status !== 'Completed' && r.status !== 'Cancelled');
+
+        // If no active requests, show Form
+        if (activeRequests.length === 0) {
+            if (formWrapper) formWrapper.style.display = 'flex';
+            infoContainer.style.display = 'none';
+            return;
+        } else {
+            if (formWrapper) formWrapper.style.display = 'none';
+            infoContainer.style.display = 'flex';
+        }
+
+        // 4. Render Cards
+        const t = (k) => typeof getTranslation === 'function' ? getTranslation(k) : k;
+
+        activeRequests.forEach(req => {
+            // Create Card
+            const card = document.createElement('div');
+            card.className = 'pickup-card';
+            card.style.background = 'rgba(255,255,255,0.05)';
+            card.style.border = '1px solid rgba(255,255,255,0.1)';
+            card.style.borderRadius = '12px';
+            card.style.padding = '1.5rem';
+            card.style.position = 'relative';
+
+            // Badge Logic - Explicit handling for Rejected
+            const statusClass = req.status.toLowerCase();
+            let statusBadgeInfo = { text: req.status, color: '#fff', bg: 'rgba(255,255,255,0.1)' };
+
+            if (statusClass === 'pending') {
+                statusBadgeInfo = { text: t('status_pending'), color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)' };
+            } else if (statusClass === 'approved') {
+                statusBadgeInfo = { text: t('status_approved'), color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.15)' };
+            } else if (statusClass === 'rejected') {
+                statusBadgeInfo = { text: 'Rejected', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' };
+            }
+
+            const statusLabel = statusBadgeInfo.text;
+
+            // --- NEW: Extra Info Logic (ETA / Rejection Reason) ---
+            let extraInfoHtml = '';
+            if (req.status === 'Rejected' && req.rejection_reason) {
+                extraInfoHtml = `
                 <div style="margin-top:0.5rem; padding:0.5rem; background:rgba(239, 68, 68, 0.1); border-left:3px solid #ef4444; border-radius:4px;">
                     <strong style="color:#ef4444; font-size:0.8rem;">Reason:</strong> 
                     <span style="color:#fca5a5; font-size:0.85rem;">"${req.rejection_reason}"</span>
                 </div>
             `;
-        }
-        if (req.status === 'Approved' && req.estimated_pickup_time) {
-            extraInfoHtml = `
+            }
+            if (req.status === 'Approved' && req.estimated_pickup_time) {
+                extraInfoHtml = `
                  <div style="margin-top:0.5rem; padding:0.5rem; background:rgba(59, 130, 246, 0.1); border-left:3px solid #3b82f6; border-radius:4px;">
                     <strong style="color:#60a5fa; font-size:0.8rem;">ETA:</strong> 
                     <span style="color:#93c5fd; font-size:0.85rem;">${req.estimated_pickup_time}</span>
                 </div>
             `;
-        }
+            }
 
-        // Items List
-        let itemsHtml = '';
-        if (req.items && req.items.length > 0) {
-            itemsHtml = req.items.map(item => `
+            // Items List
+            let itemsHtml = '';
+            if (req.items && req.items.length > 0) {
+                itemsHtml = req.items.map(item => `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.05);">
                     <span style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
                         <i class="ri-recycle-line" style="color:#10b981;"></i> ${t(item.waste_type)}
@@ -891,22 +1002,22 @@ function updatePickupUI(data) {
                     <div style="display:flex; align-items:center; gap:0.5rem;">
                         <strong style="font-size:0.9rem; margin-right:0.5rem;">${item.quantity} kg</strong>
                         ${req.status === 'Pending' ?
-                    `<i class="ri-close-circle-line" onclick="deletePickupItem(${req.request_id}, ${item.item_id})" style="color:#ef4444; cursor:pointer; font-size:1.1rem; opacity:0.8; transition:0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8" title="Remove Item"></i>`
-                    : ''}
+                        `<i class="ri-close-circle-line" onclick="deletePickupItem(${req.request_id}, ${item.item_id})" style="color:#ef4444; cursor:pointer; font-size:1.1rem; opacity:0.8; transition:0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8" title="Remove Item"></i>`
+                        : ''}
                     </div>
                 </div>
             `).join('');
-        }
+            }
 
-        // Combine Items + Extra Info
-        if (extraInfoHtml) {
-            itemsHtml = extraInfoHtml + '<div style="margin-top:0.5rem;">' + itemsHtml + '</div>';
-        }
+            // Combine Items + Extra Info
+            if (extraInfoHtml) {
+                itemsHtml = extraInfoHtml + '<div style="margin-top:0.5rem;">' + itemsHtml + '</div>';
+            }
 
-        // Actions
-        let actionsHtml = '';
-        // Fixed: Use hardcoded options since the main SELECT was replaced by Chips
-        const typeOptions = `
+            // Actions
+            let actionsHtml = '';
+            // Fixed: Use hardcoded options since the main SELECT was replaced by Chips
+            const typeOptions = `
              <option value="Plastic" data-i18n="plastic" style="background-color: #1f2937; color: white;">Plastic</option>
              <option value="Paper" data-i18n="paper" style="background-color: #1f2937; color: white;">Paper</option>
              <option value="Organic" data-i18n="organic" style="background-color: #1f2937; color: white;">Organic</option>
@@ -916,8 +1027,8 @@ function updatePickupUI(data) {
              <option value="Hazardous" data-i18n="hazardous" style="background-color: #1f2937; color: white;">Hazardous</option>
         `;
 
-        if (req.status === 'Pending' || req.status === 'Rejected') {
-            actionsHtml = `
+            if (req.status === 'Pending' || req.status === 'Rejected') {
+                actionsHtml = `
                     <div class="pickup-actions" style="display:flex; gap:1rem; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem; margin-top:1rem;">
                         <button onclick="deletePickup(${req.request_id})" class="btn-action-delete" style="color:#ef4444; background:rgba(239,68,68,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
                             <i class="ri-delete-bin-2-line"></i> ${req.status === 'Rejected' ? 'Clear Request' : t('delete_request')}
@@ -929,9 +1040,9 @@ function updatePickupUI(data) {
                         </button>` : ''}
                     </div>
             `;
-        } else if (req.status === 'Approved') {
-            // Show Add Item but Logic creates NEW request
-            actionsHtml = `
+            } else if (req.status === 'Approved') {
+                // Show Add Item but Logic creates NEW request
+                actionsHtml = `
                 <div class="pickup-actions" style="display:flex; gap:1rem; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem; margin-top:1rem;">
                         <div style="flex:1;"></div>
                         <button onclick="toggleAddForm(${req.request_id})" class="btn-action-add" style="color:#10b981; background:rgba(16,185,129,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
@@ -939,11 +1050,11 @@ function updatePickupUI(data) {
                         </button>
                 </div>
             `;
-        }
+            }
 
-        // Add Form Section
-        // Styled to match the requested "Premium" horizontal layout
-        const addFormHtml = `
+            // Add Form Section
+            // Styled to match the requested "Premium" horizontal layout
+            const addFormHtml = `
              <div id="addItemForm-${req.request_id}" style="display:none; gap:10px; align-items:stretch; padding-top:1rem; margin-top:0.5rem; border-top:1px dashed rgba(255,255,255,0.1); animation: fadeIn 0.3s ease;">
                     <select id="addType-${req.request_id}" style="flex:1; background:#1e293b; border:1px solid rgba(255,255,255,0.1); color:white; padding:0 1rem; height:42px; border-radius:8px; outline:none; font-family:inherit;">
                         ${typeOptions}
@@ -953,7 +1064,7 @@ function updatePickupUI(data) {
             </div>
         `;
 
-        card.innerHTML = `
+            card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
                 <div style="font-size:0.8rem; color:rgba(255,255,255,0.5);">
                     Request #${req.request_id} &bull; ${new Date(req.created_at).toLocaleDateString()}
@@ -975,76 +1086,84 @@ function updatePickupUI(data) {
             ${addFormHtml}
         `;
 
-        infoContainer.appendChild(card);
-    });
-
-}
-
-// Helper to toggle form
-window.toggleAddForm = function (id) {
-    const el = document.getElementById(`addItemForm-${id}`);
-    if (el) el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
-}
-
-// --- Helper Functions for Pickup Features ---
-
-window.deletePickup = function (id) {
-    if (!confirm("Are you sure you want to delete this pickup request?")) return;
-
-    fetch(`/api/pickup/${id}`, { method: 'DELETE' })
-        .then(res => res.json())
-        .then(data => {
-            if (data.message) {
-                // Refresh UI
-                checkPickupStatus();
-            } else {
-                alert("Failed to delete.");
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error deleting request.");
+            infoContainer.appendChild(card);
         });
-};
 
-window.deletePickupItem = function (requestId, itemId) {
-    if (!confirm("Remove this item?")) return;
-
-    fetch(`/api/pickup/${requestId}/item/${itemId}`, { method: 'DELETE' })
-        .then(res => res.json())
-        .then(data => {
-            checkPickupStatus();
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error deleting item.");
-        });
-};
-
-window.submitAddItem = function (id) {
-    const type = document.getElementById(`addType-${id}`).value;
-    const qty = document.getElementById(`addQty-${id}`).value;
-
-    if (!qty || qty <= 0) {
-        alert("Enter valid quantity.");
-        return;
     }
 
-    fetch(`/api/pickup/${id}/add`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wasteType: type, quantity: qty })
-    })
-        .then(res => res.json())
-        .then(data => {
-            if (data.message) {
-                checkPickupStatus();
-            } else {
-                alert("Failed to add item.");
-            }
+    // Helper to toggle form
+    window.toggleAddForm = function (id) {
+        const el = document.getElementById(`addItemForm-${id}`);
+        if (el) el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    // --- Helper Functions for Pickup Features ---
+
+    window.deletePickup = function (id) {
+        if (!confirm("Are you sure you want to delete this pickup request?")) return;
+
+        fetch(`/api/pickup/${id}`, { method: 'DELETE' })
+            .then(async res => {
+                const data = await res.json();
+                if (res.ok) {
+                    // Success
+                    checkPickupStatus();
+                    // Optional: Show toast or success indication
+                } else {
+                    // Failure
+                    alert(data.message || "Failed to delete request.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error deleting request.");
+            });
+    };
+
+    window.deletePickupItem = function (requestId, itemId) {
+        if (!confirm("Remove this item?")) return;
+
+        fetch(`/api/pickup/${requestId}/item/${itemId}`, { method: 'DELETE' })
+            .then(async res => {
+                const data = await res.json();
+                if (res.ok) {
+                    checkPickupStatus();
+                } else {
+                    alert(data.message || "Failed to delete item.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error deleting item.");
+            });
+    };
+
+    window.submitAddItem = function (id) {
+        const type = document.getElementById(`addType-${id}`).value;
+        const qty = document.getElementById(`addQty-${id}`).value;
+
+        if (!qty || qty <= 0) {
+            alert("Enter valid quantity.");
+            return;
+        }
+
+        fetch(`/api/pickup/${id}/add`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wasteType: type, quantity: qty })
         })
-        .catch(err => {
-            console.error(err);
-            alert("Error adding item.");
-        });
-};
+            .then(res => res.json())
+            .then(data => {
+                if (data.message) {
+                    checkPickupStatus();
+                } else {
+                    alert("Failed to add item.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error adding item.");
+            });
+    };
+
+});

@@ -20,12 +20,14 @@ import {
     getWasteRecords,
     verifyWasteRecord,
     updateWasteRecord,
-    deleteWasteRecord
+    deleteWasteRecord,
+    deleteActivity
 } from '../controllers/adminController.js';
 
 router.get('/stats', getDashboardStats);
 router.get('/activities', getRecentActivity);
 router.get('/activities/all', getAllActivities);
+router.delete('/activities/:type/:id', deleteActivity);
 router.get('/users', getAllUsers);
 router.post('/users', addNewUser);
 router.post('/user-status', updateUserStatus);

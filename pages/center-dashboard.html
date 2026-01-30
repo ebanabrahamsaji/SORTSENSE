@@ -323,6 +323,12 @@
                     <h1>Incoming Pickup Requests</h1>
                     <p style="color:var(--text-muted); font-size:0.9rem;">Manage and track waste collection requests</p>
                 </div>
+                <div style="flex:1; max-width:400px; margin:0 2rem; position:relative;">
+                    <i class="ri-search-line"
+                        style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
+                    <input type="text" id="centerSearch" onkeyup="applyFilters()" placeholder="Search requests..."
+                        style="width:100%; padding:10px 10px 10px 40px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white;">
+                </div>
                 <div style="display:flex; gap:0.5rem;">
                     <button id="clearHistoryBtn" onclick="confirmClearHistory()" class="action-btn"
                         style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); display:none;">
@@ -530,19 +536,26 @@
 
             // Modal Event Listeners
             document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+
+            // Initialize View
+            switchView('overview');
+
+            // Auto-Refresh Polling (Every 10 seconds)
+            setInterval(() => loadRequests(true), 10000);
         });
 
-        function loadRequests() {
+        function loadRequests(silent = false) {
             const activeList = document.getElementById('activeRequestsList');
             const historyList = document.getElementById('historyRequestsList');
 
-            const loadingHtml = `
-                <div style="display:flex; justify-content:center; padding:2rem; color:var(--text-muted);">
-                    <i class="ri-loader-4-line ri-spin" style="font-size:1.5rem; margin-right:0.5rem;"></i> Loading...
-                </div>`;
-
-            activeList.innerHTML = loadingHtml;
-            historyList.innerHTML = loadingHtml;
+            if (!silent) {
+                const loadingHtml = `
+                    <div style="display:flex; justify-content:center; padding:2rem; color:var(--text-muted);">
+                        <i class="ri-loader-4-line ri-spin" style="font-size:1.5rem; margin-right:0.5rem;"></i> Loading...
+                    </div>`;
+                activeList.innerHTML = loadingHtml;
+                historyList.innerHTML = loadingHtml;
+            }
 
             // Adding timestamp to prevent caching
             fetch(`/api/pickup/center/all?t=${Date.now()}`)
@@ -562,14 +575,16 @@
                 })
                 .catch(err => {
                     console.error("Load Requests Error:", err);
-                    const errorHtml = `
-                        <div style="text-align:center; padding:2rem; border:1px dashed #ef4444; border-radius:12px; background:rgba(239, 68, 68, 0.05);">
-                            <i class="ri-error-warning-line" style="font-size:2rem; color:#ef4444; margin-bottom:0.5rem;"></i>
-                            <p style="color:#ef4444; margin:0;">${err.message || "Failed to load requests"}</p>
-                            <button onclick="loadRequests()" style="margin-top:1rem; padding:0.5rem 1rem; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); color:#ef4444; border-radius:6px; cursor:pointer;">Try Again</button>
-                        </div>`;
-                    activeList.innerHTML = errorHtml;
-                    historyList.innerHTML = errorHtml;
+                    if (!silent) {
+                        const errorHtml = `
+                            <div style="text-align:center; padding:2rem; border:1px dashed #ef4444; border-radius:12px; background:rgba(239, 68, 68, 0.05);">
+                                <i class="ri-error-warning-line" style="font-size:2rem; color:#ef4444; margin-bottom:0.5rem;"></i>
+                                <p style="color:#ef4444; margin:0;">${err.message || "Failed to load requests"}</p>
+                                <button onclick="loadRequests()" style="margin-top:1rem; padding:0.5rem 1rem; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); color:#ef4444; border-radius:6px; cursor:pointer;">Try Again</button>
+                            </div>`;
+                        activeList.innerHTML = errorHtml;
+                        historyList.innerHTML = errorHtml;
+                    }
                 });
         }
 
@@ -581,12 +596,51 @@
             const statusFilter = document.getElementById('statusFilter').value;
             const priorityFilter = document.getElementById('priorityFilter').value;
             const sortValue = document.getElementById('sortBy').value;
+            const searchTerm = document.getElementById('centerSearch').value.toLowerCase();
 
             // 1. Filter
             let filtered = allRequests.filter(req => {
                 const p = getPriority(req.waste_type, req.quantity);
+                const query = searchTerm.trim();
+
+                // Standard Filters
                 if (statusFilter !== 'All' && req.status !== statusFilter) return false;
                 if (priorityFilter !== 'All' && p !== priorityFilter) return false;
+
+                // Search Logic
+                if (query) {
+                    const createdDate = new Date(req.created_at);
+                    const isToday = createdDate.toDateString() === new Date().toDateString();
+
+                    // Smart Keywords
+                    if (query === 'today' && !isToday) return false;
+
+                    // Specific Status Keywords (if user types 'pending' but filter is 'All', usually we just match text, 
+                    // but let's be strict if it matches a status exactly to avoid false positives in addresses?)
+                    // Actually, flexible text matching is usually better for 'context-aware' unless explicitly asked for strict parsing.
+                    // User said: "Match against: Request status, Waste category, Special waste flag, User name, Request ID, Date"
+
+                    const searchable = [
+                        req.request_id,
+                        req.user_name,
+                        req.waste_type,
+                        req.status,
+                        req.address || '',
+                        p, // Priority (High/Medium/Low)
+                        createdDate.toLocaleDateString(),
+                        'pickup', // implicit context
+                        (req.is_special || req.waste_category) ? 'special' : '' // Special flag context
+                    ].join(' ').toLowerCase();
+
+                    // Check if all parts of query (if space separated) are in searchable? 
+                    // Or just simple includes. Simple includes is safer for now.
+                    // But "user name" might be two words.
+                    // Let's stick to simple includes of the full query or split?
+                    // "user name" -> "user" AND "name". 
+                    // Let's do simple includes for now to match exact phrases or words.
+                    if (!searchable.includes(query)) return false;
+                }
+
                 return true;
             });
 
@@ -974,18 +1028,29 @@
                 extraInfo = `<div style="font-size:0.8rem; color:#60a5fa; margin-top:0.4rem;">ETA: ${req.estimated_pickup_time}</div>`;
             }
 
-            // Map Link
-            const mapLink = `<a href="https://maps.google.com/?q=${encodeURIComponent(req.user_name || '')}" target="_blank" title="View Map" style="color:#3b82f6; text-decoration:none; margin-left:0.5rem;"><i class="ri-map-pin-line"></i></a>`;
+            // Map Link (Prioritize Coords)
+            let mapUrl = `https://maps.google.com/?q=${encodeURIComponent(req.user_name || '')}`;
+            if (req.latitude && req.longitude) {
+                mapUrl = `https://www.google.com/maps/search/?api=1&query=${req.latitude},${req.longitude}`;
+            } else if (req.address) {
+                mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(req.address)}`;
+            }
+            const mapLink = `<a href="${mapUrl}" target="_blank" title="View Map" style="color:#3b82f6; text-decoration:none; margin-left:0.5rem;"><i class="ri-map-pin-line"></i></a>`;
 
             card.innerHTML = `
                 <div class="req-info">
-                    <div class="req-detail" style="min-width: 60px;">
-                        <label>ID</label>
-                        <span>#${req.request_id}</span>
-                    </div>
-                    <div class="req-detail" style="flex:1;">
-                        <label>User</label>
-                        <span>${req.user_name || 'Unknown'} ${mapLink}</span>
+                    <div class="req-detail" style="flex:1.8;">
+                        <label>User & Location</label>
+                        <span style="display:flex; align-items:center; gap:0.25rem; font-weight:600;">
+                            ${req.user_name || 'Unknown'} ${mapLink}
+                        </span>
+                        <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:2px; line-height:1.2;">
+                             ${req.user_phone ? `<i class="ri-phone-line" style="font-size:0.7rem;"></i> ${req.user_phone}<br>` : ''}
+                             <i class="ri-map-pin-user-line" style="font-size:0.7rem;"></i> 
+                             <span title="${req.address || (req.latitude && (parseFloat(req.latitude) !== 0 || parseFloat(req.longitude) !== 0) ? `Coords: ${req.latitude}, ${req.longitude}` : 'No location data available')}">
+                                ${req.address ? (req.address.length > 30 ? req.address.substring(0, 27) + '...' : req.address) : (req.latitude && (parseFloat(req.latitude) !== 0 || parseFloat(req.longitude) !== 0) ? `${parseFloat(req.latitude).toFixed(4)}, ${parseFloat(req.longitude).toFixed(4)}` : 'Location Not Provided')}
+                             </span>
+                        </small>
                     </div>
                     <div class="req-detail" style="flex:1.5;">
                         <label>Waste ${priBadge}</label>

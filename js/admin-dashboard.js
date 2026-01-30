@@ -111,12 +111,39 @@ function setupInteractions() {
     // Form Submissions
     setupFormHandlers();
 
-    // Search Input
+    // Search Input - Smart Routing
     const searchInput = document.querySelector('.header-search input');
     if (searchInput) {
         searchInput.addEventListener('keyup', function (e) {
             if (e.key === 'Enter') {
-                showToast(`Searching for: ${this.value}`, 'info');
+                const query = this.value.toLowerCase().trim();
+
+                // Map keywords to pages
+                if (['users', 'user', 'admins', 'admin', 'centers', 'center', 'accounts'].some(k => query.includes(k))) {
+                    showToast('Navigating to User Management...', 'info');
+                    setTimeout(() => window.location.href = 'admin-users.html', 500); // Small delay for UX
+                    return;
+                }
+
+                if (['requests', 'request', 'pickup', 'pickups', 'special', 'waste'].some(k => query.includes(k))) {
+                    showToast('Navigating to Pickup Requests...', 'info');
+                    setTimeout(() => window.location.href = 'admin-special-waste.html', 500);
+                    return;
+                }
+
+                if (['reports', 'report', 'analytics', 'data', 'export', 'chart'].some(k => query.includes(k))) {
+                    showToast('Navigating to Waste Data & Reports...', 'info');
+                    setTimeout(() => window.location.href = 'admin-waste-data.html', 500);
+                    return;
+                }
+
+                if (['logs', 'log', 'activity', 'activities', 'history', 'audit'].some(k => query.includes(k))) {
+                    showToast('Navigating to Activity Logs...', 'info');
+                    setTimeout(() => window.location.href = 'admin-recent-activity.html', 500);
+                    return;
+                }
+
+                showToast(`No quick access module found for: "${this.value}"`, 'warning');
             }
         });
     }

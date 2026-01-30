@@ -1,3 +1,4 @@
+let allUsers = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     fetchUsers();
@@ -16,36 +17,58 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchUsers() {
     try {
         const res = await fetch('/api/admin/users');
-        const users = await res.json();
-        const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = '';
-
-        users.forEach(u => {
-            const row = document.createElement('tr');
-            row.style.borderBottom = '1px solid #334155';
-
-            const isActive = (u.status || 'active') === 'active';
-            const btnClass = isActive ? 'btn-deactivate' : 'btn-activate';
-            const btnText = isActive ? 'Deactivate' : 'Activate';
-            const statusColor = isActive ? '#10B981' : '#EF4444';
-
-            row.innerHTML = `
-                <td style="padding:10px;">${u.name}</td>
-                <td style="padding:10px;">${u.email}</td>
-                <td style="padding:10px;">${u.role}</td>
-                <td style="padding:10px;">${new Date(u.created_at).toLocaleDateString()}</td>
-                <td style="padding:10px;"><span style="color:${statusColor}; font-weight:600;">${u.status || 'active'}</span></td>
-                <td style="padding:10px;">
-                    <button class="table-action-btn ${btnClass}" onclick="toggleStatus(${u.user_id}, '${isActive ? 'inactive' : 'active'}')">${btnText}</button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        allUsers = await res.json();
+        renderUsers();
     } catch (e) {
         console.error(e);
         document.getElementById('usersTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Failed to load users.</td></tr>';
     }
 }
+
+function renderUsers(query = '') {
+    const tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = '';
+
+    const filtered = allUsers.filter(u => {
+        if (!query) return true;
+        const term = query.toLowerCase();
+        return (u.name || '').toLowerCase().includes(term) ||
+            (u.email || '').toLowerCase().includes(term) ||
+            (u.role || '').toLowerCase().includes(term);
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No users found.</td></tr>';
+        return;
+    }
+
+    filtered.forEach(u => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #334155';
+
+        const isActive = (u.status || 'active') === 'active';
+        const btnClass = isActive ? 'btn-deactivate' : 'btn-activate';
+        const btnText = isActive ? 'Deactivate' : 'Activate';
+        const statusColor = isActive ? '#10B981' : '#EF4444';
+
+        row.innerHTML = `
+            <td style="padding:10px;">${u.name}</td>
+            <td style="padding:10px;">${u.email}</td>
+            <td style="padding:10px;">${u.role}</td>
+            <td style="padding:10px;">${new Date(u.created_at).toLocaleDateString()}</td>
+            <td style="padding:10px;"><span style="color:${statusColor}; font-weight:600;">${u.status || 'active'}</span></td>
+            <td style="padding:10px;">
+                <button class="table-action-btn ${btnClass}" onclick="toggleStatus(${u.user_id}, '${isActive ? 'inactive' : 'active'}')">${btnText}</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+window.filterUsers = () => {
+    const query = document.getElementById('userSearchInput').value;
+    renderUsers(query);
+};
 
 window.toggleStatus = async (id, status) => {
     if (!confirm(`Are you sure you want to mark this user as ${status}?`)) return;

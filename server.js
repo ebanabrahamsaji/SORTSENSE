@@ -11,6 +11,7 @@ import wasteRoutes from './routes/wasteRoutes.js';
 import centerRoutes from './routes/centerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import specialWasteRoutes from './routes/specialWasteRoutes.js';
+// app.use('/api/special-waste', specialWasteRoutes);
 
 // Configuration
 dotenv.config();

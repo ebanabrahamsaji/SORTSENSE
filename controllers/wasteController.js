@@ -52,27 +52,51 @@ export const identifyWaste = async (req, res) => {
         });
 
         const aiResult = response.data;
-        // Expected from Python: { category: "plastic", confidence: 95.5, disposal_guidance: "..." }
 
-        const category = aiResult.category;
-        const categoryDisplay = category.charAt(0).toUpperCase() + category.slice(1);
+        // 1. Robust Extraction (Handle various AI response formats)
+        let rawLabel = aiResult.category || aiResult.class || aiResult.label || aiResult.name || aiResult.prediction || "Uncertain";
 
-        // Prepare details object using Python's guidance + Backend DB fallback
-        let details = {
-            disposal_guideline: aiResult.disposal_guidance,
-            kerala_mandate: aiResult.disposal_guidance, // Use same text for specific rule
-            safety_instructions: "Handle with care."
+        // 2. Normalization Mapping
+        const NORMALIZE_MAP = {
+            'plastic': 'Plastic', 'plastic bottle': 'Plastic', 'plastic bag': 'Plastic', 'poly': 'Plastic',
+            'glass': 'Glass', 'glass bottle': 'Glass', 'bottle': 'Plastic',
+            'paper': 'Paper', 'cardboard': 'Paper', 'newspaper': 'Paper',
+            'metal': 'Metal', 'can': 'Metal', 'aluminum': 'Metal', 'tin': 'Metal',
+            'organic': 'Organic', 'food': 'Organic', 'vegetable': 'Organic', 'fruit': 'Organic',
+            'ewaste': 'E-Waste', 'electronic': 'E-Waste', 'mouse': 'E-Waste', 'keyboard': 'E-Waste', 'laptop': 'E-Waste',
+            'hazardous': 'Hazardous', 'battery': 'Hazardous', 'medical': 'Hazardous'
         };
 
-        // Optional: Enrich with DB data if needed, but Python data is primary now as per request
-        // We can create a response that fits the frontend expected structure
+        // Try exact match, then partial match
+        let categoryDisplay = "Uncertain";
+        const lowerRaw = String(rawLabel).toLowerCase().trim();
+
+        if (NORMALIZE_MAP[lowerRaw]) {
+            categoryDisplay = NORMALIZE_MAP[lowerRaw];
+        } else {
+            // Fuzzy search keys
+            const foundKey = Object.keys(NORMALIZE_MAP).find(k => lowerRaw.includes(k));
+            if (foundKey) {
+                categoryDisplay = NORMALIZE_MAP[foundKey];
+            } else {
+                // Formatting Fallback: "plastic_bottle" -> "Plastic Bottle"
+                categoryDisplay = String(rawLabel).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            }
+        }
+
+        // 3. Fallback Details
+        // If Python didn't return guidance, generate it locally based on the resolved category
+        let details = aiResult.details || {};
+        if (!details.disposal_guideline) {
+            details = getDisposalInfo(categoryDisplay);
+        }
 
         res.json({
             category: categoryDisplay,
-            confidence: aiResult.confidence,
+            confidence: aiResult.confidence || 0,
             message: `Identified as ${categoryDisplay}`,
             details: details,
-            is_hazardous: category === 'hazardous'
+            is_hazardous: ['Hazardous', 'E-Waste', 'Biomedical'].includes(categoryDisplay)
         });
 
         // Sync to Transactional Records
@@ -83,21 +107,21 @@ export const identifyWaste = async (req, res) => {
                 category: categoryDisplay,
                 scanMethod: 'SCAN',
                 location: req.body.location || 'Scan Location',
-                status: 'Scanned'
+                status: 'Scanned' // Auto-verified? No, just scanned.
             });
         }
 
         // Record History
         if (req.body.userId) {
-            // Import function logic locally to avoid circular dependency issues if any, 
-            // but since it's same file, direct call is fine. 
-            // Note: identifyWaste is above recordHistory, but hoisting/module scope handles it.
-            // However, to be safe, I'll invoke the DB directly or move the function up. 
-            // Actually, simplest is to just INSERT here since I edit this file.
-            const uid = req.body.userId;
+            const historyPayload = {
+                category: categoryDisplay,
+                result: categoryDisplay, // Dual field for compatibility
+                confidence: aiResult.confidence || 0
+            };
+
             db.query(
                 "INSERT INTO tbl_user_history (user_id, activity_type, details) VALUES (?, 'SCAN', ?)",
-                [uid, JSON.stringify({ category: categoryDisplay, confidence: aiResult.confidence })]
+                [req.body.userId, JSON.stringify(historyPayload)]
             ).catch(e => console.error("Scan History Error:", e));
         }
 

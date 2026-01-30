@@ -207,3 +207,26 @@ export const updateRequestDetails = async (req, res) => {
         res.status(500).json({ message: 'Database error.' });
     }
 };
+
+// Delete Request (Admin)
+export const deleteRequest = async (req, res) => {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ message: 'Request ID missing.' });
+
+    try {
+        // Optional: Check status before delete?
+        // Admin can delete any, usually Rejected ones.
+
+        const [result] = await db.query('DELETE FROM tbl_special_waste_requests WHERE request_id = ?', [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Request not found.' });
+        }
+
+        res.json({ message: 'Request deleted successfully.' });
+
+    } catch (error) {
+        console.error("Delete Error:", error);
+        res.status(500).json({ message: 'Database error.' });
+    }
+};

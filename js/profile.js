@@ -179,6 +179,12 @@ async function handleProfileUpdate(e) {
         return;
     }
 
+    // Phone Validation (Optional but must be valid if present)
+    if (phone && !/^\d{10}$/.test(phone)) {
+        alert("Please enter a valid 10-digit phone number.");
+        return;
+    }
+
     const originalText = saveBtn.textContent;
     saveBtn.textContent = 'Saving...';
     saveBtn.disabled = true;

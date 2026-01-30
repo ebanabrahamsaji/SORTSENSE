@@ -6,6 +6,17 @@ let currentAction = null;
 let currentId = null;
 let activeTab = 'special'; // 'special' or 'regular'
 
+// Search Filter functionality
+window.filterRequests = () => {
+    const query = document.getElementById('searchInput').value.toLowerCase();
+
+    if (activeTab === 'special') {
+        renderTable(query);
+    } else {
+        renderRegularTable(query);
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchRequests(); // Special
     fetchCenters();
@@ -69,7 +80,7 @@ async function fetchRegularRequests() {
 }
 
 // --- Rendering ---
-function renderTable() {
+function renderTable(query = '') {
     const tbody = document.getElementById('adminSwTableBody');
     const statusFilter = document.getElementById('filterStatus').value;
     const catFilter = document.getElementById('filterCategory').value;
@@ -77,10 +88,18 @@ function renderTable() {
     const filtered = allRequests.filter(req => {
         if (statusFilter !== 'All' && req.status !== statusFilter) return false;
         if (catFilter !== 'All' && req.category !== catFilter) return false;
+
+        if (query) {
+            const term = query.toLowerCase();
+            const text = `${req.user_name} ${req.email} ${req.category} ${req.request_id}`.toLowerCase();
+            if (!text.includes(term)) return false;
+        }
+
         return true;
     });
 
     tbody.innerHTML = '';
+    // ... (rest of renderTable logic remains same, just replacing up to filtered check)
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">No requests found.</td></tr>';
         return;
@@ -108,6 +127,8 @@ function renderTable() {
 
         } else if (req.status === 'Scheduled') {
             actionsHtml += `<button class="table-action-btn btn-complete" onclick="openModal(${req.request_id}, 'Completed')">Complete</button>`;
+        } else if (req.status === 'Rejected') {
+            actionsHtml = `<button class="table-action-btn" style="background:#EF4444;" onclick="deleteRequest(${req.request_id}, 'special')">Delete</button>`;
         } else {
             actionsHtml = `<button class="table-action-btn" style="background:#64748b;" onclick="openEditRequestModal(${req.request_id})">View</button>` + actionsHtml; // Prepend View for others too
             if (actionsHtml === `<button class="table-action-btn" style="background:#64748b;" onclick="openEditRequestModal(${req.request_id})">View</button>`) {
@@ -135,12 +156,19 @@ function renderTable() {
     });
 }
 
-function renderRegularTable() {
+function renderRegularTable(query = '') {
     const tbody = document.getElementById('adminRegTableBody');
     const statusFilter = document.getElementById('regFilterStatus').value;
 
     const filtered = regRequests.filter(req => {
         if (statusFilter !== 'All' && req.status !== statusFilter) return false;
+
+        if (query) {
+            const term = query.toLowerCase();
+            const text = `${req.user_name} ${req.waste_type} ${req.center_name || ''}`.toLowerCase();
+            if (!text.includes(term)) return false;
+        }
+
         return true;
     });
 
@@ -167,6 +195,8 @@ function renderRegularTable() {
             // Center: "Update pickup status: Scheduled -> Completed".
             // So Admin job ends at Approved.
             actionsHtml = '<span style="color:#10B981; font-size:0.8rem;">Sent to Center</span>';
+        } else if (req.status === 'Rejected') {
+            actionsHtml = `<button class="table-action-btn" style="background:#EF4444;" onclick="deleteRequest(${req.request_id}, 'regular')">Delete</button>`;
         } else {
             actionsHtml = '<span style="font-size:0.8rem; color:#64748b;">No actions</span>';
         }
@@ -184,8 +214,29 @@ function renderRegularTable() {
     });
 }
 
+// --- Delete Request ---
+window.deleteRequest = async (id, type) => {
+    if (!confirm("Are you sure you want to delete this rejected request? This cannot be undone.")) return;
+
+    try {
+        const url = type === 'special' ? `/api/special-waste/${id}` : `/api/pickup/${id}`;
+        const res = await fetch(url, { method: 'DELETE' });
+
+        if (res.ok) {
+            alert("Deleted successfully.");
+            if (type === 'special') fetchRequests();
+            else fetchRegularRequests();
+        } else {
+            alert("Failed to delete.");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Error deleting request.");
+    }
+};
+
 // --- Modal Logic ---
-window.openModal = (id, action) => {
+window.openModal = async (id, action) => {
     currentId = id;
     currentAction = action;
     document.getElementById('modalActionText').innerText = `Mark as ${action}?`;
@@ -196,14 +247,70 @@ window.openModal = (id, action) => {
     const select = document.getElementById('modalCenterSelect');
 
     if (activeTab === 'special' && action === 'Approved') {
-        select.innerHTML = '<option value="">Select Center...</option>';
-        allCenters.forEach(c => {
-            const opt = document.createElement('option');
-            opt.value = c.center_id;
-            opt.textContent = c.center_name;
-            select.appendChild(opt);
-        });
+        select.innerHTML = '<option value="">Loading suggestions...</option>';
         wrapper.style.display = 'block';
+
+        // Find the current request
+        const req = allRequests.find(r => r.request_id === id);
+
+        let sortedCenters = [];
+        try {
+            // Build Query Params for Smart Suggestion
+            let params = new URLSearchParams();
+            if (req) {
+                if (req.category) params.append('category', req.category);
+
+                // Try to parse coordinates from location string "lat, lng"
+                if (req.location) {
+                    const coords = req.location.split(',').map(s => s.trim());
+                    if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                        params.append('lat', coords[0]);
+                        params.append('lng', coords[1]);
+                    }
+                }
+            }
+
+            // Fetch compatible and sorted centers
+            const res = await fetch(`/api/centers?${params.toString()}`);
+            if (res.ok) {
+                sortedCenters = await res.json();
+            } else {
+                sortedCenters = allCenters; // Fallback
+            }
+        } catch (e) {
+            console.error("Smart Sort Error:", e);
+            sortedCenters = allCenters;
+        }
+
+        // Check if we have results, if not fall back to all
+        if (sortedCenters.length === 0) sortedCenters = allCenters;
+
+        // Populate Dropdown
+        select.innerHTML = '';
+
+        if (sortedCenters.length > 0) {
+            sortedCenters.forEach((c, index) => {
+                const opt = document.createElement('option');
+                opt.value = c.center_id;
+                // Add distance info if available
+                const distInfo = c.distance ? ` (${c.distance} km)` : '';
+                opt.textContent = `${c.center_name}${distInfo}`;
+                select.appendChild(opt);
+
+                // Pre-select the first (best) option
+                if (index === 0) opt.selected = true;
+            });
+        } else {
+            select.innerHTML = '<option value="">No compatible centers found</option>';
+            // Append all centers as fallback options
+            allCenters.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.center_id;
+                opt.textContent = c.center_name;
+                select.appendChild(opt);
+            });
+        }
+
     } else {
         wrapper.style.display = 'none';
         select.value = '';
@@ -403,6 +510,11 @@ window.saveChanges = async () => {
 
     if (!category || !quantity || !date || !location) {
         alert("Please fill all required fields.");
+        return;
+    }
+
+    if (quantity <= 0) {
+        alert("Quantity must be a positive number.");
         return;
     }
 

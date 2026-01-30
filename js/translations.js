@@ -72,6 +72,8 @@ const TRANSLATIONS = {
         status_completed: "Completed",
         waste_type_label: "Waste Type",
         quantity_label: "Quantity (kg)",
+        location_label: "Location",
+        location_placeholder: "Enter address or use GPS",
         request_pickup_btn: "Request Pickup",
         pickup_request_success: "Request submitted successfully!",
         delete_request: "Delete Request",
@@ -162,6 +164,8 @@ const TRANSLATIONS = {
         status_completed: "പൂർത്തിയായി", // Completed
         waste_type_label: "മാലിന്യ തരം",
         quantity_label: "അളവ് (കി.ഗ്രാം)",
+        location_label: "സ്ഥലം",
+        location_placeholder: "വിലാസം നൽകുക അല്ലെങ്കിൽ GPS ഉപയോഗിക്കുക",
         request_pickup_btn: "പിക്കപ്പ് അഭ്യർത്ഥിക്കുക",
         pickup_request_success: "അഭ്യർത്ഥന വിജയകരമായി സമർപ്പിച്ചു!",
         delete_request: "അഭ്യർത്ഥന നീക്കം ചെയ്യുക",
