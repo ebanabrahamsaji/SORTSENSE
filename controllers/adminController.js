@@ -265,13 +265,48 @@ export const updateUserStatus = async (req, res) => {
     }
 };
 
-export const addNewUser = async (req, res) => {
-    const { name, email, role, status, password } = req.body;
+export const deleteUser = async (req, res) => {
+    const { id } = req.params;
     try {
+        // Prevent deleting the main admin/self (simple check)
+        const [target] = await db.query("SELECT email, role FROM tbl_users WHERE user_id = ?", [id]);
+        if (target.length === 0) return res.status(404).json({ message: "User not found" });
+
+        if (target[0].role === 'ADMIN' && target[0].email === 'admin@sortsense.com') { // Prevent super admin deletion
+            return res.status(403).json({ message: "Cannot delete Super Admin" });
+        }
+
+        await db.query("DELETE FROM tbl_users WHERE user_id = ?", [id]);
+
+        // Log action
+        await db.query(
+            "INSERT INTO tbl_admin_audit_logs (admin_id, action_type, target_type, target_id, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+            [1, 'DELETE_USER', 'USER', id, `Deleted user ${target[0].email}`]
+        );
+
+        res.json({ message: "User deleted successfully" });
+    } catch (e) {
+        console.error("Delete User Error:", e);
+        res.status(500).json({ message: "Failed to delete user" });
+    }
+};
+
+export const addNewUser = async (req, res) => {
+    try {
+        const name = req.body.name?.trim();
+        const email = req.body.email?.trim();
+        const role = req.body.role;
+        const status = req.body.status;
+        const password = req.body.password;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "Name, Email, and Password are required." });
+        }
+
         // Check for duplicate email
         const [existing] = await db.query("SELECT * FROM tbl_users WHERE email = ?", [email]);
         if (existing.length > 0) {
-            return res.status(400).json({ message: "Email already exists" });
+            return res.status(409).json({ message: "User with this email already exists." });
         }
 
         // Hash password
@@ -289,33 +324,41 @@ export const addNewUser = async (req, res) => {
             to: email,
             subject: "Welcome to SortSense - Account Created",
             html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-                    <h2 style="color: #6366f1;">Welcome to SortSense!</h2>
-                    <p>Hello ${name},</p>
-                    <p>An administrator has created an account for you on the SortSense Waste Management platform.</p>
-                    <p><strong>Your Account Details:</strong></p>
-                    <ul>
-                        <li><strong>Email:</strong> ${email}</li>
-                        <li><strong>Role:</strong> ${role}</li>
-                        <li><strong>Status:</strong> ${status}</li>
-                    </ul>
-                    <p>You can now log in using your email and the password provided to you.</p>
-                    <a href="http://localhost:8000/pages/login-user.html" style="background:#6366f1; color:white; padding:10px 20px; text-decoration:none; border-radius:5px; display:inline-block; margin-top:10px;">Login Now</a>
-                    <p style="margin-top:20px; font-size: 0.8rem; color: #666;">If you didn't expect this email, please ignore it.</p>
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; background-color: #f9fafb;">
+                    <div style="max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h2 style="color: #6366f1; margin-top: 0; text-align: center;">Welcome to SortSense!</h2>
+                        <p style="font-size: 16px; line-height: 1.6;">Hello <strong>${name}</strong>,</p>
+                        <p style="font-size: 16px; line-height: 1.6;">An administrator has created an account for you on the SortSense Waste Management platform.</p>
+                        
+                        <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+                            <p style="margin: 5px 0;"><strong>Role:</strong> ${role}</p>
+                            <p style="margin: 5px 0;"><strong>Status:</strong> <span style="color: ${status === 'Active' ? '#10b981' : '#f59e0b'}">${status}</span></p>
+                        </div>
+
+                        <p style="font-size: 16px; line-height: 1.6;">You can now log in using your email and the password provided to you.</p>
+                        
+                        <div style="text-align: center; margin-top: 30px;">
+                            <a href="http://localhost:8000/pages/login-user.html" style="background:#6366f1; color:white; padding:12px 24px; text-decoration:none; border-radius:6px; font-weight: 600; display:inline-block;">Login to Dashboard</a>
+                        </div>
+                        
+                        <p style="margin-top:30px; font-size: 0.8rem; color: #9ca3af; text-align: center;">If you didn't expect this email, please ignore it.</p>
+                    </div>
                 </div>
             `
         };
 
         try {
             await transporter.sendMail(mailOptions);
+            console.log(`Welcome email sent to ${email}`);
         } catch (mailErr) {
             console.error("Error sending welcome email:", mailErr);
-            // We don't fail the whole request just because email failed
+            // We don't fail the whole request just because email failed, but we log it
         }
 
         // Log action in audit logs
         await db.query(
-            "INSERT INTO tbl_admin_audit_logs (admin_id, action, target_type, target_id, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+            "INSERT INTO tbl_admin_audit_logs (admin_id, action_type, target_type, target_id, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
             [1, 'CREATE_USER', 'USER', result.insertId, `Created user ${email} with role ${role}`]
         );
 
@@ -328,7 +371,7 @@ export const addNewUser = async (req, res) => {
         res.status(201).json({ message: "User created successfully", userId: result.insertId });
     } catch (e) {
         console.error("Add New User Error:", e);
-        res.status(500).json({ message: "Error creating user" });
+        res.status(500).json({ message: "Error creating user: " + e.message });
     }
 };
 
@@ -348,7 +391,7 @@ export const addCategory = async (req, res) => {
 
         // Log action
         await db.query(
-            "INSERT INTO tbl_admin_audit_logs (admin_id, action, target_type, details, created_at) VALUES (?, ?, ?, ?, NOW())",
+            "INSERT INTO tbl_admin_audit_logs (admin_id, action_type, target_type, details, created_at) VALUES (?, ?, ?, ?, NOW())",
             [1, 'ADD_CATEGORY', 'CATEGORY', `Added category: ${name}`]
         );
 
@@ -420,7 +463,7 @@ export const invalidateSessions = async (req, res) => {
 
         // Security log
         await db.query(
-            "INSERT INTO tbl_admin_audit_logs (admin_id, action, target_type, details, created_at) VALUES (?, ?, ?, ?, NOW())",
+            "INSERT INTO tbl_admin_audit_logs (admin_id, action_type, target_type, details, created_at) VALUES (?, ?, ?, ?, NOW())",
             [1, 'INVALIDATE_SESSIONS', 'SYSTEM', 'Global session invalidation triggered']
         );
 

@@ -150,6 +150,17 @@ function setupInteractions() {
 }
 
 function setupFormHandlers() {
+    // Password Toggle
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('newUserPassword');
+    if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', () => {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            toggleBtn.className = type === 'password' ? 'ri-eye-off-line password-toggle' : 'ri-eye-line password-toggle';
+        });
+    }
+
     // Add User Form
     const addUserForm = document.getElementById('addUserForm');
     if (addUserForm) {
@@ -157,6 +168,10 @@ function setupFormHandlers() {
             e.preventDefault();
             const formData = new FormData(addUserForm);
             const data = Object.fromEntries(formData.entries());
+
+            // Trim inputs
+            data.name = data.name.trim();
+            data.email = data.email.trim();
 
             try {
                 const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
@@ -167,14 +182,21 @@ function setupFormHandlers() {
 
                 const result = await response.json();
                 if (response.ok) {
-                    showToast('User created successfully and confirmation email sent.', 'success');
+                    showToast('User created successfully. Welcome email sent.', 'success');
                     closeModal('addUserModal');
                     addUserForm.reset();
+                    // Reset password toggle
+                    if (passwordInput) passwordInput.type = 'password';
+                    if (toggleBtn) toggleBtn.className = 'ri-eye-off-line password-toggle';
+
                     // Refresh stats and activity
                     fetchAndAnimateStats();
-                    // populateRecentActivity();
                 } else {
-                    showToast(result.message || 'Error creating user', 'error');
+                    if (response.status === 409) {
+                        showToast(result.message, 'warning'); // Use warning color for duplicates
+                    } else {
+                        showToast(result.message || 'Error creating user', 'error');
+                    }
                 }
             } catch (error) {
                 showToast('Network error while creating user', 'error');

@@ -46,9 +46,18 @@ function renderUsers(query = '') {
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid #334155';
 
-        const isActive = (u.status || 'active') === 'active';
-        const btnClass = isActive ? 'btn-deactivate' : 'btn-activate';
-        const btnText = isActive ? 'Deactivate' : 'Activate';
+        const isActive = (u.status || 'active').toLowerCase() === 'active';
+        let actionButtons = '';
+
+        if (isActive) {
+            actionButtons = `<button class="table-action-btn btn-deactivate" onclick="toggleStatus(${u.user_id}, 'inactive')">Deactivate</button>`;
+        } else {
+            actionButtons = `
+                <button class="table-action-btn btn-activate" onclick="toggleStatus(${u.user_id}, 'active')">Activate</button>
+                <button class="table-action-btn btn-delete" onclick="deleteUser(${u.user_id})">Delete</button>
+            `;
+        }
+
         const statusColor = isActive ? '#10B981' : '#EF4444';
 
         row.innerHTML = `
@@ -58,7 +67,7 @@ function renderUsers(query = '') {
             <td style="padding:10px;">${new Date(u.created_at).toLocaleDateString()}</td>
             <td style="padding:10px;"><span style="color:${statusColor}; font-weight:600;">${u.status || 'active'}</span></td>
             <td style="padding:10px;">
-                <button class="table-action-btn ${btnClass}" onclick="toggleStatus(${u.user_id}, '${isActive ? 'inactive' : 'active'}')">${btnText}</button>
+                ${actionButtons}
             </td>
         `;
         tbody.appendChild(row);
@@ -71,7 +80,7 @@ window.filterUsers = () => {
 };
 
 window.toggleStatus = async (id, status) => {
-    if (!confirm(`Are you sure you want to mark this user as ${status}?`)) return;
+    if (!confirm(`Are you sure you want to change user status to ${status}?`)) return;
     try {
         const res = await fetch('/api/admin/user-status', {
             method: 'POST',
@@ -81,4 +90,24 @@ window.toggleStatus = async (id, status) => {
         if (res.ok) fetchUsers();
         else alert("Failed to update status");
     } catch (e) { alert("Connection Error"); }
+};
+
+window.deleteUser = async (id) => {
+    if (!confirm('Are you sure you want to PERMANENTLY delete this user? This action cannot be undone.')) return;
+    try {
+        const res = await fetch(`/api/admin/users/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            // alert('User deleted successfully');
+            fetchUsers();
+        } else {
+            const result = await res.json().catch(() => ({ message: "Failed to parse response" }));
+            alert(result.message || "Failed to delete user");
+        }
+    } catch (e) {
+        console.error("Delete user error:", e);
+        alert("Connection Error deleting user: " + e.message);
+    }
 };

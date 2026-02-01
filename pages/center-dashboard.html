@@ -323,12 +323,7 @@
                     <h1>Incoming Pickup Requests</h1>
                     <p style="color:var(--text-muted); font-size:0.9rem;">Manage and track waste collection requests</p>
                 </div>
-                <div style="flex:1; max-width:400px; margin:0 2rem; position:relative;">
-                    <i class="ri-search-line"
-                        style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
-                    <input type="text" id="centerSearch" onkeyup="applyFilters()" placeholder="Search requests..."
-                        style="width:100%; padding:10px 10px 10px 40px; border-radius:8px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white;">
-                </div>
+
                 <div style="display:flex; gap:0.5rem;">
                     <button id="clearHistoryBtn" onclick="confirmClearHistory()" class="action-btn"
                         style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); display:none;">
@@ -596,7 +591,7 @@
             const statusFilter = document.getElementById('statusFilter').value;
             const priorityFilter = document.getElementById('priorityFilter').value;
             const sortValue = document.getElementById('sortBy').value;
-            const searchTerm = document.getElementById('centerSearch').value.toLowerCase();
+            const searchTerm = '';
 
             // 1. Filter
             let filtered = allRequests.filter(req => {

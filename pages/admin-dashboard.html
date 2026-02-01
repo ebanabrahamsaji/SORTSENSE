@@ -140,6 +140,68 @@
             justify-content: space-between;
             align-items: center;
         }
+
+        /* Improved Form Styles */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            pointer-events: none;
+        }
+
+        .form-input,
+        .form-select {
+            width: 100%;
+            padding: 12px 12px 12px 42px;
+            background: #334155;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.1rem;
+            z-index: 10;
+        }
+
+        .password-toggle:hover {
+            color: white;
+        }
     </style>
 </head>
 
@@ -320,62 +382,82 @@
 
     <!-- Add New User Modal -->
     <div id="addUserModal" class="modal-overlay"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center;">
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
         <div class="modal-content"
-            style="background:#1e293b; padding:2rem; border-radius:16px; width:500px; max-width:95%; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                <h3 style="color:white; margin:0;">Add New User</h3>
+            style="background:#1e293b; padding:2rem; border-radius:16px; width:500px; max-width:95%; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div
+                        style="width: 40px; height: 40px; background: rgba(99, 102, 241, 0.1); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary-color);">
+                        <i class="ri-user-add-line" style="font-size: 1.2rem;"></i>
+                    </div>
+                    <h3 style="color:white; margin:0; font-size: 1.25rem;">Add New User</h3>
+                </div>
                 <button onclick="closeModal('addUserModal')"
-                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.5rem;"><i
+                    style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.5rem; transition: color 0.2s;"><i
                         class="ri-close-line"></i></button>
             </div>
+
             <form id="addUserForm">
-                <div style="margin-bottom:1rem;">
-                    <label
-                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Full
-                        Name</label>
-                    <input type="text" name="name" required
-                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
-                </div>
-                <div style="margin-bottom:1rem;">
-                    <label
-                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Email
-                        Address</label>
-                    <input type="email" name="email" required
-                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
-                    <div>
-                        <label
-                            style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Role</label>
-                        <select name="role" required
-                            style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
-                            <option value="USER">User</option>
-                            <option value="CENTER_ADMIN">Center Admin</option>
-                            <option value="ADMIN">Super Admin</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label
-                            style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Status</label>
-                        <select name="status" required
-                            style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                            <option value="Suspended">Suspended</option>
-                        </select>
+                <div class="form-group">
+                    <label class="form-label">Full Name</label>
+                    <div class="input-wrapper">
+                        <i class="ri-user-line input-icon"></i>
+                        <input type="text" name="name" class="form-input" required placeholder="John Doe">
                     </div>
                 </div>
-                <div style="margin-bottom:1.5rem;">
-                    <label
-                        style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Password</label>
-                    <input type="password" name="password" required minlength="6"
-                        style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <div class="input-wrapper">
+                        <i class="ri-mail-line input-icon"></i>
+                        <input type="email" name="email" class="form-input" required placeholder="john@example.com">
+                    </div>
                 </div>
-                <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <div class="input-wrapper">
+                            <i class="ri-shield-user-line input-icon"></i>
+                            <select name="role" class="form-select" required>
+                                <option value="USER">User</option>
+                                <option value="CENTER_ADMIN">Center Admin</option>
+                                <option value="ADMIN">Super Admin</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <div class="input-wrapper">
+                            <i class="ri-toggle-line input-icon"></i>
+                            <select name="status" class="form-select" required>
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Suspended">Suspended</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="input-wrapper">
+                        <i class="ri-lock-password-line input-icon"></i>
+                        <input type="password" name="password" id="newUserPassword" class="form-input" required
+                            minlength="6" placeholder="••••••••">
+                        <i class="ri-eye-off-line password-toggle" id="togglePasswordBtn"></i>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; margin-left: 2px;">
+                        Minimum 6 characters required.</p>
+                </div>
+
+                <div style="text-align:right; gap: 12px; display: flex; justify-content: flex-end; margin-top: 2rem;">
                     <button type="button" onclick="closeModal('addUserModal')" class="btn btn-outline"
                         style="border:1px solid #475569; color:white;">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create User</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem;"><i
+                            class="ri-check-line" style="margin-right: 6px;"></i> Create User</button>
                 </div>
             </form>
         </div>

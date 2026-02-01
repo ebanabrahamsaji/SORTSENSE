@@ -7,6 +7,7 @@ import {
     getRecentActivity,
     getAllUsers,
     updateUserStatus,
+    deleteUser,
     getAllActivities,
     addNewUser,
     addCategory,
@@ -31,6 +32,7 @@ router.delete('/activities/:type/:id', deleteActivity);
 router.get('/users', getAllUsers);
 router.post('/users', addNewUser);
 router.post('/user-status', updateUserStatus);
+router.delete('/users/:id', deleteUser);
 router.post('/categories', addCategory);
 router.delete('/categories/:id', deleteCategory);
 router.get('/waste-stats', getWasteStats);
