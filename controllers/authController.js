@@ -35,6 +35,29 @@ export const registerUser = async (req, res) => {
             [name, email, password_hash, language_pref || 'ENGLISH']
         );
 
+        // Send Welcome Email
+        try {
+            await transporter.sendMail({
+                from: `"SortSense Support" <${process.env.EMAIL_USER}>`,
+                to: email,
+                subject: 'Welcome to SortSense!',
+                html: `
+                    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                        <h2 style="color: #10B981;">Welcome to SortSense!</h2>
+                        <p>Hi ${name},</p>
+                        <p>You have successfully registered to SortSense.</p>
+                        <p>Start your eco-friendly journey with us today!</p>
+                        <br>
+                        <p>Best regards,</p>
+                        <p><strong>SortSense Team</strong></p>
+                    </div>
+                `
+            });
+            console.log(`✅ Welcome email sent to ${email}`);
+        } catch (emailErr) {
+            console.error("❌ Failed to send welcome email:", emailErr);
+        }
+
         res.status(201).json({ message: 'User registered successfully.', userId: result.insertId });
 
     } catch (error) {
@@ -115,6 +138,29 @@ export const googleLogin = async (req, res) => {
                 'INSERT INTO tbl_users (name, email, password_hash, role, profile_picture) VALUES (?, ?, ?, ?, ?)',
                 [name || 'Google User', email, dummyHash, 'USER', picture || null]
             );
+
+            // Send Welcome Email
+            try {
+                await transporter.sendMail({
+                    from: `"SortSense Support" <${process.env.EMAIL_USER}>`,
+                    to: email,
+                    subject: 'Welcome to SortSense!',
+                    html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                            <h2 style="color: #10B981;">Welcome to SortSense!</h2>
+                            <p>Hi ${name || 'User'},</p>
+                            <p>You have successfully registered to SortSense.</p>
+                            <p>Start your eco-friendly journey with us today!</p>
+                            <br>
+                            <p>Best regards,</p>
+                            <p><strong>SortSense Team</strong></p>
+                        </div>
+                    `
+                });
+                console.log(`✅ Welcome email sent to ${email}`);
+            } catch (emailErr) {
+                console.error("❌ Failed to send welcome email:", emailErr);
+            }
 
             const newUser = {
                 user_id: result.insertId,

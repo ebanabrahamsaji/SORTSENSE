@@ -54,7 +54,6 @@ function renderUsers(query = '') {
         } else {
             actionButtons = `
                 <button class="table-action-btn btn-activate" onclick="toggleStatus(${u.user_id}, 'active')">Activate</button>
-                <button class="table-action-btn btn-delete" onclick="deleteUser(${u.user_id})">Delete</button>
             `;
         }
 
