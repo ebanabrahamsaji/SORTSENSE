@@ -88,15 +88,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageWrapper = document.getElementById('swImageWrapper');
     const procTime = document.getElementById('swProcTime');
 
-    // UI Logic Map
+    // UI Logic Map (Synced with Backend WASTE_RULES)
     const UI_RULES = {
-        'E-waste': { hint: "Remove batteries if possible", unit: "items", icon: "ri-battery-2-charge-line" },
-        'Biomedical': { hint: "Seal waste in marked containers (Yellow/Red bags)", unit: "kg", icon: "ri-hospital-line" },
-        'Hazardous': { hint: "Store in leak-proof containers away from heat", unit: "kg", icon: "ri-skull-line" },
-        'Medicines': { hint: "Do not open blister packs or crush pills", unit: "kg", icon: "ri-capsule-line" },
-        'Festival': { hint: "Segregate biodegradable from non-biodegradable", unit: "kg", icon: "ri-flag-2-line", allowImage: true },
-        'Bulk': { hint: "Ensure waste is accessible for truck pickup", unit: "kg", icon: "ri-truck-line", allowImage: true },
-        'Construction Debris': { hint: "Keep free from loose dust/liquids", unit: "tons", icon: "ri-building-2-line", allowImage: true }
+        'E-waste': { hint: "Remove batteries if possible", unit: "items", icon: "ri-battery-2-charge-line", min: 1, max: 1000 },
+        'Biomedical': { hint: "Seal waste in marked containers (Yellow/Red bags)", unit: "kg", icon: "ri-hospital-line", min: 0.1, max: 50 },
+        'Hazardous': { hint: "Store in leak-proof containers away from heat", unit: "kg", icon: "ri-skull-line", min: 0.1, max: 50 },
+        'Medicines': { hint: "Do not open blister packs or crush pills", unit: "kg", icon: "ri-capsule-line", min: 0.01, max: 20 },
+        'Festival': { hint: "Segregate biodegradable from non-biodegradable", unit: "kg", icon: "ri-flag-2-line", min: 5, max: 2000, allowImage: true },
+        'Bulk': { hint: "Ensure waste is accessible for truck pickup", unit: "kg", icon: "ri-truck-line", min: 10, max: 5000, allowImage: true },
+        'Construction Debris': { hint: "Keep free from loose dust/liquids", unit: "tons", icon: "ri-building-2-line", min: 0.5, max: 500, allowImage: true }
     };
 
     // Category Change Handler
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (rules) {
             // Safety Hint
-            safetyHint.innerHTML = `<i class="ri-information-fill"></i> ${rules.hint}`;
+            safetyHint.innerHTML = `<i class="ri-information-fill"></i> ${rules.hint} (Min: ${rules.min} ${rules.unit})`;
             safetyHint.style.display = 'block';
             if (['Biomedical', 'Hazardous', 'Medicines'].includes(cat)) {
                 safetyHint.className = 'hint-text hint-warning';
@@ -116,9 +116,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Unit
             unitLabel.innerText = rules.unit;
+            document.getElementById('swQuantity').min = rules.min;
+            document.getElementById('swQuantity').max = rules.max;
+            document.getElementById('swQuantity').placeholder = `Min ${rules.min}, Max ${rules.max}`;
 
             // Processing Time
-            procTime.style.display = 'block'; // Always show indicator as requested
+            procTime.style.display = 'block';
 
             // Image Upload
             if (rules.allowImage) {
@@ -130,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Set Date Min to Today (Local Time logic to avoid timezone issues)
+    // Set Date Min to Today (Local Time logic)
     const dateInput = document.getElementById('swDate');
     const localToday = new Date();
     localToday.setMinutes(localToday.getMinutes() - localToday.getTimezoneOffset());
@@ -147,51 +150,52 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const submitBtn = form.querySelector('button');
-    // submitBtn.disabled = true; // REMOVED: Allow user to click to see validation errors
 
     // Validation Function
     const validateForm = () => {
-        let isValid = true;
-
         // Category
-        if (!inputs.category.value) isValid = false;
+        if (!inputs.category.value) return "Please select a waste category.";
 
-        // Quantity (Numeric, > 0.1, Non-negative)
+        const rules = UI_RULES[inputs.category.value];
+
+        // Quantity
         const qty = parseFloat(inputs.quantity.value);
-        if (isNaN(qty) || qty <= 0.1) isValid = false;
+        if (isNaN(qty)) return "Please enter a valid quantity.";
+        if (rules && (qty < rules.min || qty > rules.max)) {
+            return `Quantity for ${inputs.category.value} must be between ${rules.min} and ${rules.max} ${rules.unit}.`;
+        }
 
-        // Date (Required, Not Past)
-        if (!inputs.date.value || inputs.date.value < todayStr) isValid = false;
+        // Date
+        if (!inputs.date.value) return "Please select a preferred date.";
+        if (inputs.date.value < todayStr) return "Date cannot be in the past.";
 
         // Location
-        if (!inputs.location.value.trim()) isValid = false;
+        if (!inputs.location.value.trim()) return "Please enter a location.";
 
         // Description Rules
         const desc = inputs.description.value.trim();
-        if (desc.length < 10 || desc.length > 200) isValid = false;
-        if (!/\d/.test(desc)) isValid = false; // Missing numeric count
-        if (!/^[a-zA-Z0-9\s.,()-]+$/.test(desc)) isValid = false; // Invalid chars
+        if (desc.length < 20) return "Description must be at least 20 characters.";
 
-        // Update Button
-        // submitBtn.disabled = !isValid; // REMOVED: Allow user to click
-        return isValid;
+        // Success
+        return null;
     };
-
-    // Attach Listeners
-    if (categorySelect) categorySelect.addEventListener('change', validateForm);
-    Object.values(inputs).forEach(input => {
-        if (input) {
-            input.addEventListener('input', validateForm);
-            input.addEventListener('change', validateForm);
-        }
-    });
 
     // Form Submit
     form.onsubmit = async (e) => {
         e.preventDefault();
 
-        if (!validateForm()) {
-            showToast('Validation Error', 'Please fill all fields correctly.', 'warning');
+        // Log values for debugging
+        console.log("Submitting Form...", {
+            category: inputs.category.value,
+            quantity: inputs.quantity.value,
+            date: inputs.date.value,
+            location: inputs.location.value,
+            description: inputs.description.value
+        });
+
+        const errorMsg = validateForm();
+        if (errorMsg) {
+            showToast('Validation Error', errorMsg, 'warning');
             return;
         }
 
@@ -217,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const res = await fetch('/api/special-waste/create', {
                 method: 'POST',
-                body: formData // No Content-Type header (browser sets boundary)
+                body: formData
             });
 
             const data = await res.json();
@@ -231,9 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (procTime) procTime.style.display = 'none';
                 if (unitLabel) unitLabel.innerText = 'kg';
 
-                // validateForm(); // No longer needed for visual disabling
                 fetchHistory(userId);
             } else {
+                console.error("Server Validation Error:", data);
                 showToast('Submission Failed', data.message || 'Could not submit request.', 'error');
             }
 

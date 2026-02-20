@@ -53,6 +53,7 @@ export const createPickupRequest = async (req, res) => {
             LEFT JOIN tbl_accepted_categories ac ON cc.center_id = ac.center_id
             LEFT JOIN tbl_categories cat ON ac.category_id = cat.category_id
             WHERE (cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.type LIKE '%Haritha%')
+            AND cc.status = 'OPEN' AND cc.available_slots > 0
             ORDER BY distance ASC
             LIMIT 1
         `;
@@ -64,7 +65,6 @@ export const createPickupRequest = async (req, res) => {
             nearestCenter = centers[0];
         } else {
             // Fallback: If no specific center found, try finding ANY nearest center (General HKS)
-            // This handles cases where category mapping might be missing but a center exists.
             const fallbackQuery = `
                 SELECT center_id, center_name, 
                 (6371 * acos(
@@ -73,6 +73,7 @@ export const createPickupRequest = async (req, res) => {
                     sin(radians(?)) * sin(radians(latitude))
                 )) AS distance
                 FROM tbl_collection_centers
+                WHERE status = 'OPEN' AND available_slots > 0
                 ORDER BY distance ASC LIMIT 1
             `;
             const [fallbackCenters] = await db.query(fallbackQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat]);
@@ -80,9 +81,37 @@ export const createPickupRequest = async (req, res) => {
         }
 
 
+
         if (!nearestCenter) {
             return res.status(404).json({ message: "No collection centers available." });
         }
+
+        // --- Availability Check ---
+        // Need to fetch fresh status and slots for the chosen center to be sure
+        const [centerStatusArr] = await db.query("SELECT status, available_slots FROM tbl_collection_centers WHERE center_id = ?", [nearestCenter.center_id]);
+
+        if (centerStatusArr.length > 0) {
+            const cStatus = centerStatusArr[0];
+            // console.log(`[Pickup] Center ${nearestCenter.center_id} Status:`, cStatus); // Debug
+
+            if (cStatus.status === 'CLOSED' || cStatus.available_slots <= 0) {
+                return res.status(409).json({ // 409 Conflict
+                    message: "Selected center is currently full or closed. Please try again later or choose another location.",
+                    centerName: nearestCenter.center_name
+                });
+            }
+
+            // Decrement Slot - Fix Logic: Use updated value for check
+            // If available_slots becomes 0, status -> CLOSED
+            await db.query(`
+                UPDATE tbl_collection_centers 
+                SET available_slots = available_slots - 1,
+                    status = CASE WHEN available_slots = 0 THEN 'CLOSED' ELSE status END
+                WHERE center_id = ? AND available_slots > 0
+            `, [nearestCenter.center_id]);
+        }
+        // --------------------------
+        // --------------------------
 
 
         // Priority & Threshold Logic
@@ -113,6 +142,11 @@ export const createPickupRequest = async (req, res) => {
 
         const [result] = await db.query(insertQuery, [userId, nearestCenter.center_id, wasteType, quantity, status, lat, lng, address || null]);
         const requestId = result.insertId;
+
+        // --- Challenge: Pickup ---
+        import('./leaderboardController.js').then(({ updateChallengeProgress }) => {
+            updateChallengeProgress(userId, 'pickup');
+        }).catch(e => console.error("Challenge Trigger Error:", e));
 
         // C. Insert Items
         const types = wasteType.split(',');
@@ -203,7 +237,7 @@ export const getCenterRequests = async (req, res) => {
             JOIN tbl_users u ON r.user_id = u.user_id
             WHERE r.status NOT IN ('Completed', 'Rejected', 'Cancelled')
             ${centerId ? 'AND r.center_id = ?' : ''}
-            ORDER BY r.created_at DESC
+            ORDER BY r.is_urgent DESC, r.created_at ASC
         `;
 
         const historyQuery = `
@@ -260,8 +294,8 @@ export const updatePickupStatus = async (req, res) => {
     const { status, rejectionReason, estimatedPickupTime } = req.body;
 
     // STRICT Status Enforcement
-    if (!['Pending', 'Approved', 'Completed', 'Rejected'].includes(status)) {
-        return res.status(400).json({ message: "Invalid status value. Must be Pending, Approved, Completed, or Rejected." });
+    if (!['Pending', 'Approved', 'Collected', 'Completed', 'Rejected'].includes(status)) {
+        return res.status(400).json({ message: "Invalid status value. Must be Pending, Approved, Collected, Completed, or Rejected." });
     }
 
     try {
@@ -311,7 +345,7 @@ export const updatePickupStatus = async (req, res) => {
             // Map pickup status to record status lifecycle
             let recordStatus = status;
             if (status === 'Approved') recordStatus = 'Verified';
-            else if (status === 'Completed') recordStatus = 'Picked';
+            else if (status === 'Completed' || status === 'Collected') recordStatus = 'Picked';
 
             await db.query(
                 "UPDATE tbl_waste_records SET status = ?, updated_at = NOW() WHERE pickup_id = ?",
@@ -335,14 +369,18 @@ export const updatePickupStatus = async (req, res) => {
                 notifMsg = `Great news! Your request #${requestId} has been approved.`;
                 if (estimatedPickupTime) notifMsg += ` ETA: ${estimatedPickupTime}.`;
                 notifType = "SUCCESS";
+            } else if (status === 'Collected') {
+                notifTitle = "Waste Collected 🚛";
+                notifMsg = `Your waste for request #${requestId} has been collected.`;
+                notifType = "SUCCESS";
             } else if (status === 'Rejected') {
                 notifTitle = "Pickup Rejected ❌";
                 notifMsg = `Your request #${requestId} was rejected.`;
                 if (rejectionReason) notifMsg += ` Reason: ${rejectionReason}`;
                 notifType = "ERROR";
             } else if (status === 'Completed') {
-                notifTitle = "Pickup Completed 🎉";
-                notifMsg = `Request #${requestId} has been successfully completed. Thank you for recycling!`;
+                notifTitle = "Process Completed 🎉";
+                notifMsg = `Request #${requestId} has been successfully processed. Thank you for recycling!`;
                 notifType = "SUCCESS";
             }
 
@@ -548,5 +586,23 @@ export const clearCenterHistory = async (req, res) => {
     } catch (error) {
         console.error("Clear History Error:", error);
         res.status(500).json({ message: "Error clearing history." });
+    }
+};
+
+// 9. Get Pickup Trend
+export const getPickupTrend = async (req, res) => {
+    try {
+        const [today] = await db.query("SELECT COUNT(*) AS count FROM tbl_pickup_requests WHERE DATE(created_at) = CURDATE()");
+        const [yesterday] = await db.query("SELECT COUNT(*) AS count FROM tbl_pickup_requests WHERE DATE(created_at) = CURDATE() - INTERVAL 1 DAY");
+        const [week] = await db.query("SELECT COUNT(*) AS count FROM tbl_pickup_requests WHERE YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)");
+
+        res.json({
+            today: today[0].count,
+            yesterday: yesterday[0].count,
+            week: week[0].count
+        });
+    } catch (error) {
+        console.error("Get Pickup Trend Error:", error);
+        res.json({ today: 0, yesterday: 0, week: 0 });
     }
 };

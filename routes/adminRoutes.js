@@ -22,7 +22,15 @@ import {
     verifyWasteRecord,
     updateWasteRecord,
     deleteWasteRecord,
-    deleteActivity
+    deleteActivity,
+    getSystemHealthStatus,
+    resetCenterSlots,
+    toggleCenterStatus,
+    exportPickupsCSV,
+    getSystemInfo,
+    getAdminNotifications,
+    markNotificationRead,
+    clearNotifications
 } from '../controllers/adminController.js';
 
 router.get('/stats', getDashboardStats);
@@ -46,7 +54,19 @@ router.put('/waste-records/:recordId/verify', verifyWasteRecord);
 router.put('/waste-records/:recordId', updateWasteRecord);
 router.delete('/waste-records/:recordId', deleteWasteRecord);
 
+// System Health & Centers
+router.get('/system-health', getSystemHealthStatus);
+router.get('/system-info', getSystemInfo); // New endpoint for System Settings
+router.post('/centers/:id/reset', resetCenterSlots);
+router.post('/centers/:id/toggle', toggleCenterStatus);
+
 router.get('/reports/export', exportReports);
+router.get('/export/pickups', exportPickupsCSV);
 router.post('/sessions/invalidate', invalidateSessions);
+
+// Admin Notifications
+router.get('/notifications', getAdminNotifications);
+router.post('/notifications/read', markNotificationRead);
+router.delete('/notifications/clear', clearNotifications);
 
 export default router;

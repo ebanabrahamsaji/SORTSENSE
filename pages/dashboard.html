@@ -11,6 +11,90 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/dashboard_fix.css">
+    <link rel="stylesheet" href="../css/gamification.css">
+    <link rel="stylesheet" href="../css/marketplace.css">
+    <style>
+        /* Status Tracker Stepper */
+        .stepper-wrapper {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0 10px 0;
+            position: relative;
+        }
+
+        .stepper-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+        }
+
+        .stepper-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            z-index: 2;
+        }
+
+        .step-counter {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #1e293b;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            transition: all 0.3s ease;
+        }
+
+        .step-name {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        /* Active/Completed States */
+        .stepper-item.completed .step-counter {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        .stepper-item.completed .step-name {
+            color: #10b981;
+        }
+
+        .stepper-item.active .step-counter {
+            border-color: #3b82f6;
+            background: #1e293b;
+            color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+        }
+
+        .stepper-item.active .step-name {
+            color: white;
+        }
+
+        /* Rejected State override */
+        .stepper-wrapper.rejected .step-counter {
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        .stepper-wrapper.rejected::before {
+            background: rgba(239, 68, 68, 0.2);
+        }
+    </style>
 </head>
 
 <body>
@@ -26,22 +110,35 @@
 
             <nav class="sidebar-nav">
                 <ul>
-                    <li class="active">
-                        <a href="#">
+                    <li id="dashboardLi" class="active">
+                        <a href="javascript:void(0)" onclick="showSection('dashboardSection')">
                             <i class="ri-dashboard-line"></i>
                             <span data-i18n="dashboard_menu">Dashboard</span>
                         </a>
                     </li>
                     <li>
-                        <a href="#">
+                        <a href="history.html">
                             <i class="ri-history-line"></i>
                             <span data-i18n="history_menu">History</span>
                         </a>
                     </li>
-                    <li>
-                        <a href="#">
+                    <li id="rewardsLi">
+                        <a href="javascript:void(0)" onclick="showSection('rewardsSection')">
                             <i class="ri-trophy-line"></i>
-                            <span data-i18n="rewards_menu">Rewards</span>
+                            <span data-i18n="rewards_menu">Rewards & Leaderboard</span>
+                        </a>
+                    </li>
+                    <li id="marketLi">
+                        <a href="javascript:void(0)" onclick="showSection('marketplaceSection')">
+                            <i class="ri-store-2-line"></i>
+                            <span data-i18n="marketplace_menu">Marketplace</span>
+                        </a>
+                    </li>
+                    <li id="messagesLi">
+                        <a href="javascript:void(0)" onclick="showSection('messagesSection'); loadInbox();">
+                            <i class="ri-chat-1-line"></i>
+                            <span data-i18n="messages_menu">Messages</span>
+                            <span id="msgBadge" class="sidebar-badge" style="display:none;"></span>
                         </a>
                     </li>
                     <li>
@@ -73,7 +170,11 @@
             <header class="top-header">
                 <div class="header-search">
                     <i class="ri-search-line"></i>
-                    <input type="text" placeholder="Search for waste items..." data-i18n="search_placeholder">
+                    <input type="text" id="wasteSearchInput" placeholder="Search for waste items..."
+                        data-i18n="search_placeholder">
+                    <button id="voiceSearchBtn" class="voice-btn" title="Search by Voice">
+                        <i class="ri-mic-line"></i>
+                    </button>
                 </div>
 
                 <div class="header-profile">
@@ -86,13 +187,23 @@
                         </select>
                     </div>
 
+
+
                     <div class="notification-badge">
                         <i class="ri-notification-3-line"></i>
                         <span class="dot"></span>
                     </div>
-                    <div class="user-info">
+                    <div class="user-info" style="display: flex; align-items: center;">
+                        <div class="user-details"
+                            style="text-align: right; margin-right: 10px; display: none; @media (min-width: 768px) { display: block; }">
+                            <span id="headerUserName"
+                                style="display: block; font-weight: 600; font-size: 0.9rem; line-height: 1.2;">User</span>
+                            <span id="headerUserEmail"
+                                style="display: block; font-size: 0.75rem; color: #94a3b8;">user@example.com</span>
+                        </div>
                         <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=10b981&color=fff"
-                            alt="Profile">
+                            alt="Profile"
+                            style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.1);">
                     </div>
                 </div>
 
@@ -106,7 +217,14 @@
             </header>
 
             <!-- Dashboard Content -->
-            <div class="dashboard-grid">
+
+
+
+            <div id="dashboardSection" class="dashboard-grid user-section">
+
+                <!-- Daily Tip Section -->
+                <div id="dailyTipContainer" style="grid-column: 1 / -1;"></div>
+
                 <!-- Welcome Section -->
                 <section class="welcome-section">
                     <div class="welcome-text">
@@ -115,6 +233,20 @@
                         <p data-i18n="welcome_msg">Ready to make a difference today? Let's sort smarter.</p>
                     </div>
                 </section>
+
+                <!-- Eco Score Section -->
+                <div class="eco-progress"
+                    style="grid-column: 1 / -1; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                    <h4 style="margin: 0; color: #fff; min-width: 80px;">Eco Score</h4>
+                    <div class="progress-bar"
+                        style="flex: 1; height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; overflow: hidden;">
+                        <div id="ecoFill"
+                            style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 1s ease;">
+                        </div>
+                    </div>
+                    <span id="ecoText" style="color: #fff; font-weight: bold; min-width: 80px; text-align: right;">0 /
+                        2000</span>
+                </div>
 
                 <!-- Action Area (Upload) -->
                 <section class="action-section">
@@ -170,6 +302,17 @@
                                 </select>
                             </div>
 
+                            <div class="form-group full-width">
+                                <label class="pickup-label">Preferred Time Slot <span
+                                        style="color:var(--danger-color)">*</span></label>
+                                <select id="pickupTimeSlot" class="pickup-input">
+                                    <option value="" disabled selected>Select Time Slot</option>
+                                    <option value="Morning">Morning (8 AM - 12 PM)</option>
+                                    <option value="Afternoon">Afternoon (12 PM - 4 PM)</option>
+                                    <option value="Evening">Evening (4 PM - 8 PM)</option>
+                                </select>
+                            </div>
+
                             <!-- Section 2: Bottom Row (Quantity + Location + Button) -->
                             <div class="pickup-row-bottom">
                                 <div class="pickup-form-group" style="flex: 0 0 120px;">
@@ -199,6 +342,26 @@
                                         <i class="ri-truck-line"></i> <span data-i18n="request_pickup_btn">Schedule
                                             Pickup</span>
                                     </button>
+                                </div>
+                            </div>
+                            <div id="nearestCenterInfo"
+                                style="display:none; margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.9rem; align-items:center; gap:10px;">
+                                <!-- Populated by JS -->
+                            </div>
+                            <!-- User Requested Structure -->
+                            <div class="center-availability"
+                                style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                                <h4
+                                    style="font-size: 0.9rem; color: #a3a3a3; margin-bottom: 0.5rem; display: flex; align-items: center;">
+                                    Collection Center</h4>
+                                <div
+                                    style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 0.85rem;">
+                                    <p style="margin:0; color:#cbd5e1;">Status: <span id="centerStatus" class="badge"
+                                            style="font-weight:600;">--</span></p>
+                                    <p style="margin:0; color:#cbd5e1;">Slots: <span id="centerSlots"
+                                            style="font-weight:600;">--</span></p>
+                                    <p style="margin:0; color:#cbd5e1;">Load: <span id="centerLoad"
+                                            style="font-weight:600;">--</span></p>
                                 </div>
                             </div>
                         </div>
@@ -232,6 +395,8 @@
                             <div class="cat-icon"><i class="ri-cup-line"></i></div>
                             <span data-i18n="glass">Glass</span>
                         </div>
+
+
                         <div class="category-card e-waste">
                             <div class="cat-icon"><i class="ri-battery-charge-line"></i></div>
                             <span data-i18n="ewaste">E-Waste</span>
@@ -243,12 +408,458 @@
                     </div>
                 </section>
             </div>
+
+            <!-- ═══════════════════════════════════════
+                 WASTE MARKETPLACE SECTION
+                 ═══════════════════════════════════════ -->
+            <div id="marketplaceSection" class="user-section" style="display:none; flex-direction:column; gap:28px;">
+
+                <!-- Header -->
+                <div class="mp-header">
+                    <div class="mp-header-text">
+                        <h1>Waste <span class="gradient-text">Marketplace</span></h1>
+                        <p>Exchange recyclable materials sustainably with your community.</p>
+                    </div>
+                    <button class="btn-post-item" onclick="openAddItem()">
+                        <i class="ri-add-circle-line"></i> Post New Item
+                    </button>
+                </div>
+
+                <!-- Controls: Search + Tabs -->
+                <div class="mp-controls">
+                    <div class="mp-search-wrap">
+                        <i class="ri-search-line"></i>
+                        <input type="text" id="marketSearch" placeholder="Search recyclable items..."
+                            oninput="filterMarket()">
+                    </div>
+                    <div class="mp-tabs">
+                        <div class="mp-tab active" onclick="switchMarketTab('all', this)">All Items</div>
+                        <div class="mp-tab" onclick="switchMarketTab('my', this)">My Listings</div>
+                    </div>
+                </div>
+
+                <!-- Grid -->
+                <div id="marketGrid" class="mp-grid">
+                    <!-- Populated by JS -->
+                </div>
+
+            </div>
+
+            <!-- ═══════════════════════════════════════
+                 MESSAGES / INBOX SECTION
+                 ═══════════════════════════════════════ -->
+            <div id="messagesSection" class="user-section" style="display:none; flex-direction:column; gap:20px;">
+                <h1 style="margin-bottom:10px;">My <span class="gradient-text">Inbox</span></h1>
+
+                <div class="inbox-container"
+                    style="display:flex; gap:20px; height:600px; background:rgba(30,41,59,0.5); border-radius:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);">
+
+                    <!-- Sidebar: Conversation List -->
+                    <div class="inbox-sidebar"
+                        style="width:300px; border-right:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column;">
+                        <div style="padding:15px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                            <input type="text" placeholder="Search messages..."
+                                style="width:100%; background:rgba(0,0,0,0.2); border:none; padding:8px; color:white; border-radius:6px;">
+                        </div>
+                        <div id="inboxList" style="flex:1; overflow-y:auto;">
+                            <!-- Populated by JS -->
+                            <div style="padding:20px; text-align:center; color:#94a3b8;">Loading conversations...</div>
+                        </div>
+                    </div>
+
+                    <!-- Main Chat Area -->
+                    <div class="inbox-main"
+                        style="flex:1; display:flex; flex-direction:column; background:rgba(15, 23, 42, 0.3);">
+
+                        <!-- Chat Header -->
+                        <div id="chatHeader"
+                            style="padding:15px; border-bottom:1px solid rgba(255,255,255,0.1); display:none; align-items:center; gap:15px;">
+                            <img id="chatAvatar" src=""
+                                style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+                            <div>
+                                <h3 id="chatName" style="margin:0; font-size:1rem; color:white;">User Name</h3>
+                                <span id="chatProduct" style="font-size:0.8rem; color:#10b981;">Product Title</span>
+                            </div>
+                        </div>
+
+                        <!-- Messages -->
+                        <div id="chatMessages"
+                            style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">
+                            <div
+                                style="height:100%; display:flex; align-items:center; justify-content:center; color:#94a3b8; flex-direction:column;">
+                                <i class="ri-chat-smile-2-line"
+                                    style="font-size:3rem; margin-bottom:10px; opacity:0.5;"></i>
+                                <p>Select a conversation to start chatting</p>
+                            </div>
+                        </div>
+
+                        <!-- Reply Box -->
+                        <div id="chatInputArea"
+                            style="padding:15px; border-top:1px solid rgba(255,255,255,0.1); display:none; gap:10px;">
+                            <input type="text" id="replyInput" placeholder="Type a message..."
+                                style="flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); padding:10px; border-radius:8px; color:white;">
+                            <button onclick="sendReply()"
+                                style="background:#10b981; color:white; border:none; padding:0 20px; border-radius:8px; cursor:pointer;">
+                                <i class="ri-send-plane-fill"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rewards Section (Gamification Hub) -->
+            <div id="rewardsSection" class="dashboard-grid user-section" style="display:none;">
+
+                <!-- Hero Stats -->
+                <div class="gamification-hero"
+                    style="grid-column: 1/-1; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+
+                    <!-- Level & XP Card -->
+                    <div class="game-card level-card">
+                        <div class="level-circle-wrapper">
+                            <svg class="level-ring" width="120" height="120">
+                                <circle class="ring-bg" cx="60" cy="60" r="54"></circle>
+                                <circle id="xpRing" class="ring-progress" cx="60" cy="60" r="54"
+                                    stroke-dasharray="339.292" stroke-dashoffset="339.292"></circle>
+                            </svg>
+                            <div class="level-number">
+                                <span class="lbl">LVL</span>
+                                <span id="userLevelDisplay">1</span>
+                            </div>
+                        </div>
+                        <div class="level-info">
+                            <h3 id="levelTitle">Eco Novice</h3>
+                            <div class="xp-text"><span id="currentXP">0</span> / <span id="nextLevelXP">100</span> XP
+                            </div>
+                            <p class="next-reward">Next Reward: <span style="color:#fbbf24">Silver Badge</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Streak & Points -->
+                    <div class="game-card stats-card">
+                        <div class="stat-item streak">
+                            <div class="icon-box fire"><i class="ri-fire-fill"></i></div>
+                            <div>
+                                <h2 id="dayStreak">0</h2>
+                                <p>Day Streak</p>
+                            </div>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat-item points">
+                            <div class="icon-box coin"><i class="ri-coin-fill"></i></div>
+                            <div>
+                                <h2 id="totalPoints">0</h2>
+                                <p>Eco Points</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Impact Summary -->
+                    <div class="game-card impact-card">
+                        <h4>Total Impact</h4>
+                        <div class="impact-grid">
+                            <div class="impact-item">
+                                <i class="ri-recycle-line" style="color: #3b82f6;"></i>
+                                <span id="impactWaste">0 kg</span>
+                                <small>Recycled</small>
+                            </div>
+                            <div class="impact-item">
+                                <i class="ri-cloud-windy-line" style="color: #10b981;"></i>
+                                <span id="impactCO2">0 kg</span>
+                                <small>CO₂ Saved</small>
+                            </div>
+                            <div class="impact-item">
+                                <i class="ri-tree-line" style="color: #22c55e;"></i>
+                                <span id="impactTrees">0</span>
+                                <small>Trees</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Content Row -->
+                <div class="gamification-row" style="margin-bottom: 2rem;">
+
+                    <!-- Challenges Column -->
+                    <div class="challenges-panel">
+                        <div class="panel-header">
+                            <h3><i class="ri-target-fill" style="color:#ef4444"></i> Daily Quests</h3>
+                            <span id="questTimer" class="timer-badge">00:00:00</span>
+                        </div>
+                        <div id="challengesList" class="challenges-container">
+                            <!-- Populated by JS -->
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard Column -->
+                    <div class="leaderboard-panel">
+                        <div class="panel-header">
+                            <h3><i class="ri-trophy-fill" style="color:#fbbf24"></i> Leaderboard</h3>
+                            <select id="lbFilter" onchange="filterLeaderboard(this.value)">
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly" selected>Monthly</option>
+                                <option value="alltime">All Time</option>
+                            </select>
+                        </div>
+                        <div class="leaderboard-wrapper">
+                            <div class="lb-header-row">
+                                <span>Rank</span>
+                                <span>User</span>
+                                <span>XP</span>
+                            </div>
+                            <div id="leaderboardContent" class="lb-scroll">
+                                <!-- Populated by JS -->
+                            </div>
+                            <div id="userRankItem" class="user-rank-sticky">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Badges Section -->
+                <div class="badges-section">
+                    <h3 style="color: white; margin-bottom: 1rem; display:flex; align-items:center; gap:10px;">
+                        <i class="ri-medal-2-fill" style="color:#a855f7"></i> Achievements
+                    </h3>
+                    <div id="badgesGrid" class="badges-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- History Log (Collapsible or Small) -->
+                <div class="history-log-section" style="margin-top: 2rem;">
+                    <button class="btn-toggle-log" onclick="toggleRewardLog()">
+                        <i class="ri-history-line"></i> View Reward History
+                    </button>
+                    <div id="rewardLogContainer" class="reward-log" style="display:none;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+            </div>
+
+
         </main>
     </div>
 
+    <!-- ═══════════════════════════════════════
+         POST ITEM MODAL
+         ═══════════════════════════════════════ -->
+    <div id="addItemModal" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+
+            <!-- Modal Header -->
+            <div class="modal-head">
+                <h3><i class="ri-recycle-line" style="color:#10b981; margin-right:8px;"></i>Post a Reusable Item</h3>
+                <button class="modal-close-btn" onclick="closeAddItem()"><i class="ri-close-line"></i></button>
+            </div>
+
+            <!-- Modal Body: Form + Preview -->
+            <div class="modal-inner">
+
+                <!-- Form -->
+                <form id="marketplaceForm" class="mp-form" onsubmit="event.preventDefault(); addItem();">
+
+                    <div class="mp-form-group">
+                        <label>Item Name <span style="font-weight:400; opacity:0.6; font-size:0.75rem;">(Clear &
+                                concise)</span></label>
+                        <div class="mp-input-wrap">
+                            <i class="ri-font-size"></i>
+                            <input type="text" id="itemTitle" placeholder="e.g. Clean Plastic Pails" required
+                                oninput="updateMPPreview()">
+                        </div>
+                    </div>
+
+                    <div class="mp-form-group">
+                        <label>Category</label>
+                        <div class="mp-input-wrap">
+                            <i class="ri-price-tag-3-line"></i>
+                            <select id="itemCategory" onchange="updateMPPreview()">
+                                <option value="Plastic">Plastic Waste</option>
+                                <option value="Paper">Paper &amp; Cardboard</option>
+                                <option value="Glass">Glass Containers</option>
+                                <option value="Metal">Metal Scraps</option>
+                                <option value="E-Waste">Electronics / E-Waste</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mp-form-group">
+                        <label>Description <span id="charCount" class="char-count">0/200</span></label>
+                        <textarea id="mpDesc" placeholder="State the condition, quantity, and specific details..."
+                            rows="3" maxlength="200" oninput="updateMPPreview()"></textarea>
+                    </div>
+
+                    <div class="mp-form-group">
+                        <label>Item Photo <span
+                                style="font-weight:400; opacity:0.6; font-size:0.75rem;">(optional)</span></label>
+
+                        <!-- Upload Zone -->
+                        <div class="mp-upload-zone" id="mpUploadZone"
+                            onclick="document.getElementById('itemImageFile').click()">
+                            <div class="mp-upload-inner" id="mpUploadInner">
+                                <i class="ri-upload-cloud-2-line"></i>
+                                <span>Click or drag &amp; drop to upload</span>
+                                <small>JPEG, PNG, WebP &middot; max 5 MB</small>
+                            </div>
+                            <img id="mpUploadPreviewImg" src="" alt=""
+                                style="display:none; width:100%; height:100%; object-fit:cover; border-radius:10px;">
+                        </div>
+                        <input type="file" id="itemImageFile" accept="image/jpeg,image/png,image/webp,image/gif"
+                            style="display:none;" onchange="handleMPImageFile(this)">
+
+                        <!-- OR divider -->
+                        <div class="mp-or-divider"><span>or paste a URL</span></div>
+
+                        <!-- URL fallback -->
+                        <div class="mp-input-wrap">
+                            <i class="ri-links-line"></i>
+                            <input type="text" id="itemImage" placeholder="https://images.unsplash.com/..."
+                                oninput="updateMPPreview()">
+                        </div>
+                    </div>
+
+                    <div class="mp-form-actions">
+                        <button type="button" class="mp-btn-cancel" onclick="closeAddItem()">Cancel</button>
+                        <button type="submit" id="submitPostBtn" class="mp-btn-submit">
+                            <span>Post Item Now</span>
+                            <i class="ri-send-plane-fill"></i>
+                        </button>
+                    </div>
+
+                </form>
+
+                <!-- Live Preview -->
+                <div class="mp-preview-pane">
+                    <div class="mp-preview-label">Live Preview</div>
+                    <div id="mpLivePreview"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         CONTACT SELLER MODAL
+         ═══════════════════════════════════════    <!-- Contact Seller Modal -->
+    <div id="contactSellerModal" class="modal-overlay"
+        style="display:none; align-items:center; justify-content:center;">
+        <div class="modal-box"
+            style="max-width:500px; width:90%; display:flex; flex-direction:column; overflow:hidden;">
+            <div class="modal-head"
+                style="background:rgba(30,41,59,0.5); border-bottom:1px solid rgba(255,255,255,0.05); padding:20px 24px;">
+                <h3 style="display:flex; align-items:center; gap:10px; font-size:1.25rem;">
+                    <div
+                        style="width:36px; height:36px; background:rgba(16,185,129,0.1); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#10b981;">
+                        <i class="ri-chat-smile-2-line" style="font-size:1.2rem;"></i>
+                    </div>
+                    Contact Seller
+                </h3>
+                <button class="modal-close-btn" onclick="closeContactModal()"><i class="ri-close-line"></i></button>
+            </div>
+
+            <div style="padding:24px; display:flex; flex-direction:column; gap:20px;">
+                <div
+                    style="background:rgba(255,255,255,0.03); border-radius:12px; padding:16px; border:1px solid rgba(255,255,255,0.05);">
+                    <p style="color:#cbd5e1; font-size:0.95rem; margin:0; line-height:1.5;">
+                        To: <strong id="contactSellerName" style="color:white; font-weight:600;">Seller</strong>
+                    </p>
+                    <p style="color:#94a3b8; font-size:0.85rem; margin:4px 0 0 0;">
+                        Regarding: <span id="contactItemName" style="color:#10b981;">Item</span>
+                    </p>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <label style="color:#94a3b8; font-size:0.85rem; font-weight:600; margin-left:4px;">YOUR
+                        MESSAGE</label>
+                    <textarea id="contactMessage" rows="5"
+                        placeholder="Hi, is this still available? When can I pick it up?"
+                        style="width:100%; background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:16px; color:white; font-family:inherit; font-size:0.95rem; resize:none; outline:none; transition:border-color 0.2s;"></textarea>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px;">
+                    <button onclick="closeContactModal()"
+                        style="background:transparent; border:1px solid rgba(255,255,255,0.1); color:#94a3b8; padding:10px 20px; border-radius:10px; font-weight:600; cursor:pointer; transition:all 0.2s;">
+                        Cancel
+                    </button>
+                    <button onclick="sendContactMessage()" id="sendContactBtn"
+                        style="background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; padding:10px 24px; border-radius:10px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 4px 12px rgba(16,185,129,0.25);">
+                        <span>Send Message</span> <i class="ri-send-plane-fill"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+
+
+
+
     <script src="../js/config.js"></script>
+    <script src="../js/script.js"></script>
     <script src="../js/translations.js"></script>
-    <script src="../js/dashboard.js"></script>
+    <script src="../js/gamification.js"></script>
+    <script src="../js/marketplace.js"></script>
+    <script src="../js/dashboard.js?v=5"></script>
+
+    <script>
+
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const rewardsSection = document.getElementById("rewardsSection");
+            const marketplaceSection = document.getElementById("marketplaceSection");
+            const dashboardSection = document.getElementById("dashboardSection");
+
+            window.showSection = function (sectionId) {
+                // Hide all user sections
+                document.querySelectorAll(".user-section").forEach(sec => {
+                    sec.style.display = "none";
+                });
+
+                // Show selected section with correct display type
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    if (sectionId === 'marketplaceSection' || sectionId === 'messagesSection') {
+                        section.style.display = 'flex';
+                    } else if (section.classList.contains('dashboard-grid')) {
+                        section.style.display = 'grid';
+                    } else {
+                        section.style.display = 'block';
+                    }
+                }
+
+                // FORCE Marketplace UI render
+                if (sectionId === "marketplaceSection") {
+                    if (window.renderMarketplaceUI) window.renderMarketplaceUI();
+                    if (window.loadMarketplace) window.loadMarketplace();
+                }
+
+                // Update active nav link
+                let liId = "";
+                if (sectionId === 'dashboardSection') liId = "dashboardLi";
+                if (sectionId === 'rewardsSection') liId = "rewardsLi";
+                if (sectionId === 'marketplaceSection') liId = "marketLi";
+                if (sectionId === 'messagesSection') liId = "messagesLi";
+
+                const items = document.querySelectorAll(".sidebar-nav li");
+                items.forEach(li => li.classList.remove("active"));
+                if (liId) {
+                    const activeLi = document.getElementById(liId);
+                    if (activeLi) activeLi.classList.add("active");
+                }
+            }
+
+
+
+            // Set default view on load
+            showSection("dashboardSection");
+        });
+    </script>
 </body>
 
 </html>

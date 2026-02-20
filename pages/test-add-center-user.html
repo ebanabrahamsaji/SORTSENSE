@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Center User - Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .result pre {
+            margin-top: 10px;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🏢 Add Center User</h1>
+        <p>Create a new user account linked to a collection center</p>
+
+        <form id="addUserForm">
+            <div class="form-group">
+                <label for="name">Full Name *</label>
+                <input type="text" id="name" name="name" required placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" required placeholder="john@center.com">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password *</label>
+                <input type="password" id="password" name="password" required placeholder="Minimum 8 characters">
+            </div>
+
+            <div class="form-group">
+                <label for="centerId">Collection Center *</label>
+                <select id="centerId" name="centerId" required>
+                    <option value="">-- Select Center --</option>
+                </select>
+            </div>
+
+            <button type="submit">Create Center User</button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        // Load centers on page load
+        async function loadCenters() {
+            try {
+                const response = await fetch('/api/centers');
+                const centers = await response.json();
+
+                const select = document.getElementById('centerId');
+                centers.forEach(center => {
+                    const option = document.createElement('option');
+                    option.value = center.center_id;
+                    option.textContent = `${center.center_name} (ID: ${center.center_id})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading centers:', error);
+                showResult('Error loading centers: ' + error.message, false);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                centerId: parseInt(document.getElementById('centerId').value)
+            };
+
+            try {
+                const response = await fetch('/api/centers/add-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showResult(`✅ Success! User created successfully.\n\nUser ID: ${data.userId}\nCenter: ${data.centerName}\n\nA welcome email has been sent to ${formData.email}`, true);
+                    document.getElementById('addUserForm').reset();
+                } else {
+                    showResult(`❌ Error: ${data.message}`, false);
+                }
+            } catch (error) {
+                showResult(`❌ Network Error: ${error.message}`, false);
+            }
+        });
+
+        function showResult(message, isSuccess) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.className = 'result ' + (isSuccess ? 'success' : 'error');
+            resultDiv.innerHTML = `<pre>${message}</pre>`;
+            resultDiv.style.display = 'block';
+
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 10000);
+        }
+
+        // Load centers when page loads
+        loadCenters();
+    </script>
+</body>
+
+</html>

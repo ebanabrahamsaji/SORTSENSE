@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         // If key exists but no data, maybe show generic?
-        alert("Details for this category are coming soon.");
+        window.showWarning("Details for this category are coming soon.");
         window.location.href = 'dashboard.html';
         return;
     }
@@ -111,9 +111,9 @@ function loadUserData() {
 const logoutBtn = document.getElementById('sidebarLogoutBtn');
 if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
-        if (confirm("Logout?")) {
+        window.showCustomConfirm("Logout", "Are you sure you want to logout?", () => {
             localStorage.clear();
             window.location.href = '../index.html';
-        }
+        });
     });
 }

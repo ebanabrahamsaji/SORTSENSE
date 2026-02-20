@@ -19,7 +19,8 @@ router.put('/:requestId/add', addItemToRequest);
 import { deleteItemFromRequest } from '../controllers/pickupController.js';
 router.delete('/:requestId/item/:itemId', deleteItemFromRequest);
 
-import { getAllPickupRequests } from '../controllers/pickupController.js';
+import { getAllPickupRequests, getPickupTrend } from '../controllers/pickupController.js';
 router.get('/admin/all', getAllPickupRequests);
+router.get('/trend', getPickupTrend); // New Endpoint
 
 export default router;

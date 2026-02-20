@@ -16,9 +16,22 @@ const storage = multer.diskStorage({
         cb(null, 'sw-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
-const upload = multer({ storage: storage });
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only image files are allowed!'), false);
+    }
+};
 
-router.post('/create', upload.single('image'), createRequest);
+const upload = multer({ storage: storage, fileFilter: fileFilter });
+
+router.post('/create', (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) return res.status(400).json({ message: err.message });
+        next();
+    });
+}, createRequest);
 router.get('/my-requests', getUserRequests);
 router.get('/all', getAllRequests);
 router.get('/center-requests', getCenterRequests);

@@ -101,13 +101,27 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 1. Store the Analysis Data
                     sessionStorage.setItem('analysisResult', JSON.stringify(result));
 
-                    // 2. Store the Image (from preview src which is already Base64)
-                    const previewImg = document.getElementById('preview');
-                    if (previewImg && previewImg.src) {
-                        sessionStorage.setItem('wasteImage', previewImg.src);
+                    // 2. Store the Image (Prioritize Server URL if returned, then fallback to Base64)
+                    if (result.imageUrl) {
+                        sessionStorage.setItem('wasteImage', result.imageUrl);
+                    } else {
+                        const previewImg = document.getElementById('preview');
+                        if (previewImg && previewImg.src) {
+                            sessionStorage.setItem('wasteImage', previewImg.src);
+                        }
                     }
 
-                    // 3. Redirect to the unified Output Screen
+                    // 3. Trigger badge check (async, non-blocking)
+                    const scanUserId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+                    if (scanUserId) {
+                        fetch('/api/gamification/check-badges', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ user_id: scanUserId })
+                        }).catch(() => { });
+                    }
+
+                    // 4. Redirect to the unified Output Screen
                     window.location.href = 'analysis-result.html';
 
                 } catch (e) {

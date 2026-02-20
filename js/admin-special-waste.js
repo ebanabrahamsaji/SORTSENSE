@@ -201,10 +201,17 @@ function renderRegularTable(query = '') {
             actionsHtml = '<span style="font-size:0.8rem; color:#64748b;">No actions</span>';
         }
 
+        let displayWasteType = req.waste_type;
+        // Attempt to extract Time Slot from address if available
+        if (req.address && req.address.includes('SLOT:')) {
+            const slot = req.address.split('SLOT:')[1].trim();
+            displayWasteType += `<br><span style="font-size:0.8rem; color:#f59e0b; display:inline-flex; align-items:center; gap:4px;"><i class="ri-time-line"></i> ${slot}</span>`;
+        }
+
         row.innerHTML = `
             <td style="padding:10px;">${new Date(req.created_at).toLocaleDateString()}</td>
             <td style="padding:10px;">${req.user_name}</td>
-            <td style="padding:10px;">${req.waste_type}</td>
+            <td style="padding:10px;">${displayWasteType}</td>
             <td style="padding:10px;">${req.quantity}kg</td>
             <td style="padding:10px;">${req.center_name || 'Auto-Assigned'}</td>
             <td style="padding:10px;"><span style="color:${sColor}; font-weight:600;">${req.status}</span></td>
@@ -216,23 +223,23 @@ function renderRegularTable(query = '') {
 
 // --- Delete Request ---
 window.deleteRequest = async (id, type) => {
-    if (!confirm("Are you sure you want to delete this rejected request? This cannot be undone.")) return;
+    window.showCustomConfirm("Delete Request", "Are you sure you want to delete this rejected request? This cannot be undone.", async () => {
+        try {
+            const url = type === 'special' ? `/api/special-waste/${id}` : `/api/pickup/${id}`;
+            const res = await fetch(url, { method: 'DELETE' });
 
-    try {
-        const url = type === 'special' ? `/api/special-waste/${id}` : `/api/pickup/${id}`;
-        const res = await fetch(url, { method: 'DELETE' });
-
-        if (res.ok) {
-            alert("Deleted successfully.");
-            if (type === 'special') fetchRequests();
-            else fetchRegularRequests();
-        } else {
-            alert("Failed to delete.");
+            if (res.ok) {
+                window.showSuccess("Deleted successfully.");
+                if (type === 'special') fetchRequests();
+                else fetchRegularRequests();
+            } else {
+                window.showError("Failed to delete.");
+            }
+        } catch (e) {
+            console.error(e);
+            window.showError("Error deleting request.");
         }
-    } catch (e) {
-        console.error(e);
-        alert("Error deleting request.");
-    }
+    });
 };
 
 // --- Modal Logic ---
@@ -329,7 +336,7 @@ async function submitUpdate() {
     const btn = document.getElementById('confirmBtn');
 
     if (activeTab === 'special' && currentAction === 'Approved' && !centerId) {
-        alert("Please select a Center.");
+        window.showWarning("Please select a Center.");
         return;
     }
 
@@ -358,15 +365,16 @@ async function submitUpdate() {
 
         if (res.ok) {
             closeModal();
+            window.showSuccess(`Request ${currentAction}`);
             if (activeTab === 'special') fetchRequests();
             else fetchRegularRequests();
         } else {
             const d = await res.json();
-            alert(d.message || 'Failed');
+            window.showError(d.message || 'Failed to update');
         }
     } catch (error) {
         console.error(error);
-        alert('Connection error');
+        window.showError('Connection error');
     } finally {
         btn.disabled = false;
         btn.innerText = 'Confirm';
@@ -509,12 +517,12 @@ window.saveChanges = async () => {
     const description = document.getElementById('detDescription').value;
 
     if (!category || !quantity || !date || !location) {
-        alert("Please fill all required fields.");
+        window.showWarning("Please fill all required fields.");
         return;
     }
 
     if (quantity <= 0) {
-        alert("Quantity must be a positive number.");
+        window.showWarning("Quantity must be a positive number.");
         return;
     }
 
@@ -534,15 +542,15 @@ window.saveChanges = async () => {
 
         const d = await res.json();
         if (res.ok) {
-            alert("Updated successfully");
+            window.showSuccess("Updated successfully");
             closeEditRequestModal();
             fetchRequests();
         } else {
-            alert(d.message || "Failed to update");
+            window.showError(d.message || "Failed to update");
         }
     } catch (e) {
         console.error(e);
-        alert("Connection error");
+        window.showError("Connection error");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Save Changes';

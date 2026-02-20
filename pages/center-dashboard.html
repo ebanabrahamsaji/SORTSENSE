@@ -9,9 +9,10 @@
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
         rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/dashboard_fix.css">
+    <link rel="stylesheet" href="../css/style.css?v=2">
+    <link rel="stylesheet" href="../css/dashboard_fix.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="../js/script.js"></script>
     <style>
         /* Specific overrides for Center Dashboard */
         .request-card {
@@ -286,6 +287,56 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 34px;
+            height: 20px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #10b981;
+        }
+
+        input:focus+.slider {
+            box-shadow: 0 0 1px #10b981;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(14px);
+        }
     </style>
 </head>
 
@@ -306,6 +357,8 @@
                             Requests</a></li>
                     <li id="nav-history" onclick="switchView('history')"><a href="#"><i class="ri-history-line"></i>
                             History</a></li>
+                    <li id="nav-centers" onclick="switchView('centers')"><a href="#"><i class="ri-building-line"></i>
+                            Centers</a></li>
                     <li><a href="center-profile.html"><i class="ri-settings-4-line"></i> Settings</a></li>
                 </ul>
             </nav>
@@ -324,14 +377,25 @@
                     <p style="color:var(--text-muted); font-size:0.9rem;">Manage and track waste collection requests</p>
                 </div>
 
-                <div style="display:flex; gap:0.5rem;">
+                <div style="display:flex; gap:0.5rem; align-items: center;">
+                    <!-- Auto Refresh Toggle -->
+                    <div
+                        style="display:flex; align-items:center; gap:0.5rem; margin-right: 1rem; background:rgba(255,255,255,0.05); padding:0.4rem 0.8rem; border-radius:50px; border:1px solid rgba(255,255,255,0.1);">
+                        <span style="font-size:0.85rem; color:var(--text-muted);">Auto-Refresh</span>
+                        <label class="switch">
+                            <input type="checkbox" id="autoRefreshToggle" checked onchange="toggleAutoRefresh()">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+
                     <button id="clearHistoryBtn" onclick="confirmClearHistory()" class="action-btn"
                         style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.2); display:none;">
                         <i class="ri-delete-bin-2-line"></i> Clear All History
                     </button>
+                    <!-- Refresh Button (Manual) -->
                     <button id="refreshDataBtn" onclick="loadRequests()" class="action-btn"
                         style="background:rgba(255,255,255,0.05); color:white; border:1px solid rgba(255,255,255,0.1);">
-                        <i class="ri-refresh-line"></i> Refresh Data
+                        <i class="ri-refresh-line"></i> Refresh
                     </button>
                 </div>
             </header>
@@ -371,6 +435,33 @@
 
             <!-- Tab: Dashboard Home (New) -->
             <div id="dashboardOverview" style="display:none; animation: fadeIn 0.3s ease;">
+
+                <!-- 0. Live Slot Usage (New) -->
+                <div
+                    style="background:rgba(30,41,59,0.6); padding:1rem 1.5rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <div style="background:rgba(255,255,255,0.05); padding:0.5rem; border-radius:8px;">
+                            <i class="ri-cpu-line" style="font-size:1.5rem; color:#60a5fa;"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0; font-size:1rem;">Live Slot Usage</h4>
+                            <small style="color:var(--text-muted);">Real-time center capacity</small>
+                        </div>
+                    </div>
+                    <div style="flex:1; max-width:400px; min-width:200px;">
+                        <div
+                            style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.85rem; font-weight:600;">
+                            <span id="slotStatusText" style="color:#10b981;">Available</span>
+                            <span id="slotCountDisplay">0 / 50</span>
+                        </div>
+                        <div style="height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                            <div id="slotProgressBar"
+                                style="width:0%; height:100%; background:#10b981; transition:width 0.5s ease, background 0.3s;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 1. Stats Row -->
                 <div class="dash-overview-grid">
                     <div class="stat-card-new">
@@ -417,6 +508,42 @@
                     </div>
                 </div>
 
+                <!-- 1.5 Performance & Time Slot Row (New) -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+                    <!-- Performance Summary -->
+                    <div class="chart-card" style="justify-content:center;">
+                        <h3><i class="ri-bar-chart-groupped-line"></i> Performance Summary</h3>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; text-align:center;">
+                            <div>
+                                <h2 id="perfTotal" style="margin:0; color:white; font-size:1.8rem;">0</h2>
+                                <small
+                                    style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Total
+                                    Handled</small>
+                            </div>
+                            <div
+                                style="border-left:1px solid rgba(255,255,255,0.1); border-right:1px solid rgba(255,255,255,0.1);">
+                                <h2 id="perfAvg" style="margin:0; color:#3b82f6; font-size:1.8rem;">0</h2>
+                                <small style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Avg
+                                    Daily</small>
+                            </div>
+                            <div>
+                                <h2 id="perfRate" style="margin:0; color:#10b981; font-size:1.8rem;">0%</h2>
+                                <small
+                                    style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Completion
+                                    Rate</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Time Slot Distribution -->
+                    <div class="chart-card">
+                        <h3><i class="ri-time-line"></i> Time Slot Distribution</h3>
+                        <div style="flex:1; position:relative; min-height:0;">
+                            <canvas id="timeSlotChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 2. Charts Row -->
                 <div class="charts-row">
                     <div class="chart-card">
@@ -452,6 +579,69 @@
             <div id="historyRequestsList" style="margin-top: 1.5rem; display: none;">
                 <p style="color:var(--text-muted);">Loading history...</p>
             </div>
+
+            <!-- Centers Management Section (New) -->
+            <div id="centersSection" style="margin-top: 1.5rem; display: none;">
+                <div
+                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+                    <h2 style="margin:0;">Manage Collection Centers</h2>
+                    <div style="display:flex; gap:1rem; align-items:center;">
+                        <div style="position:relative;">
+                            <i class="ri-search-line"
+                                style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+                            <input type="text" id="centerSearchInput" placeholder="Search by name or address..."
+                                oninput="filterCenters()"
+                                style="padding:0.6rem 1rem 0.6rem 2.2rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; min-width:250px;">
+                        </div>
+                        <button onclick="openAddCenterForm()" class="action-btn"
+                            style="background:#3b82f6; color:white; border:none;">
+                            <i class="ri-add-line"></i> Add Center
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container"
+                    style="background:rgba(30,41,59,0.6); border-radius:12px; padding:1rem; border:1px solid rgba(255,255,255,0.05); overflow-x:auto;">
+                    <table style="width:100%; border-collapse:collapse; color:white; min-width:600px;">
+                        <thead>
+                            <tr style="text-align:left; border-bottom:1px solid rgba(255,255,255,0.1);">
+                                <th style="padding:1rem; color:var(--text-muted);">Name</th>
+                                <th style="padding:1rem; color:var(--text-muted);">Address</th>
+                                <th style="padding:1rem; color:var(--text-muted);">Status</th>
+                                <th style="padding:1rem; color:var(--text-muted);">Slots (Avail/Max)</th>
+                                <th style="padding:1rem; color:var(--text-muted);">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="centersTableBody">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add Center Modal -->
+            <div id="addCenterModal" class="modal-overlay"
+                style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:1000; display:none; align-items:center; justify-content:center;">
+                <div
+                    style="background:#1e293b; padding:2rem; border-radius:16px; width:90%; max-width:400px; border:1px solid rgba(255,255,255,0.1);">
+                    <h3 style="margin-top:0; margin-bottom:1.5rem;">Add New Center</h3>
+                    <div style="display:flex; flex-direction:column; gap:1rem;">
+                        <input type="text" id="newCenterName" placeholder="Center Name"
+                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                        <input type="text" id="newCenterAddress" placeholder="Address / Location"
+                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                        <input type="number" id="newCenterSlots" placeholder="Max Slots (e.g. 10)"
+                            style="padding:0.8rem; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
+                    </div>
+                    <div style="display:flex; gap:1rem; margin-top:1.5rem; justify-content:flex-end;">
+                        <button onclick="document.getElementById('addCenterModal').style.display='none'"
+                            style="padding:0.6rem 1.2rem; background:transparent; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px; cursor:pointer;">Cancel</button>
+                        <button onclick="saveCenter()"
+                            style="padding:0.6rem 1.2rem; background:#3b82f6; border:none; color:white; border-radius:8px; cursor:pointer;">Save</button>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -509,7 +699,7 @@
 
             // Logout Logic
             document.getElementById('logoutBtn').addEventListener('click', () => {
-                if (confirm("Logout from Collection Center?")) {
+                window.showCustomConfirm("Logout", "Logout from Collection Center?", () => {
                     localStorage.removeItem('center_sys_id');
                     localStorage.removeItem('center_sys_email');
                     localStorage.removeItem('center_sys_role');
@@ -521,7 +711,7 @@
                     localStorage.removeItem('userRole');
 
                     window.location.href = 'login-user.html';
-                }
+                });
             });
 
             // Dynamic Header Info
@@ -535,8 +725,16 @@
             // Initialize View
             switchView('overview');
 
-            // Auto-Refresh Polling (Every 10 seconds)
-            setInterval(() => loadRequests(true), 10000);
+            console.log("Center Dashboard JS v2 Loaded");
+
+            // Auto-Refresh Polling (Managed by Toggle)
+            if (typeof toggleAutoRefresh === 'function') {
+                console.log("Initializing Auto-Refresh...");
+                toggleAutoRefresh(true);
+            } else {
+                console.warn("toggleAutoRefresh function missing, falling back to interval.");
+                setInterval(() => loadRequests(true), 30000);
+            }
         });
 
         function loadRequests(silent = false) {
@@ -679,6 +877,7 @@
         // Chart instances
         let statusChartInstance = null;
         let trendChartInstance = null;
+        let timeSlotChartInstance = null; // New chart instance
 
         function updateDashboardStats() {
             // New Dashboard Logic
@@ -688,11 +887,56 @@
             const pending = allRequests.filter(r => r.status === 'Pending').length;
             const approved = allRequests.filter(r => r.status === 'Approved').length;
             const rejected = allRequests.filter(r => r.status === 'Rejected').length;
+            const completed = allRequests.filter(r => r.status === 'Completed').length;
 
-            document.getElementById('statTotalToday').textContent = todaysPickups;
-            document.getElementById('statPending').textContent = pending;
-            document.getElementById('statApproved').textContent = approved;
-            document.getElementById('statRejected').textContent = rejected;
+            if (document.getElementById('statTotalToday')) document.getElementById('statTotalToday').textContent = todaysPickups;
+            if (document.getElementById('statPending')) document.getElementById('statPending').textContent = pending;
+            if (document.getElementById('statApproved')) document.getElementById('statApproved').textContent = approved;
+            if (document.getElementById('statRejected')) document.getElementById('statRejected').textContent = rejected;
+
+            // --- 1.1 Live Slot Usage (New) ---
+            // Logic: Count 'Approved' + 'Scheduled' as Active/Used Slots
+            const usedSlots = allRequests.filter(r => ['Approved', 'Scheduled', 'In Transit'].includes(r.status)).length;
+            const totalSlots = 50; // Mock Max Capacity (or retrieve from API if available later)
+            const usagePct = Math.min((usedSlots / totalSlots) * 100, 100).toFixed(1);
+
+            const slotCountDisplay = document.getElementById('slotCountDisplay');
+            const slotProgressBar = document.getElementById('slotProgressBar');
+            const slotStatusText = document.getElementById('slotStatusText');
+
+            if (slotCountDisplay && slotProgressBar && slotStatusText) {
+                slotCountDisplay.textContent = `${usedSlots} / ${totalSlots}`;
+                slotProgressBar.style.width = `${usagePct}%`;
+
+                // Color Logic
+                if (usagePct < 50) {
+                    slotProgressBar.style.background = '#10b981'; // Green
+                    slotStatusText.textContent = "Low Load";
+                    slotStatusText.style.color = '#10b981';
+                } else if (usagePct < 80) {
+                    slotProgressBar.style.background = '#f59e0b'; // Orange
+                    slotStatusText.textContent = "High Load";
+                    slotStatusText.style.color = '#f59e0b';
+                } else {
+                    slotProgressBar.style.background = '#ef4444'; // Red
+                    slotStatusText.textContent = "Near Capacity";
+                    slotStatusText.style.color = '#ef4444';
+                }
+            }
+
+            // --- 1.2 Performance Summary (New) ---
+            const totalHandled = completed;
+            // Calculate Avg Daily (Unique days in history)
+            const uniqueDays = new Set(allRequests.filter(r => r.status === 'Completed').map(r => new Date(r.created_at).toDateString())).size || 1;
+            const avgDaily = (totalHandled / uniqueDays).toFixed(1);
+            // Completion Rate (Completed vs (Completed + Rejected))
+            const denomenator = (completed + rejected) || 1;
+            const compRate = ((completed / denomenator) * 100).toFixed(0);
+
+            if (document.getElementById('perfTotal')) document.getElementById('perfTotal').textContent = totalHandled;
+            if (document.getElementById('perfAvg')) document.getElementById('perfAvg').textContent = avgDaily;
+            if (document.getElementById('perfRate')) document.getElementById('perfRate').textContent = `${compRate}%`;
+
 
             // 2. Breakdown (Waste Types)
             const typeMap = {};
@@ -731,14 +975,10 @@
                 });
             }
 
-            // 3. Charts (Using Chart.js if available, or simplified CSS bars if not loaded - assuming standard Chart.js is not imported yet, so I will inject it or use the prompt's context. 
-            // Wait, I see Chart.js logic in prompt? No. I need to make sure Chart.js is available or implement simple CSS charts.
-            // The image implies High Quality charts.
-            // I will inject Chart.js via CDN dynamically if not present, but safer to assume I should add the script tag.
-            renderCharts(pending, approved, rejected, allRequests.filter(r => r.status === 'Completed').length);
+            // 3. Render Charts
+            renderCharts(pending, approved, rejected, completed);
 
-            // --- Legacy Analytics (Keep for History Tab Analytics View if needed, but we are replacing the main view) ---
-            // Existing 'updateAnalytics' logic for the small history bar:
+            // --- Legacy Analytics (Keep for History Tab Analytics View if needed) ---
             const completedList = allRequests.filter(r => r.status === 'Completed');
             const pickups = completedList.length;
             const recycledKg = completedList.reduce((sum, r) => sum + (parseFloat(r.quantity) || 0), 0).toFixed(1);
@@ -772,16 +1012,35 @@
             return '#f59e0b';
         }
 
+        // Global Auto Refresh
+        let autoRefreshInterval = null;
+
+        function toggleAutoRefresh(skipImmediate = false) {
+            const toggle = document.getElementById('autoRefreshToggle');
+            if (toggle && toggle.checked) {
+                // Enable
+                if (!skipImmediate) loadRequests(true); // Immediate update only if manual toggle
+
+                if (!autoRefreshInterval) {
+                    autoRefreshInterval = setInterval(() => loadRequests(true), 30000); // 30 seconds
+                }
+            } else {
+                // Disable
+                if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+            }
+        }
+
         function renderCharts(p, a, r, c) {
             // Check if Chart is defined
             if (typeof Chart === 'undefined') return;
 
-            // 1. Status Chart (Bar)
+            // 1. Status Chart (Bar -> Doughnut for variety)
             const ctxStatus = document.getElementById('statusChart').getContext('2d');
             if (statusChartInstance) statusChartInstance.destroy();
 
             statusChartInstance = new Chart(ctxStatus, {
-                type: 'bar',
+                type: 'doughnut',
                 data: {
                     labels: ['Pending', 'Approved', 'Completed', 'Rejected'],
                     datasets: [{
@@ -789,28 +1048,21 @@
                         data: [p, a, c, r],
                         backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#ef4444'],
                         borderWidth: 0,
-                        borderRadius: 4
+                        hoverOffset: 4
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } }
+                    plugins: {
+                        legend: { position: 'right', labels: { color: 'white', boxWidth: 12, font: { size: 10 } } }
+                    }
                 }
             });
 
-            // 2. Trend Chart (Line - Fake Weekly Data simulated from dates)
-            // Group by Day (Last 7 days)
+            // 2. Trend Chart (Line)
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const trendData = [0, 0, 0, 0, 0, 0, 0];
-            const today = new Date();
-            for (let i = 0; i < 7; i++) {
-                // Logic to map real data not implemented deeply, mocking bell curve for visual as per image request? 
-                // No, I should try to map real data if possible.
-                // Let's just Map day of week count for allRequests
-            }
-            // Simplified Trend: Just count by day of week for total history
             allRequests.forEach(req => {
                 const d = new Date(req.created_at).getDay();
                 trendData[d]++;
@@ -836,53 +1088,113 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } },
+                    scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } },
                     plugins: { legend: { display: false } }
                 }
             });
+
+            // 3. Time Slot Distribution (New Mini Chart)
+            const slotLabels = ['Morning', 'Afternoon', 'Evening'];
+            const slotData = [0, 0, 0]; // M, A, E
+
+            allRequests.forEach(req => {
+                let hour = new Date(req.created_at).getHours();
+
+                // Try to infer from estimated time if approved
+                if (req.estimated_pickup_time) {
+                    const timeStr = req.estimated_pickup_time.toLowerCase();
+                    if (timeStr.includes('am')) hour = 9;
+                    else if (timeStr.includes('pm')) {
+                        const h = parseInt(timeStr);
+                        hour = (h === 12 ? 12 : h + 12);
+                    }
+                }
+
+                // Categorize
+                if (hour >= 5 && hour < 12) slotData[0]++;       // Morning
+                else if (hour >= 12 && hour < 17) slotData[1]++; // Afternoon
+                else slotData[2]++;                              // Evening
+            });
+
+            const ctxSlot = document.getElementById('timeSlotChart');
+            if (ctxSlot) {
+                const ctx = ctxSlot.getContext('2d');
+                if (timeSlotChartInstance) timeSlotChartInstance.destroy();
+
+                timeSlotChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: slotLabels,
+                        datasets: [{
+                            label: 'Pickups',
+                            data: slotData,
+                            backgroundColor: ['#fcd34d', '#f97316', '#6366f1'],
+                            borderRadius: 4,
+                            barThickness: 20
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y', // Horizontal bars
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { display: false },
+                            y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { size: 11 } } }
+                        }
+                    }
+                });
+            }
         }
 
         function switchView(view) {
             const overview = document.getElementById('dashboardOverview');
             const activeList = document.getElementById('activeRequestsList');
             const historyList = document.getElementById('historyRequestsList');
+            const centersSection = document.getElementById('centersSection');
+
             const navOverview = document.getElementById('nav-overview');
             const navActive = document.getElementById('nav-active');
             const navHistory = document.getElementById('nav-history');
+            const navCenters = document.getElementById('nav-centers');
+
             const analyticsSection = document.getElementById('analyticsSection');
             const clearBtn = document.getElementById('clearHistoryBtn');
-
-            // Elements to Toggle per Request
             const refreshBtn = document.getElementById('refreshDataBtn');
             const priorityFilter = document.getElementById('priorityFilter');
             const statusFilter = document.getElementById('statusFilter');
             const sortBy = document.getElementById('sortBy');
 
             // Reset Layout Defaults
-            overview.style.display = 'none';
-            activeList.style.display = 'none';
-            historyList.style.display = 'none';
+            if (overview) overview.style.display = 'none';
+            if (activeList) activeList.style.display = 'none';
+            if (historyList) historyList.style.display = 'none';
+            if (centersSection) centersSection.style.display = 'none';
 
-            navOverview.classList.remove('active');
-            navActive.classList.remove('active');
-            navHistory.classList.remove('active');
+            if (navOverview) navOverview.classList.remove('active');
+            if (navActive) navActive.classList.remove('active');
+            if (navHistory) navHistory.classList.remove('active');
+            if (navCenters) navCenters.classList.remove('active');
+
+            // Hide common filters by default (re-enabled below if needed)
+            if (refreshBtn) refreshBtn.style.display = 'none';
+            if (priorityFilter) priorityFilter.style.display = 'none';
+            if (statusFilter) statusFilter.style.display = 'none';
+            if (sortBy) sortBy.style.display = 'none';
+            if (clearBtn) clearBtn.style.display = 'none';
+            if (analyticsSection) analyticsSection.style.display = 'none';
 
             if (view === 'overview') {
-                overview.style.display = 'block';
-                navOverview.classList.add('active');
+                if (overview) overview.style.display = 'block';
+                if (navOverview) navOverview.classList.add('active');
                 document.querySelector('h1').innerText = "Collection Center Dashboard";
-
-                // Hide Refresh & Filters in Dashboard View
-                if (refreshBtn) refreshBtn.style.display = 'none';
-                if (priorityFilter) priorityFilter.style.display = 'none';
-                if (statusFilter) statusFilter.style.display = 'none';
-                if (sortBy) sortBy.style.display = 'none';
-
-                // Ensure other sections are hidden
-                if (analyticsSection) analyticsSection.style.display = 'none';
-                if (clearBtn) clearBtn.style.display = 'none';
-
                 updateDashboardStats();
+            }
+            else if (view === 'centers') {
+                if (centersSection) centersSection.style.display = 'block';
+                if (navCenters) navCenters.classList.add('active');
+                document.querySelector('h1').innerText = "Manage Centers";
+                loadCenters();
             }
             else {
                 // Show Refresh & Filters in Requests Views
@@ -892,18 +1204,166 @@
                 if (sortBy) sortBy.style.display = 'inline-block';
 
                 if (view === 'active') {
-                    activeList.style.display = 'block';
-                    navActive.classList.add('active');
+                    if (activeList) activeList.style.display = 'block';
+                    if (navActive) navActive.classList.add('active');
                     document.querySelector('h1').innerText = "Incoming Pickup Requests";
-                    if (analyticsSection) analyticsSection.style.display = 'none';
-                    if (clearBtn) clearBtn.style.display = 'none';
                 }
                 else if (view === 'history') {
-                    historyList.style.display = 'block';
-                    navHistory.classList.add('active');
+                    if (historyList) historyList.style.display = 'block';
+                    if (navHistory) navHistory.classList.add('active');
                     document.querySelector('h1').innerText = "Pickup History";
                     if (analyticsSection) analyticsSection.style.display = 'flex';
                     if (clearBtn) clearBtn.style.display = 'block';
+                }
+            }
+        }
+
+        // --- Center Management Functions ---
+
+        function openAddCenterForm() {
+            document.getElementById('addCenterModal').style.display = 'flex';
+        }
+
+        async function loadCenters() {
+            try {
+                // Use generic API or specific admin route
+                const res = await fetch('/api/centers');
+                const centers = await res.json();
+
+                const tbody = document.getElementById("centersTableBody");
+                tbody.innerHTML = "";
+
+                if (centers.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:gray;">No centers found</td></tr>`;
+                    return;
+                }
+
+                centers.forEach(center => {
+                    const row = `
+                        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                            <td style="padding:1rem;">${center.center_name || center.name}</td>
+                            <td style="padding:1rem;">${center.address || 'N/A'}</td>
+                            <td style="padding:1rem;">
+                                <span class="status-badge ${center.status === 'CLOSED' ? 'rejected' : 'approved'}">
+                                    ${center.status || 'OPEN'}
+                                </span>
+                            </td>
+                            <td style="padding:1rem;">${center.available_slots || 0} / ${center.max_slots || 10}</td>
+                            <td style="padding:1rem;">
+                                ${center.is_primary ?
+                            '<span title="Primary Center" style="color:#f59e0b; font-size:1.2rem; margin-right:1rem;"><i class="ri-star-fill"></i></span>' :
+                            `<button onclick="setPrimaryCenter(${center.center_id || center.id})" class="action-btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:rgba(255,255,255,0.1); color:white; border:none; margin-right:0.5rem;">
+                                <i class="ri-star-line"></i> Set Primary
+                            </button>`
+                        }
+                                <button onclick="deleteCenter(${center.center_id || center.id})" class="action-btn btn-delete" style="padding:0.4rem 0.8rem; font-size:0.8rem;">
+                                    <i class="ri-delete-bin-line"></i> Delete
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+
+                // Re-apply filter if search text exists
+                filterCenters();
+            } catch (error) {
+                console.error("Error loading centers:", error);
+                document.getElementById("centersTableBody").innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">Error loading centers</td></tr>`;
+            }
+        }
+
+        async function saveCenter() {
+            const name = document.getElementById('newCenterName').value;
+            const address = document.getElementById('newCenterAddress').value;
+            const slots = document.getElementById('newCenterSlots').value || 10;
+
+            if (!name || !address) {
+                window.showWarning("Please enter Name and Address");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/centers', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: name,
+                        address: address,
+                        max_slots: slots
+                    })
+                });
+
+                const result = await res.json();
+                if (result.success || result.message === 'Center added successfully') {
+                    window.showSuccess("Center added successfully!");
+                    document.getElementById('addCenterModal').style.display = 'none';
+                    // Clear inputs
+                    document.getElementById('newCenterName').value = '';
+                    document.getElementById('newCenterAddress').value = '';
+                    loadCenters(); // Reload list
+                } else {
+                    window.showError("Failed: " + result.message);
+                }
+            } catch (error) {
+                console.error("Error saving center:", error);
+                window.showError("Error saving center");
+            }
+        }
+
+        async function deleteCenter(id) {
+            window.showCustomConfirm("Delete Center", "Are you sure you want to delete this center? This action cannot be undone.", async () => {
+                try {
+                    const res = await fetch(`/api/centers/${id}`, {
+                        method: 'DELETE'
+                    });
+                    const result = await res.json();
+
+                    if (result.success || result.message === 'Center deleted successfully') {
+                        loadCenters();
+                    } else {
+                        window.showError("Failed to delete: " + result.message);
+                    }
+                } catch (error) {
+                    console.error("Error deleting center:", error);
+                    window.showError("Error deleting center");
+                }
+            });
+        }
+
+        async function setPrimaryCenter(id) {
+            try {
+                const res = await fetch(`/api/centers/set-primary/${id}`, { method: "POST" });
+                const result = await res.json();
+
+                if (result.success || result.message === 'Primary center updated') {
+                    loadCenters();
+                } else {
+                    window.showError("Failed to set primary: " + result.message);
+                }
+            } catch (error) {
+                console.error("Error setting primary center:", error);
+                window.showError("Error setting primary center");
+            }
+        }
+
+        function filterCenters() {
+            const input = document.getElementById('centerSearchInput');
+            const filter = input.value.toLowerCase();
+            const tbody = document.getElementById("centersTableBody");
+            const tr = tbody.getElementsByTagName('tr');
+
+            for (let i = 0; i < tr.length; i++) {
+                const nameTd = tr[i].getElementsByTagName("td")[0];
+                const addressTd = tr[i].getElementsByTagName("td")[1];
+                if (nameTd && addressTd) {
+                    const nameValue = nameTd.textContent || nameTd.innerText;
+                    const addressValue = addressTd.textContent || addressTd.innerText;
+                    if (nameValue.toLowerCase().indexOf(filter) > -1 || addressValue.toLowerCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
                 }
             }
         }
@@ -921,12 +1381,12 @@
                     })
                         .then(res => res.json())
                         .then(data => {
-                            alert(data.message);
+                            window.showSuccess(data.message);
                             loadRequests();
                         })
                         .catch(err => {
                             console.error(err);
-                            alert("Failed to clear history.");
+                            window.showError("Failed to clear history.");
                         });
                 });
         }
@@ -992,16 +1452,22 @@
             let priColor = '#94a3b8'; // Normal
             let priText = 'NORMAL';
 
-            if (priority === 'High') {
+            if (req.is_urgent) {
+                priColor = '#dc2626';
+                priText = 'URGENT <i class="ri-alarm-warning-fill"></i>';
+                card.style.borderLeft = '4px solid #dc2626';
+                card.style.background = 'rgba(220, 38, 38, 0.05)';
+            }
+            else if (priority === 'High') {
                 priColor = '#ef4444';
                 priText = 'HIGH <i class="ri-fire-fill"></i>';
                 card.style.borderLeft = '4px solid #ef4444';
             }
-            if (priority === 'Medium') {
+            else if (priority === 'Medium') {
                 priColor = '#f59e0b';
                 priText = 'MEDIUM';
             }
-            if (priority === 'Low') {
+            else if (priority === 'Low') {
                 priColor = '#64748b';
                 priText = 'HELD (AGGREGATING)';
                 card.style.opacity = '0.75';
@@ -1121,7 +1587,20 @@
                     extraData.estimatedPickupTime = inputValue;
                 }
 
-                console.log("Updating status...", { status: newStatus, ...extraData });
+                console.log("Updating status (Optimistic)...", { status: newStatus, ...extraData });
+
+                // OPTIMISTIC UPDATE: Update local store and re-render immediately
+                const reqIndex = allRequests.findIndex(r => r.request_id == id);
+                let originalReq = null;
+
+                if (reqIndex !== -1) {
+                    originalReq = { ...allRequests[reqIndex] }; // Backup in case of error
+                    allRequests[reqIndex].status = newStatus;
+                    if (extraData.rejectionReason) allRequests[reqIndex].rejection_reason = extraData.rejectionReason;
+                    if (extraData.estimatedPickupTime) allRequests[reqIndex].estimated_pickup_time = extraData.estimatedPickupTime;
+
+                    applyFilters(); // Re-render UI Instantly
+                }
 
                 fetch(`/api/pickup/${id}/status`, {
                     method: 'PUT',
@@ -1131,12 +1610,19 @@
                     .then(async res => {
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.message || "Failed");
-                        console.log("Success:", data);
-                        loadRequests(); // Refresh
+                        console.log("Success (Background):", data);
+                        // No need to loadRequests() unless we want to sync other changes. 
+                        // Let's do a silent sync to be safe.
+                        loadRequests(true);
                     })
                     .catch(err => {
                         console.error(err);
-                        alert(`Error: ${err.message}`);
+                        window.showError(`Error: ${err.message}`);
+                        // Revert on failure
+                        if (originalReq && reqIndex !== -1) {
+                            allRequests[reqIndex] = originalReq;
+                            applyFilters();
+                        }
                     });
             };
 
@@ -1163,13 +1649,14 @@
                     })
                         .then(res => res.json())
                         .then(data => {
-                            if (data.message && !data.message.includes('error')) {
+                            if (data.success) {
+                                window.showSuccess("Request deleted.");
                                 loadRequests();
                             } else {
-                                alert(data.message || "Failed to delete.");
+                                window.showError(data.message || "Failed to delete.");
                             }
                         })
-                        .catch(err => alert("Error deleting request"));
+                        .catch(err => window.showError("Error deleting request"));
                 }
             );
         }

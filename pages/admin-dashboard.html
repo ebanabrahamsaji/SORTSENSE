@@ -11,10 +11,61 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Admin specific overrides */
+        /* Admin Sidebar Scroll Fix - Perfected */
         .admin-sidebar {
             background: rgba(30, 30, 40, 0.95);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            /* Full viewport height */
+            overflow: hidden;
+            /* Prevent body scroll from sidebar */
+        }
+
+        .sidebar-header {
+            flex-shrink: 0;
+            /* Keep logo fixed */
+            padding: 1.5rem;
+        }
+
+        .sidebar-nav {
+            flex-grow: 1;
+            /* Take up available space */
+            overflow-y: auto;
+            /* Scroll independently */
+            padding: 0 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .sidebar-footer {
+            flex-shrink: 0;
+            /* Keep logout fixed at bottom */
+            padding: 1.5rem;
+            background: rgba(30, 30, 40, 0.95);
+            /* Ensure solid background behind button */
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            z-index: 10;
+        }
+
+        /* Custom scrollbar for nav only */
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+            /* Very thin */
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
         }
 
         .stat-card {
@@ -202,6 +253,117 @@
         .password-toggle:hover {
             color: white;
         }
+
+        /* Analytics Styles */
+        .chart-container {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Toggle Switch Styles */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #475569;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background-color: #10b981;
+        }
+
+        .toggle-switch input:checked+.toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .toggle-switch input:focus+.toggle-slider {
+            box-shadow: 0 0 1px #10b981;
+        }
+
+        /* ── Admin SPA Section Visibility ── */
+        .admin-section {
+            display: none;
+            animation: sectionFadeIn 0.4s ease-out;
+        }
+
+        .admin-section.active {
+            display: block;
+        }
+
+        @keyframes sectionFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 
@@ -220,7 +382,7 @@
             <nav class="sidebar-nav">
                 <ul>
                     <li class="active">
-                        <a href="#">
+                        <a href="admin-dashboard.html">
                             <i class="ri-dashboard-3-line"></i>
                             <span>Overview</span>
                         </a>
@@ -250,13 +412,14 @@
                         </a>
                     </li>
                     <li>
-                        <a href="#">
+                        <!-- Updated Analytics Link for SPA Toggle -->
+                        <a href="#" id="analyticsNav">
                             <i class="ri-bar-chart-box-line"></i>
                             <span>Analytics</span>
                         </a>
                     </li>
                     <li>
-                        <a href="#">
+                        <a href="#" id="systemSettingsNav">
                             <i class="ri-settings-4-line"></i>
                             <span>System Settings</span>
                         </a>
@@ -288,11 +451,13 @@
                     </div>
                     <div class="user-info">
                         <div class="text-right" style="margin-right: 12px;">
-                            <span style="display: block; font-weight: 600; font-size: 0.9rem;">Admin User</span>
+                            <span id="adminHeaderName"
+                                style="display: block; font-weight: 600; font-size: 0.9rem;">Admin User</span>
                             <span style="display: block; font-size: 0.8rem; color: var(--text-secondary);">Super
                                 Admin</span>
                         </div>
-                        <img src="https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff"
+                        <img id="adminHeaderAvatar"
+                            src="https://ui-avatars.com/api/?name=Admin+User&background=6366f1&color=fff"
                             alt="Admin Profile">
                     </div>
                 </div>
@@ -301,81 +466,769 @@
             <!-- Dashboard Content -->
             <div class="dashboard-content" style="padding: 2rem;">
 
-                <section class="welcome-section" style="margin-bottom: 2rem;">
-                    <h1>Admin <span class="gradient-text">Dashboard</span></h1>
-                    <p style="color: var(--text-secondary);">System overview and management controls</p>
-                </section>
+                <!-- OVERVIEW SECTION -->
+                <div id="dashboardSection" class="admin-section">
+                    <section class="welcome-section" style="margin-bottom: 2rem;">
+                        <h1>Admin <span class="gradient-text">Dashboard</span></h1>
+                        <p style="color: var(--text-secondary);">System overview and management controls</p>
+                    </section>
 
-                <!-- Stats Grid -->
-                <div class="admin-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-                            <i class="ri-user-line"></i>
+
+                    <!-- Stats Grid -->
+                    <div class="admin-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+                                <i class="ri-user-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="stats-total-users">0</h3>
+                                <p>Total Users</p>
+                            </div>
                         </div>
-                        <div class="stat-info">
-                            <h3 id="stats-total-users">0</h3>
-                            <p>Total Users</p>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                                <i class="ri-recycle-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="stats-items-sorted">0</h3>
+                                <p>Items Sorted</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                                <i class="ri-alert-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="stats-flagged-items">0</h3>
+                                <p>Flagged Items</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                                <i class="ri-truck-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="stats-pickups-today">-</h3>
+                                <p>Pickups Today</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                            <i class="ri-recycle-line"></i>
+
+                    <!-- Daily Pickup Trend Chart (New) -->
+                    <div class="section-card" style="margin-bottom: 2rem;">
+                        <div class="section-title">
+                            <h3>Daily Pickup Trend</h3>
                         </div>
-                        <div class="stat-info">
-                            <h3 id="stats-items-sorted">0</h3>
-                            <p>Items Sorted</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
-                            <i class="ri-alert-line"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="stats-flagged-items">0</h3>
-                            <p>Flagged Items</p>
+                        <div style="height: 200px; width: 100%;">
+                            <canvas id="pickupTrendChart"></canvas>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;">
-                            <i class="ri-server-line"></i>
+
+                    <!-- Recent Activity & Quick Actions -->
+
+                    <!-- Center Status Monitoring -->
+                    <div class="section-card" style="margin-bottom: 2rem;">
+                        <div class="section-title">
+                            <h3>Live Collection Center Status</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button id="toggleCenterStatusBtn" class="btn btn-sm btn-primary">
+                                    <i class="ri-eye-line"></i> View Center Status
+                                </button>
+                                <button onclick="refreshCenterStatus()" id="refreshCenterBtn"
+                                    class="btn btn-sm btn-outline" style="display: none;">
+                                    <i class="ri-refresh-line"></i> Refresh
+                                </button>
+                            </div>
                         </div>
-                        <div class="stat-info">
-                            <h3 id="stats-system-uptime">100%</h3>
-                            <p>System Uptime</p>
+                        <div id="centerStatusContainer" style="overflow-x: auto; display: none;">
+                            <table class="recent-table" id="centerStatusTable">
+                                <thead>
+                                    <tr>
+                                        <th>Center Name</th>
+                                        <th>Status</th>
+                                        <th>Slots</th>
+                                        <th>Load</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="centerTableBody">
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; padding:2rem; color:gray;">Loading
+                                            status...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions Section -->
+                    <div class="section-card">
+                        <div class="section-title">
+                            <h3>Quick Actions</h3>
+                        </div>
+                        <div
+                            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+                            <button id="btnAddUser" class="btn btn-primary"
+                                style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px;">
+                                <i class="ri-user-add-line" style="font-size: 1.5rem;"></i>
+                                <span style="font-size: 1.1rem;">Add New User</span>
+                            </button>
+                            <button id="btnAddCategory" class="btn btn-outline"
+                                style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
+                                <i class="ri-add-circle-line" style="font-size: 1.5rem;"></i>
+                                <span style="font-size: 1.1rem;">Add Category</span>
+                            </button>
+                            <button id="btnExportReports" class="btn btn-outline"
+                                style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
+                                <i class="ri-download-cloud-line" style="font-size: 1.5rem;"></i>
+                                <span style="font-size: 1.1rem;">Export Reports</span>
+                            </button>
+                            <button id="btnInvalidateSessions" class="btn btn-outline"
+                                style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
+                                <i class="ri-shut-down-line" style="font-size: 1.5rem;"></i>
+                                <span style="font-size: 1.1rem;">Invalidate Sessions</span>
+                            </button>
+                            <button id="btnExportPickups" class="btn btn-outline"
+                                style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
+                                <i class="ri-file-download-line" style="font-size: 1.5rem;"></i>
+                                <span style="font-size: 1.1rem;">Export Pickups CSV</span>
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Recent Activity & Quick Actions -->
-                <!-- Quick Actions Section -->
-                <div class="section-card">
-                    <div class="section-title">
-                        <h3>Quick Actions</h3>
+                <!-- ANALYTICS SECTION (Added for SPA Toggle) -->
+                <div id="analyticsSection" class="admin-section" style="display: none;">
+                    <section class="welcome-section" style="margin-bottom: 2rem;">
+                        <h1>System <span class="gradient-text">Analytics</span></h1>
+                        <p style="color: var(--text-secondary);">Deep dive into waste management performance and user
+                            trends.</p>
+                    </section>
+
+                    <!-- Chart Grid -->
+                    <div class="analytics-grid">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">Waste Composition</h3>
+                                <select
+                                    style="background: rgba(255,255,255,0.1); border:none; color:white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                                    <option>This Month</option>
+                                    <option>Last Month</option>
+                                    <option>All Time</option>
+                                </select>
+                            </div>
+                            <canvas id="wasteCompositionChart"></canvas>
+                        </div>
+
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">User Activity Trend</h3>
+                                <select
+                                    style="background: rgba(255,255,255,0.1); border:none; color:white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                                    <option>Last 7 Days</option>
+                                    <option>Last 30 Days</option>
+                                </select>
+                            </div>
+                            <canvas id="userActivityChart"></canvas>
+                        </div>
                     </div>
+
+                    <div class="chart-container" style="height: 400px;">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Center Capacity vs Usage</h3>
+                        </div>
+                        <canvas id="centerCapacityChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- SYSTEM SETTINGS SECTION -->
+                <div id="systemSettingsSection" class="admin-section"
+                    style="display: none; animation: fadeIn 0.4s ease-out;">
+                    <section class="welcome-section"
+                        style="margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h1>System <span class="gradient-text">Settings</span></h1>
+                            <p style="color: var(--text-secondary); margin-top: 0.5rem;">Configure global parameters, AI
+                                logic, and security protocols</p>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button onclick="saveAllSettings()" class="btn btn-primary">
+                                <i class="ri-save-3-line"></i> Save Changes
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Settings Grid -->
                     <div
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
-                        <button id="btnAddUser" class="btn btn-primary"
-                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px;">
-                            <i class="ri-user-add-line" style="font-size: 1.5rem;"></i>
-                            <span style="font-size: 1.1rem;">Add New User</span>
-                        </button>
-                        <button id="btnAddCategory" class="btn btn-outline"
-                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
-                            <i class="ri-add-circle-line" style="font-size: 1.5rem;"></i>
-                            <span style="font-size: 1.1rem;">Add Category</span>
-                        </button>
-                        <button id="btnExportReports" class="btn btn-outline"
-                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
-                            <i class="ri-download-cloud-line" style="font-size: 1.5rem;"></i>
-                            <span style="font-size: 1.1rem;">Export Reports</span>
-                        </button>
-                        <button id="btnInvalidateSessions" class="btn btn-outline"
-                            style="width: 100%; justify-content: center; padding: 1.5rem; height: auto; flex-direction: column; gap: 10px; border: 1px solid var(--border-color); color: var(--text-primary); background: rgba(255,255,255,0.02);">
-                            <i class="ri-shut-down-line" style="font-size: 1.5rem;"></i>
-                            <span style="font-size: 1.1rem;">Invalidate Sessions</span>
-                        </button>
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
+
+                        <!-- 1️⃣ SYSTEM CONTROL -->
+                        <div class="setting-card">
+                            <div class="card-header system-header">
+                                <div class="header-icon"><i class="ri-settings-3-line"></i></div>
+                                <h3>System Control</h3>
+                            </div>
+                            <div class="card-body">
+                                <!-- Maintenance Mode -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Maintenance Mode</label>
+                                        <small>Temporarily disable user access to the platform</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="maintenanceToggle"
+                                            onchange="toggleSetting('maintenanceMode', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <!-- Auto Refresh -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Auto Refresh Dashboard</label>
+                                        <small>Live update of analytics and logs (every 30s)</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="globalRefreshToggle"
+                                            onchange="toggleSetting('globalAutoRefresh', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <!-- Notifications -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>System Notifications</label>
+                                        <small>Enable toast alerts and bell notifications</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="notificationToggle" checked
+                                            onchange="toggleSetting('notificationsEnabled', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <!-- Debug Mode (Admin) -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Debug Mode</label>
+                                        <small class="warning-text">Show detailed error logs (Dev only)</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="debugModeToggle"
+                                            onchange="toggleSetting('debugMode', this.checked)">
+                                        <span class="toggle-slider slider-danger"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2️⃣ AI SETTINGS -->
+                        <div class="setting-card">
+                            <div class="card-header ai-header">
+                                <div class="header-icon"><i class="ri-brain-line"></i></div>
+                                <h3>AI Configuration</h3>
+                            </div>
+                            <div class="card-body">
+                                <!-- Enable AI -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>AI Waste Detection</label>
+                                        <small>Enable auto-classification during upload</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="aiToggle" checked
+                                            onchange="toggleSetting('aiEnabled', this.checked)">
+                                        <span class="toggle-slider slider-process"></span>
+                                    </label>
+                                </div>
+                                <!-- Confidence Threshold -->
+                                <div class="setting-row column-layout">
+                                    <div class="setting-info full-width">
+                                        <div style="display:flex; justify-content:space-between;">
+                                            <label>Confidence Threshold</label>
+                                            <span id="confidenceValue" class="badge-pill">85%</span>
+                                        </div>
+                                        <small>Minimum confidence score to auto-tag items</small>
+                                    </div>
+                                    <input type="range" min="50" max="99" value="85" class="range-slider"
+                                        id="confidenceSlider" oninput="updateRangeIds('confidenceValue', this.value)">
+                                </div>
+                                <!-- Processing Mode -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Processing Mode</label>
+                                        <small>Balance speed vs accuracy</small>
+                                    </div>
+                                    <div class="toggle-group">
+                                        <input type="radio" name="aiMode" id="modeFast" value="fast">
+                                        <label for="modeFast">Fast</label>
+                                        <input type="radio" name="aiMode" id="modeAccurate" value="accurate" checked>
+                                        <label for="modeAccurate">Accurate</label>
+                                    </div>
+                                </div>
+                                <!-- Reset AI Cache -->
+                                <div class="setting-row" style="border:none; padding-bottom:0;">
+                                    <button class="btn btn-outline full-width" onclick="resetAICache()">
+                                        <i class="ri-refresh-line"></i> Reset AI Model Cache
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3️⃣ MARKETPLACE CONTROL -->
+                        <div class="setting-card">
+                            <div class="card-header market-header">
+                                <div class="header-icon"><i class="ri-store-3-line"></i></div>
+                                <h3>Marketplace & Requests</h3>
+                            </div>
+                            <div class="card-body">
+                                <!-- Auto Approve Listings -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Auto-Approve Listings</label>
+                                        <small>Publish waste listings without admin review</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="autoApproveToggle"
+                                            onchange="toggleSetting('autoApprove', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <!-- Require Special Approval -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Strict Special Waste</label>
+                                        <small>Require manual approval for hazardous items</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="strictApprovalToggle" checked
+                                            onchange="toggleSetting('strictSpecialWaste', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <!-- User Messaging -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Enable Messaging</label>
+                                        <small>Allow buyers/sellers to chat directly</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="messagingToggle" checked
+                                            onchange="toggleSetting('messagingEnabled', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4️⃣ SECURITY SETTINGS -->
+                        <div class="setting-card">
+                            <div class="card-header security-header">
+                                <div class="header-icon"><i class="ri-shield-keyhole-line"></i></div>
+                                <h3>Security & Access</h3>
+                            </div>
+                            <div class="card-body">
+                                <!-- Session Timeout -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Session Timeout (mins)</label>
+                                        <small>Auto-logout inactive users</small>
+                                    </div>
+                                    <input type="number" value="30" class="input-modern" style="width: 80px;">
+                                </div>
+                                <!-- Max Login Attempts -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Max Login Attempts</label>
+                                        <small>Lock account after failures</small>
+                                    </div>
+                                    <input type="number" value="5" class="input-modern" style="width: 80px;">
+                                </div>
+                                <!-- Activity Logging -->
+                                <div class="setting-row">
+                                    <div class="setting-info">
+                                        <label>Admin Activity Logging</label>
+                                        <small>Log all administrative actions</small>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="loggingToggle" checked
+                                            onchange="toggleSetting('adminLogging', this.checked)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                                <div class="setting-row" style="border:none; padding-bottom:0;">
+                                    <button class="btn btn-outline-danger full-width" onclick="invalidateSessions()">
+                                        <i class="ri-logout-circle-r-line"></i> Invalidate All Sessions
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
+
+                    <!-- 5️⃣ MAINTENANCE TOOLS (Full Width) -->
+                    <div class="setting-card full-width-card">
+                        <div class="card-header danger-header">
+                            <div class="header-icon"><i class="ri-tools-line"></i></div>
+                            <h3>Maintenance & Danger Zone</h3>
+                        </div>
+                        <div class="card-body tools-grid">
+                            <div class="tool-item">
+                                <div class="tool-icon"><i class="ri-database-2-line"></i></div>
+                                <div class="tool-info">
+                                    <h4>Backup Database</h4>
+                                    <p>Create a full snapshot of SQL data</p>
+                                </div>
+                                <button class="btn btn-sm btn-outline"
+                                    onclick="simulateAction('Backing up database...', 'Backup created successfully')">Backup
+                                    Now</button>
+                            </div>
+                            <div class="tool-item">
+                                <div class="tool-icon"><i class="ri-brush-line"></i></div>
+                                <div class="tool-info">
+                                    <h4>Clear System Cache</h4>
+                                    <p>Remove temporary files & API cache</p>
+                                </div>
+                                <button class="btn btn-sm btn-outline" onclick="clearAllCache()">Clear Cache</button>
+                            </div>
+                            <div class="tool-item">
+                                <div class="tool-icon"><i class="ri-delete-bin-5-line"></i></div>
+                                <div class="tool-info">
+                                    <h4>Clean Old Logs</h4>
+                                    <p>Delete activity logs older than 30 days</p>
+                                </div>
+                                <button class="btn btn-sm btn-outline"
+                                    onclick="simulateAction('Cleaning logs...', 'Old logs removed (1,240 records)')">Clean
+                                    Logs</button>
+                            </div>
+                            <div class="tool-item danger-item">
+                                <div class="tool-icon"><i class="ri-alert-line"></i></div>
+                                <div class="tool-info">
+                                    <h4>Reset All Settings</h4>
+                                    <p>Revert system configuration to default</p>
+                                </div>
+                                <button class="btn btn-sm btn-danger" onclick="resetAllSettings()">Reset
+                                    Defaults</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <style>
+                        /* Scoped Styles for System Settings */
+                        .setting-card {
+                            background: rgba(30, 41, 59, 0.6);
+                            border: 1px solid rgba(255, 255, 255, 0.08);
+                            border-radius: 20px;
+                            overflow: hidden;
+                            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                            transition: transform 0.3s ease;
+                        }
+
+                        .setting-card:hover {
+                            border-color: rgba(255, 255, 255, 0.15);
+                        }
+
+                        .card-header {
+                            padding: 1.25rem 1.5rem;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                            background: rgba(255, 255, 255, 0.02);
+                        }
+
+                        .header-icon {
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 10px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 1.2rem;
+                        }
+
+                        .system-header .header-icon {
+                            background: rgba(59, 130, 246, 0.15);
+                            color: #60a5fa;
+                        }
+
+                        .ai-header .header-icon {
+                            background: rgba(168, 85, 247, 0.15);
+                            color: #c084fc;
+                        }
+
+                        .market-header .header-icon {
+                            background: rgba(16, 185, 129, 0.15);
+                            color: #34d399;
+                        }
+
+                        .security-header .header-icon {
+                            background: rgba(245, 158, 11, 0.15);
+                            color: #fbbf24;
+                        }
+
+                        .danger-header .header-icon {
+                            background: rgba(239, 68, 68, 0.15);
+                            color: #f87171;
+                        }
+
+                        .card-header h3 {
+                            margin: 0;
+                            font-family: var(--font-heading);
+                            font-size: 1.15rem;
+                            color: var(--text-heading);
+                        }
+
+                        .card-body {
+                            padding: 1.5rem;
+                        }
+
+                        .setting-row {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding-bottom: 1.25rem;
+                            margin-bottom: 1.25rem;
+                            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                        }
+
+                        .setting-row:last-child {
+                            border-bottom: none;
+                            padding-bottom: 0;
+                            margin-bottom: 0;
+                        }
+
+                        .setting-info label {
+                            display: block;
+                            font-weight: 600;
+                            color: #f1f5f9;
+                            margin-bottom: 4px;
+                            font-size: 0.95rem;
+                        }
+
+                        .setting-info small {
+                            color: #94a3b8;
+                            font-size: 0.85rem;
+                            line-height: 1.4;
+                            display: block;
+                        }
+
+                        .warning-text {
+                            color: #fdba74 !important;
+                        }
+
+                        /* Buttons */
+                        .btn-outline-danger {
+                            background: transparent;
+                            border: 1px solid rgba(239, 68, 68, 0.5);
+                            color: #f87171;
+                            padding: 0.6rem 1rem;
+                            border-radius: 8px;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        }
+
+                        .btn-outline-danger:hover {
+                            background: rgba(239, 68, 68, 0.1);
+                        }
+
+                        .full-width {
+                            width: 100%;
+                            justify-content: center;
+                        }
+
+                        /* Custom Inputs */
+                        .input-modern {
+                            background: rgba(15, 23, 42, 0.6);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            color: white;
+                            padding: 8px 12px;
+                            border-radius: 8px;
+                            text-align: center;
+                            font-weight: 600;
+                        }
+
+                        /* Range Slider */
+                        .range-slider {
+                            -webkit-appearance: none;
+                            appearance: none;
+                            width: 100%;
+                            height: 6px;
+                            background: rgba(255, 255, 255, 0.1);
+                            border-radius: 5px;
+                            outline: none;
+                            margin-top: 10px;
+                        }
+
+                        .range-slider::-webkit-slider-thumb {
+                            -webkit-appearance: none;
+                            appearance: none;
+                            width: 18px;
+                            height: 18px;
+                            border-radius: 50%;
+                            background: var(--primary-color);
+                            cursor: pointer;
+                            transition: transform 0.1s;
+                        }
+
+                        .range-slider::-webkit-slider-thumb:hover {
+                            transform: scale(1.2);
+                        }
+
+                        .badge-pill {
+                            background: rgba(255, 255, 255, 0.1);
+                            padding: 2px 8px;
+                            border-radius: 12px;
+                            font-size: 0.8rem;
+                            font-family: monospace;
+                        }
+
+                        /* Toggle Group */
+                        .toggle-group {
+                            background: rgba(15, 23, 42, 0.6);
+                            padding: 4px;
+                            border-radius: 8px;
+                            display: flex;
+                            border: 1px solid rgba(255, 255, 255, 0.05);
+                        }
+
+                        .toggle-group input {
+                            display: none;
+                        }
+
+                        .toggle-group label {
+                            padding: 6px 16px;
+                            cursor: pointer;
+                            border-radius: 6px;
+                            font-size: 0.85rem;
+                            font-weight: 600;
+                            color: #64748b;
+                            transition: all 0.2s;
+                        }
+
+                        .toggle-group input:checked+label {
+                            background: var(--primary-color);
+                            color: white;
+                        }
+
+                        /* Maintenance Tools Grid */
+                        .tools-grid {
+                            display: grid;
+                            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                            gap: 1.5rem;
+                        }
+
+                        .tool-item {
+                            background: rgba(255, 255, 255, 0.03);
+                            border: 1px solid rgba(255, 255, 255, 0.05);
+                            padding: 1.5rem;
+                            border-radius: 16px;
+                            text-align: center;
+                            transition: all 0.3s;
+                        }
+
+                        .tool-item:hover {
+                            background: rgba(255, 255, 255, 0.05);
+                            transform: translateY(-2px);
+                        }
+
+                        .tool-icon {
+                            font-size: 2rem;
+                            color: #94a3b8;
+                            margin-bottom: 1rem;
+                        }
+
+                        .tool-item h4 {
+                            margin: 0 0 0.5rem 0;
+                            color: #f1f5f9;
+                        }
+
+                        .tool-item p {
+                            margin: 0 0 1.5rem 0;
+                            font-size: 0.85rem;
+                            color: #64748b;
+                        }
+
+                        /* Danger Item Specifics */
+                        .danger-item:hover .tool-icon {
+                            color: #f87171;
+                        }
+
+                        .danger-item:hover {
+                            border-color: rgba(239, 68, 68, 0.3);
+                            background: rgba(239, 68, 68, 0.05);
+                        }
+                    </style>
+
+                    <script>
+                        // Settings Logic (Injected ONLY for this page)
+
+                        function toggleSetting(key, value) {
+                            localStorage.setItem(key, value);
+                            const msg = value ? 'Enabled' : 'Disabled';
+                            // Format key for display
+                            const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+
+                            // Use existing showToast if available, else console
+                            if (window.showToast) window.showToast(`${displayKey} ${msg}`, 'success');
+                        }
+
+                        function updateRangeIds(id, val) {
+                            document.getElementById(id).innerText = val + '%';
+                            localStorage.setItem('aiConfidence', val);
+                        }
+
+                        function resetAICache() {
+                            if (confirm("Reset the AI model cache? This may slow down the first few subsequent requests.")) {
+                                setTimeout(() => {
+                                    if (window.showToast) window.showToast("AI Cache Cleared Successfully", 'success');
+                                }, 800);
+                            }
+                        }
+
+                        function invalidateSessions() {
+                            if (confirm("⚠ Force logout all users? They will need to log in again.")) {
+                                setTimeout(() => {
+                                    if (window.showToast) window.showToast("All sessions invalidated.", 'success');
+                                }, 1000);
+                            }
+                        }
+
+                        function simulateAction(startMsg, endMsg) {
+                            if (window.showToast) window.showToast(startMsg, 'info');
+                            setTimeout(() => {
+                                if (window.showToast) window.showToast(endMsg, 'success');
+                            }, 1500);
+                        }
+
+                        function saveAllSettings() {
+                            if (window.showToast) window.showToast("All system settings saved successfully!", 'success');
+                        }
+
+                        // Load saved interactions on mount
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const map = {
+                                'maintenanceToggle': 'maintenanceMode',
+                                'globalRefreshToggle': 'globalAutoRefresh',
+                                'notificationToggle': 'notificationsEnabled',
+                                'debugModeToggle': 'debugMode',
+                                'aiToggle': 'aiEnabled',
+                                'autoApproveToggle': 'autoApprove',
+                                'strictApprovalToggle': 'strictSpecialWaste',
+                                'messagingToggle': 'messagingEnabled',
+                                'loggingToggle': 'adminLogging'
+                            };
+
+                            for (const [id, key] of Object.entries(map)) {
+                                const val = localStorage.getItem(key);
+                                if (val !== null) {
+                                    const el = document.getElementById(id);
+                                    if (el) el.checked = (val === 'true');
+                                }
+                            }
+                        });
+                    </script>
+
                 </div>
+
             </div>
         </main>
     </div>
@@ -574,6 +1427,35 @@
 
     <script src="../js/config.js"></script>
     <script src="../js/admin-dashboard.js"></script>
+    <script>
+        // On load: update admin name from localStorage, ensure correct section visible
+        document.addEventListener('DOMContentLoaded', function () {
+            // --- Update admin header name from localStorage ---
+            const adminRaw = localStorage.getItem('adminUser') || localStorage.getItem('admin_sys_id');
+            if (adminRaw) {
+                try {
+                    const admin = JSON.parse(adminRaw);
+                    const name = admin.name || admin.email || 'Admin';
+                    const nameEl = document.getElementById('adminHeaderName');
+                    const avatarEl = document.getElementById('adminHeaderAvatar');
+                    if (nameEl) nameEl.textContent = name;
+                    if (avatarEl) avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`;
+                } catch (e) {
+                    // non-JSON token (e.g. raw ID string) — keep default
+                }
+            }
+
+            // --- Ensure only dashboardSection is visible on first load ---
+            // showSection() in admin-dashboard.js uses querySelectorAll('.admin-section')
+            // so we just make sure the first section is shown.
+            const allSections = document.querySelectorAll('.admin-section');
+            if (allSections.length) {
+                allSections.forEach(s => s.style.display = 'none');
+                const first = document.getElementById('dashboardSection');
+                if (first) first.style.display = 'block';
+            }
+        });
+    </script>
 </body>
 
 </html>

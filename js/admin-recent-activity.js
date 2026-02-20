@@ -105,7 +105,7 @@ window.showActivityDetails = function (itemData) {
         </div>
         
         <div style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; text-align: right;">
-             <button onclick="deleteActivity('${item.type}', '${item.id}')" 
+             <button onclick="deleteLog('${item.type}', '${item.id}')" 
                 class="delete-btn"
                 style="background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
                  <i class="ri-delete-bin-line"></i> Delete Log Entry
@@ -116,40 +116,45 @@ window.showActivityDetails = function (itemData) {
     modal.style.display = 'flex';
 };
 
-window.deleteActivity = async function (type, id) {
+window.deleteLog = async function (type, id) {
+    console.log("Attempting to delete log:", type, id); // Debugging
     if (!type || !id || type === 'undefined' || id === 'undefined') {
-        alert("Cannot delete this system generated log.");
+        window.showWarning("Cannot delete this system generated log.");
         return;
     }
 
-    if (!confirm("Are you sure you want to permanently delete this activity log?")) return;
-
-    try {
-        // Change button state
-        const btn = document.querySelector('.delete-btn');
-        if (btn) {
-            btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Deleting...';
-            btn.disabled = true;
-        }
-
-        const res = await fetch(`/api/admin/activities/${type}/${id}`, { method: 'DELETE' });
-        const body = await res.json();
-
-        if (res.ok) {
-            closeModal();
-            loadActivities(); // Refresh list
-            // Optional: Show toast
-        } else {
-            alert("Failed to delete: " + (body.message || "Unknown error"));
+    window.showCustomConfirm("Delete Activity", "Are you sure you want to permanently delete this activity log?", async () => {
+        try {
+            // Change button state
+            const btn = document.querySelector('.delete-btn');
             if (btn) {
-                btn.innerHTML = '<i class="ri-delete-bin-line"></i> Delete Log Entry';
-                btn.disabled = false;
+                btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Deleting...';
+                btn.disabled = true;
             }
+
+            const res = await fetch(`/api/admin/activities/${type}/${id}`, { method: 'DELETE' });
+
+            let data = {};
+            try { data = await res.json(); } catch (e) { }
+
+            if (res.ok && data.success) {
+                closeModal();
+                // Optimistically remove from list without full reload
+                allActivities = allActivities.filter(a => !(a.id == id && a.type == type));
+                renderActivities(allActivities);
+                window.showSuccess(data.message || "Log entry deleted.");
+            } else {
+                window.showError(data.message || "Failed to delete log.");
+                if (btn) {
+                    btn.innerHTML = '<i class="ri-delete-bin-line"></i> Delete Log Entry';
+                    btn.disabled = false;
+                }
+            }
+        } catch (error) {
+            console.error("Delete Error:", error);
+            window.showError("Error communicating with server.");
         }
-    } catch (error) {
-        console.error("Delete Error:", error);
-        alert("Error communicating with server.");
-    }
+    });
 };
 
 window.closeModal = function () {

@@ -416,6 +416,32 @@
                         </div>
                     </div>
 
+                    <!-- Gamification Card -->
+                    <div id="gamificationCard" class="info-card"
+                        style="display:none; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0;">
+                        <h4 style="color: #166534; margin-bottom: 8px;">
+                            <i class="ri-trophy-line" style="font-size: 1.2rem; color: #ea580c;"></i>
+                            <span id="gamificationTitle">Eco Points Awarded!</span>
+                        </h4>
+                        <div
+                            style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px;">
+                            <div style="font-size: 2rem; font-weight: 800; color: #15803d;" id="pointsAwarded">+0</div>
+                            <div style="text-align:right;">
+                                <div style="font-size: 0.85rem; color: #166534; font-weight:600;">Total Score</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: #14532d;" id="totalPoints">0
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            style="background: rgba(255,255,255,0.6); padding: 8px 12px; border-radius: 8px; font-size: 0.9rem; color: #166534; font-weight: 600; display:flex; align-items:center; gap: 8px;">
+                            <i class="ri-medal-line"></i> <span id="userLevelBadge">Level</span>
+                        </div>
+                        <p id="motivationalMessage"
+                            style="margin-top: 10px; font-size: 0.95rem; color: #14532d; font-style: italic; font-weight: 500;">
+                            Keep up the good work!
+                        </p>
+                    </div>
+
                     <div class="info-card" style="margin-top: 10px; background: #ecfdf5; border: none; border-left: 0;">
                         <h4 data-i18n="disposal_guide" style="color: #065f46;"><i class="ri-delete-bin-line"></i>
                             Disposal Guide</h4>
@@ -545,7 +571,9 @@
         </div>
     </div>
 
-    <!-- Translations -->
+    <!-- System Scripts -->
+    <script src="../js/config.js"></script>
+    <script src="../js/script.js"></script>
     <script src="../js/translations.js"></script>
 
     <!-- Leaflet JS -->
@@ -576,31 +604,42 @@
         let watchId = null;
         let routeControl = null;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAnalysisPage);
+        } else {
+            initAnalysisPage();
+        }
+
+        function initAnalysisPage() {
             const rawResult = sessionStorage.getItem('analysisResult');
             const wasteImage = sessionStorage.getItem('wasteImage');
             const imgEl = document.getElementById('analyzedImage');
 
-            if (wasteImage) {
-                imgEl.src = wasteImage;
-                imgEl.style.display = 'block';
-            } else {
-                imgEl.style.display = 'none';
-            }
-
             if (rawResult) {
                 const result = JSON.parse(rawResult);
+
+                // Set Image
+                if (wasteImage) {
+                    imgEl.src = wasteImage;
+                    imgEl.style.display = 'block';
+                } else if (result.imageUrl) {
+                    imgEl.src = result.imageUrl;
+                    imgEl.style.display = 'block';
+                } else {
+                    imgEl.style.display = 'none';
+                }
+
                 renderResult(result);
             } else {
-                alert("No analysis result found. Redirecting...");
-                window.location.href = 'dashboard.html';
+                window.showWarning("No analysis result found. Redirecting...");
+                setTimeout(() => window.location.href = 'dashboard.html', 2000);
             }
 
             // Auto-Start GPS
             setTimeout(() => {
                 if (window.enableLiveLocation) window.enableLiveLocation();
             }, 800);
-        });
+        }
 
         function renderResult(data) {
             const catBadge = document.getElementById('categoryBadge');
@@ -610,20 +649,39 @@
             const rulesDescription = document.getElementById('rulesDescription');
             const centerCard = document.getElementById('centerCard');
 
-            if (data.is_uncertain || (data.status && data.status.includes("Confirm"))) {
+            // --- Gamification UI Update ---
+            if (data.points_awarded !== undefined) {
+                const gameCard = document.getElementById('gamificationCard');
+                if (gameCard) {
+                    gameCard.style.display = 'block';
+                    document.getElementById('pointsAwarded').innerText = `+${data.points_awarded}`;
+                    document.getElementById('totalPoints').innerText = data.total_points || 0;
+                    document.getElementById('userLevelBadge').innerText = data.user_level || "Beginner";
+                    document.getElementById('motivationalMessage').innerText = data.motivational_message || "Great job!";
+                }
+            } else {
+                // Hide if no points (e.g. uncertain or guest)
+                const gameCard = document.getElementById('gamificationCard');
+                if (gameCard) gameCard.style.display = 'none';
+            }
+
+            const status = data.status || "Identified";
+            const confidenceVal = parseFloat(data.confidence) || 0;
+
+            if (data.is_uncertain || (status && status.includes("Confirm"))) {
                 catBadge.style.backgroundColor = '#fef3c7';
                 catBadge.style.color = '#d97706';
                 categoryName.innerText = "Needs Review: " + (data.category || "Unknown");
-                confidenceScore.innerHTML = `<span style="color: #dc2626; font-weight: bold;">🔴 ${data.confidence} (${data.status})</span>`;
+                confidenceScore.innerHTML = `<span style="color: #dc2626; font-weight: bold;">🔴 ${confidenceVal.toFixed(1)}% (${status})</span>`;
             } else {
-                const isLikely = data.status === "Likely Identified";
+                const isLikely = status === "Likely Identified";
                 const color = isLikely ? '#eab308' : '#10b981';
                 const icon = isLikely ? '🟡' : '🟢';
 
                 catBadge.style.backgroundColor = color + '20';
                 catBadge.style.color = color;
                 categoryName.textContent = (data.category || 'Unknown').toUpperCase();
-                confidenceScore.innerHTML = `<span style="color: ${color}; font-weight: bold;">${icon} ${data.confidence} (${data.status})</span>`;
+                confidenceScore.innerHTML = `<span style="color: ${color}; font-weight: bold;">${icon} ${confidenceVal.toFixed(1)}% (${status})</span>`;
             }
 
             if (data.material_reasoning) {
@@ -738,7 +796,7 @@
                     const status = await navigator.permissions.query({ name: 'geolocation' });
                     if (status.state === 'denied') {
                         gpsStatus.innerHTML = '<span style="color:#dc2626;">❌ Location Permission Denied</span>';
-                        alert("Please enable Location access in your browser settings (Lock icon in URL bar) to use this feature.");
+                        window.showError("Please enable Location access in your browser settings (Lock icon in URL bar) to use this feature.");
                         return;
                     }
                 } catch (e) {
@@ -747,7 +805,7 @@
             }
 
             if (!navigator.geolocation) {
-                alert("Geolocation is not supported by your browser.");
+                window.showError("Geolocation is not supported by your browser.");
                 const gpsStatus = document.getElementById('gpsStatus');
                 gpsStatus.innerHTML = '<span style="color:#dc2626;">❌ Not Supported</span>';
                 return;
@@ -1094,7 +1152,7 @@
         // --- Mock Navigation / Routing (User requested In-Map) ---
         window.calculateRoute = function (lat, lng, name) {
             if (!window.userLat) {
-                alert("Please enable 'Use My Live Location' first to calculate a route.");
+                window.showWarning("Please enable 'Use My Live Location' first to calculate a route.");
                 return;
             }
 
@@ -1157,15 +1215,13 @@
                         document.getElementById('navTime').innerText = `${minutes} min`;
                         document.getElementById('navDist').innerText = `${km} km`;
 
-                        // Highlight the destination marker
-                        // (Optional: Pulse effect)
                     } else {
-                        alert("Could not find a route.");
+                        window.showError("Could not find a route.");
                     }
                 })
                 .catch(err => {
                     console.error("Routing Error", err);
-                    alert("Routing failed. Please try again.");
+                    window.showError("Routing failed. Please try again.");
                 });
         };
 
@@ -1253,7 +1309,7 @@
 
                 document.getElementById('gpsStatus').innerText = `Location manually set to: ${locName}`;
             } else {
-                alert("Location not found in our database yet! Try Kanjirapally or Kochi.");
+                window.showWarning("Location not found in our database yet! Try Kanjirapally or Kochi.");
             }
         }
 

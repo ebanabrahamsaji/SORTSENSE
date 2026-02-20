@@ -303,3 +303,184 @@ body {
         display: none;
     }
 }
+
+
+/* --- Google Mock Modal - Dark Theme --- */
+.google-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.google-modal.show {
+    opacity: 1;
+    display: flex;
+}
+
+.google-modal-content {
+    background: #202124;
+    /* Google Dark Mode Background */
+    width: 100%;
+    max-width: 400px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    padding: 0;
+    text-align: center;
+    color: #e8eaed;
+    position: relative;
+    font-family: 'Roboto', arial, sans-serif;
+    overflow: hidden;
+}
+
+.google-modal-header {
+    padding: 24px 24px 0 24px;
+    margin-bottom: 10px;
+}
+
+.google-logo-small {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 8px;
+}
+
+.google-modal-header h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: #e8eaed;
+    line-height: 1.3333;
+}
+
+.google-modal-header p {
+    font-size: 1rem;
+    color: #e8eaed;
+    margin-top: 8px;
+    margin-bottom: 0;
+}
+
+/* Account List */
+.google-account-list {
+    list-style: none;
+    padding: 8px 0;
+    margin: 0;
+    text-align: left;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.google-account-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 24px;
+    cursor: pointer;
+    background: transparent;
+    border-bottom: 1px solid #3c4043;
+    transition: background 0.1s;
+}
+
+.google-account-item:last-child {
+    border-bottom: none;
+}
+
+.google-account-item:hover {
+    background: #303134;
+}
+
+.google-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 16px;
+    object-fit: cover;
+}
+
+.google-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.google-name {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: #e8eaed;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.google-email {
+    font-size: 0.75rem;
+    color: #9aa0a6;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.google-status {
+    font-size: 0.75rem;
+    color: #e8eaed;
+    margin-left: 12px;
+    white-space: nowrap;
+}
+
+/* Footer / Another Account */
+.google-other-account {
+    display: flex;
+    align-items: center;
+    padding: 12px 24px;
+    cursor: pointer;
+    border-top: 1px solid #3c4043;
+    color: #e8eaed;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.google-other-account:hover {
+    background: #303134;
+}
+
+.google-other-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    color: #9aa0a6;
+}
+
+.google-modal-footer {
+    padding: 16px 24px;
+    display: flex;
+    justify-content: flex-start;
+    border-top: 1px solid transparent;
+    /* Keeps spacing consistent if needed */
+}
+
+.google-close-btn {
+    background: transparent;
+    border: none;
+    color: #8ab4f8;
+    /* Google Link Blue */
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    padding: 8px 0;
+    /* Minimal padding */
+}
+
+.google-close-btn:hover {
+    text-decoration: underline;
+}

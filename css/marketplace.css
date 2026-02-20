@@ -1,0 +1,810 @@
+/* =====================================================
+   WASTE MARKETPLACE — Premium Production UI
+   ===================================================== */
+
+:root {
+    --mp-primary: #10b981;
+    --mp-primary-dk: #059669;
+    --mp-bg: #0f172a;
+    --mp-card: rgba(15, 23, 42, 0.75);
+    --mp-border: rgba(255, 255, 255, 0.07);
+    --mp-muted: #94a3b8;
+    --mp-text: #f1f5f9;
+}
+
+/* ── Keyframes ─────────────────────────────────────── */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+
+    100% {
+        left: 200%;
+    }
+}
+
+@keyframes sweepBtn {
+    from {
+        left: -100%;
+    }
+
+    to {
+        left: 200%;
+    }
+}
+
+/* ── Section wrapper ───────────────────────────────── */
+#marketplaceSection {
+    display: none;
+    flex-direction: column;
+    gap: 28px;
+    animation: fadeInUp 0.45s ease;
+}
+
+/* ── Page Header ───────────────────────────────────── */
+.mp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.mp-header-text h1 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--mp-text);
+    margin: 0 0 6px;
+    line-height: 1.2;
+}
+
+.mp-header-text p {
+    color: var(--mp-muted);
+    font-size: 1rem;
+    margin: 0;
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, #34d399, #10b981, #059669);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+}
+
+/* ── Post Item Button ──────────────────────────────── */
+.btn-post-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-dk));
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.25);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    position: relative;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.btn-post-item::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -100%;
+    width: 60%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.18);
+    transform: rotate(30deg);
+}
+
+.btn-post-item:hover::after {
+    animation: sweepBtn 0.55s ease;
+}
+
+.btn-post-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+}
+
+/* ── Controls bar (search + tabs) ─────────────────── */
+.mp-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.mp-search-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+    max-width: 420px;
+}
+
+.mp-search-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--mp-muted);
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.mp-search-wrap input {
+    width: 100%;
+    padding: 11px 16px 11px 42px;
+    background: rgba(30, 41, 59, 0.65);
+    border: 1px solid var(--mp-border);
+    border-radius: 12px;
+    color: var(--mp-text);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.mp-search-wrap input:focus {
+    border-color: var(--mp-primary);
+    background: rgba(30, 41, 59, 0.9);
+}
+
+.mp-tabs {
+    display: flex;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--mp-border);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.mp-tab {
+    padding: 9px 20px;
+    border-radius: 9px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--mp-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.mp-tab.active {
+    background: var(--mp-primary);
+    color: #fff;
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.mp-tab:not(.active):hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--mp-text);
+}
+
+/* ── Marketplace Grid ──────────────────────────────── */
+.mp-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+/* ── Card ──────────────────────────────────────────── */
+.mp-card {
+    background: var(--mp-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--mp-border);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    animation: fadeInUp 0.4s ease both;
+}
+
+.mp-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.45);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+/* Card image */
+.mp-card-img {
+    position: relative;
+    height: 170px;
+    overflow: hidden;
+    background: #1e293b;
+}
+
+.mp-card-img::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.55));
+}
+
+.mp-card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.mp-card:hover .mp-card-img img {
+    transform: scale(1.06);
+}
+
+/* Shimmer on image */
+.mp-card-img::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+    animation: shimmer 2.5s infinite;
+    z-index: 1;
+}
+
+/* ── Category Badge ────────────────────────────────── */
+.mp-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    z-index: 2;
+    color: #fff;
+}
+
+.mp-badge.plastic {
+    background: #16a34a;
+}
+
+.mp-badge.paper {
+    background: #2563eb;
+}
+
+.mp-badge.glass {
+    background: #9333ea;
+}
+
+.mp-badge.metal {
+    background: #f97316;
+}
+
+.mp-badge.ewaste {
+    background: #ef4444;
+}
+
+.mp-badge.e-waste {
+    background: #ef4444;
+}
+
+/* Card body */
+.mp-card-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.mp-card-body h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--mp-text);
+    margin: 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mp-card-body p {
+    font-size: 0.82rem;
+    color: var(--mp-muted);
+    margin: 0;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Card meta (owner + time) */
+.mp-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mp-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--mp-primary);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.mp-owner-name {
+    font-size: 0.8rem;
+    color: var(--mp-muted);
+}
+
+/* Card actions */
+.mp-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.mp-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--mp-border);
+    border-radius: 9px;
+    color: var(--mp-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mp-action-btn:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--mp-primary);
+}
+
+.mp-action-btn.saved {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+/* ── Empty State ───────────────────────────────────── */
+.mp-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.mp-empty i {
+    font-size: 3.5rem;
+    color: var(--mp-muted);
+    opacity: 0.35;
+}
+
+.mp-empty h3 {
+    font-size: 1.2rem;
+    color: var(--mp-text);
+    margin: 0;
+}
+
+.mp-empty p {
+    color: var(--mp-muted);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.mp-empty button {
+    margin-top: 8px;
+    padding: 10px 22px;
+    background: var(--mp-primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mp-empty button:hover {
+    background: var(--mp-primary-dk);
+    transform: translateY(-2px);
+}
+
+/* ── Post Item Modal ───────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9000;
+    padding: 20px;
+}
+
+.modal-box {
+    background: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 20px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55);
+    width: 100%;
+    max-width: 880px;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    animation: fadeInUp 0.35s ease;
+}
+
+.modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 22px 28px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modal-head h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--mp-text);
+    margin: 0;
+}
+
+.modal-close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: var(--mp-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.modal-inner {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 28px;
+    padding: 28px;
+}
+
+/* Form */
+.mp-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.mp-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.mp-form-group label {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--mp-muted);
+}
+
+.mp-form-group .char-count {
+    float: right;
+    font-weight: 400;
+    opacity: 0.6;
+    font-size: 0.75rem;
+}
+
+.mp-input-wrap {
+    position: relative;
+}
+
+.mp-input-wrap i {
+    position: absolute;
+    left: 12px;
+    top: 13px;
+    color: var(--mp-primary);
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.mp-form-group input,
+.mp-form-group select,
+.mp-form-group textarea {
+    width: 100%;
+    padding: 11px 14px;
+    background: rgba(30, 41, 59, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 10px;
+    color: var(--mp-text);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    box-sizing: border-box;
+}
+
+.mp-input-wrap input,
+.mp-input-wrap select {
+    padding-left: 38px;
+}
+
+.mp-form-group input:focus,
+.mp-form-group select:focus,
+.mp-form-group textarea:focus {
+    border-color: var(--mp-primary);
+    background: rgba(30, 41, 59, 0.85);
+}
+
+.mp-form-group textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+/* ── Image Upload Zone ─────────────────────────────── */
+.mp-upload-zone {
+    border: 2px dashed rgba(16, 185, 129, 0.3);
+    border-radius: 12px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    transition: border-color 0.2s, background 0.2s;
+    background: rgba(16, 185, 129, 0.03);
+}
+
+.mp-upload-zone:hover,
+.mp-upload-zone.drag-over {
+    border-color: var(--mp-primary);
+    background: rgba(16, 185, 129, 0.07);
+}
+
+.mp-upload-zone.has-image {
+    border-style: solid;
+    border-color: var(--mp-primary);
+    height: 140px;
+}
+
+.mp-upload-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    color: var(--mp-muted);
+    pointer-events: none;
+    text-align: center;
+    padding: 10px;
+}
+
+.mp-upload-inner i {
+    font-size: 1.8rem;
+    color: var(--mp-primary);
+    opacity: 0.7;
+}
+
+.mp-upload-inner span {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.mp-upload-inner small {
+    font-size: 0.72rem;
+    opacity: 0.55;
+}
+
+.mp-upload-zone .upload-spinner {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--mp-primary);
+    font-size: 1.5rem;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* OR divider */
+.mp-or-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0 4px;
+    color: var(--mp-muted);
+    font-size: 0.75rem;
+}
+
+.mp-or-divider::before,
+.mp-or-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.mp-or-divider span {
+    white-space: nowrap;
+}
+
+.mp-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.mp-btn-cancel {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: transparent;
+    color: var(--mp-muted);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mp-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--mp-text);
+}
+
+.mp-btn-submit {
+    flex: 2;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(135deg, var(--mp-primary), var(--mp-primary-dk));
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.mp-btn-submit::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -100%;
+    width: 60%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.18);
+    transform: rotate(30deg);
+}
+
+.mp-btn-submit:hover::after {
+    animation: sweepBtn 0.55s ease;
+}
+
+.mp-btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+}
+
+.mp-btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Preview pane */
+.mp-preview-pane {
+    background: rgba(15, 23, 42, 0.4);
+    border: 2px dashed rgba(16, 185, 129, 0.2);
+    border-radius: 18px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    position: relative;
+    transition: border-color 0.3s;
+}
+
+.mp-preview-pane:hover {
+    border-color: var(--mp-primary);
+}
+
+.mp-preview-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: var(--mp-primary);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+}
+
+#mpLivePreview {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* ── Responsive ────────────────────────────────────── */
+@media (max-width: 960px) {
+    .modal-inner {
+        grid-template-columns: 1fr;
+    }
+
+    .mp-preview-pane {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .mp-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .mp-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .mp-search-wrap {
+        max-width: none;
+    }
+
+    .mp-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-head,
+    .modal-inner {
+        padding: 18px;
+    }
+}

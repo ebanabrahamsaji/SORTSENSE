@@ -11,6 +11,7 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="../js/script.js"></script>
     <style>
         .settings-wrapper {
             max-width: 900px;
@@ -307,7 +308,7 @@
 
             // Logout
             document.getElementById('logoutBtn').addEventListener('click', () => {
-                if (confirm("Logout from Center Admin?")) {
+                window.showCustomConfirm("Logout", "Logout from Center Admin?", () => {
                     localStorage.removeItem('center_sys_id');
                     localStorage.removeItem('center_sys_email');
                     localStorage.removeItem('center_sys_role');
@@ -318,7 +319,7 @@
                     localStorage.removeItem('userEmail');
 
                     window.location.href = 'login-user.html';
-                }
+                });
             });
 
             // Handle Profile Update
@@ -343,14 +344,14 @@
                     btn.disabled = false;
 
                     if (res.ok) {
-                        alert("Profile updated successfully!");
+                        window.showSuccess("Profile updated successfully!");
                         localStorage.setItem('centerName', name); // Cache as Center Name
                     }
-                    else alert(data.message);
+                    else window.showError(data.message);
                 } catch (err) {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
-                    alert("Error updating profile.");
+                    window.showError("Error updating profile.");
                 }
             });
 
@@ -366,7 +367,7 @@
                 const confirmPass = document.getElementById('confirmPassword').value;
 
                 if (newPass !== confirmPass) {
-                    alert("New passwords do not match.");
+                    window.showWarning("New passwords do not match.");
                     return;
                 }
 
@@ -385,14 +386,14 @@
                     btn.disabled = false;
 
                     if (res.ok) {
-                        alert("Password changed successfully!");
+                        window.showSuccess("Password changed successfully!");
                         document.getElementById('passwordForm').reset();
                     }
-                    else alert(data.message);
+                    else window.showError(data.message);
                 } catch (err) {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
-                    alert("Error changing password.");
+                    window.showError("Error changing password.");
                 }
             });
         });

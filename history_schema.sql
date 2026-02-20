@@ -1,0 +1,8 @@
+
+CREATE TABLE IF NOT EXISTS tbl_user_history (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    activity_type VARCHAR(50) NOT NULL COMMENT 'SCAN, SEARCH, PICKUP',
+    details JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

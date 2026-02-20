@@ -69,12 +69,22 @@
 
                 <!-- Google Block -->
                 <div id="google-block">
+
+                    <!-- REAL Google Identity Services (GIS) -->
+                    <!-- This configuration connects to accounts.google.com for secure authentication -->
                     <div id="g_id_onload"
                         data-client_id="1033862193558-21l8mqvkjigogomhvonf256av4mmqo8q.apps.googleusercontent.com"
                         data-context="signin" data-ux_mode="popup" data-callback="handleGoogleSignIn"
-                        data-auto_prompt="false"></div>
+                        data-auto_prompt="false">
+                    </div>
+
+                    <!-- Official Google Sign-In Button -->
                     <div class="g_id_signin" data-type="standard" data-shape="rectangular" data-theme="outline"
-                        data-text="signin_with" data-size="large" data-logo_alignment="left" data-width="100%"></div>
+                        data-text="signin_with" data-size="large" data-logo_alignment="left" data-width="400">
+                    </div>
+
+                    <p id="googleMsg" style="text-align:center; margin-top:8px; font-size:0.88rem; min-height:1.2em;">
+                    </p>
                     <div class="auth-divider"><span>OR</span></div>
                 </div>
 
@@ -129,6 +139,7 @@
     <!-- Scripts -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="../js/config.js"></script>
+    <script src="../js/script.js"></script>
     <script src="../js/google-auth.js"></script>
     <script>
         let currentRole = 'user';
@@ -202,20 +213,17 @@
 
             // 1. Check for Empty
             if (!email) {
-                errorMsg.innerText = "Please enter your " + (currentRole === 'user' ? "email address" : "username") + ".";
-                errorMsg.style.display = 'block';
+                window.showWarning("Please enter your " + (currentRole === 'user' ? "email address" : "username") + ".");
                 return;
             }
             if (!password) {
-                errorMsg.innerText = "Please enter your password.";
-                errorMsg.style.display = 'block';
+                window.showWarning("Please enter your password.");
                 return;
             }
 
             // 2. Format Check (Strict for Users)
             if (currentRole === 'user' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                errorMsg.innerText = "Please enter a valid email address.";
-                errorMsg.style.display = 'block';
+                window.showWarning("Please enter a valid email address.");
                 return;
             }
 
@@ -228,26 +236,43 @@
             fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email: email, password: password }) // Ensure keys match backend
             })
-                .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                .then(async res => {
+                    const data = await res.json();
+                    return { status: res.status, body: data };
+                })
                 .then(({ status, body }) => {
+                    // Reset Button
                     btn.innerHTML = originalText;
                     btn.disabled = false;
 
                     if (status === 200 || status === 201) {
-                        const userRole = body.user.role || 'USER';
+                        const user = body.user;
+                        const userRole = user.role || 'USER';
 
-                        if (currentRole === 'user' && userRole !== 'USER') { alert("Please use the correct tab."); return; }
-                        if (currentRole === 'center' && userRole !== 'CENTER') { alert("Access Denied."); return; }
-                        if (currentRole === 'admin' && userRole !== 'ADMIN') { alert("Access Denied."); return; }
+                        // Role Validation
+                        if (currentRole === 'user' && userRole !== 'USER') {
+                            window.showError("Please log in via the correct tab.");
+                            return;
+                        }
+                        if (currentRole === 'center' && userRole !== 'CENTER') {
+                            window.showError("Access Denied: You are not a Collection Center.");
+                            return;
+                        }
+                        if (currentRole === 'admin' && userRole !== 'ADMIN') {
+                            window.showError("Access Denied: You are not an Admin.");
+                            return;
+                        }
+
+                        window.showSuccess("Welcome back, " + (user.name || "User") + "!");
 
                         // STRICT ROLE SEPARATION: Use distinct storage namespaces
                         if (userRole === 'CENTER') {
-                            localStorage.setItem('center_sys_id', body.user.user_id);
-                            localStorage.setItem('center_sys_email', body.user.email);
+                            localStorage.setItem('center_sys_id', user.user_id);
+                            localStorage.setItem('center_sys_email', user.email);
                             localStorage.setItem('center_sys_role', 'CENTER');
-                            if (body.user.name) localStorage.setItem('center_sys_name', body.user.name);
+                            if (user.name) localStorage.setItem('center_sys_name', user.name);
 
                             // Clear User keys to prevent leakage
                             localStorage.removeItem('app_user_id');
@@ -255,40 +280,41 @@
                             localStorage.removeItem('app_user_role');
                             localStorage.removeItem('userId'); // Cleanup legacy
 
-                            window.location.href = 'center-dashboard.html';
+                            setTimeout(() => { window.location.href = 'center-dashboard.html'; }, 800);
                         }
                         else if (userRole === 'ADMIN') {
-                            // Admin can share Center keys or have their own. Assuming Admin similar to Center for now or separate.
-                            // For safety, let's keep Admin on 'center_sys' or 'admin_sys'. 
-                            // Existing code mapped Admin -> admin-dashboard.html
-                            localStorage.setItem('admin_sys_id', body.user.user_id);
-                            localStorage.setItem('admin_sys_email', body.user.email);
+                            localStorage.setItem('admin_sys_id', user.user_id);
+                            localStorage.setItem('admin_sys_email', user.email);
+                            localStorage.setItem('admin_sys_role', 'ADMIN');
 
-                            window.location.href = 'admin-dashboard.html';
+                            setTimeout(() => { window.location.href = 'admin-dashboard.html'; }, 800);
                         }
                         else {
                             // Regular USER
-                            localStorage.setItem('app_user_id', body.user.user_id);
-                            localStorage.setItem('app_user_email', body.user.email);
+                            localStorage.setItem('app_user_id', user.user_id);
+                            localStorage.setItem('app_user_email', user.email);
                             localStorage.setItem('app_user_role', 'USER');
-                            if (body.user.name) localStorage.setItem('app_user_name', body.user.name);
+                            if (user.name) localStorage.setItem('app_user_name', user.name);
+
+                            // Legacy support for scripts using 'userId'
+                            localStorage.setItem('userId', user.user_id);
 
                             // Clear Center/Admin keys
                             localStorage.removeItem('center_sys_id');
                             localStorage.removeItem('center_sys_email');
                             localStorage.removeItem('center_sys_role');
-                            localStorage.removeItem('userId'); // Cleanup legacy
 
-                            window.location.href = 'dashboard.html';
+                            setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
                         }
                     } else {
-                        alert('Login failed: ' + (body.message || 'Invalid credentials'));
+                        window.showError(body.message || 'Invalid credentials');
                     }
                 })
                 .catch(e => {
+                    console.error(e);
                     btn.innerHTML = originalText;
                     btn.disabled = false;
-                    alert("Connection failed.");
+                    window.showError("Connection failed. Please check your network.");
                 });
         });
 

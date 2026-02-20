@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan History - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard_fix.css">
+    <style>
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .stat-info h3 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .stat-info p {
+            color: #64748b;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .history-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th,
+        .history-table td {
+            text-align: left;
+            padding: 12px 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .history-table th {
+            color: #64748b;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .history-table td {
+            color: #334155;
+            font-size: 0.95rem;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge.plastic {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .badge.organic {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .badge.ewaste {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .badge.hazardous {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .badge-confidence {
+            background: #f1f5f9;
+            color: #64748b;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Sort Sense</span>
+                    <i class="ri-leaf-fill logo-icon"></i>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <a href="dashboard.html">
+                            <i class="ri-dashboard-line"></i>
+                            <span data-i18n="dashboard_menu">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="active">
+                        <a href="#">
+                            <i class="ri-history-line"></i>
+                            <span data-i18n="history_menu">History</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#">
+                            <i class="ri-trophy-line"></i>
+                            <span data-i18n="rewards_menu">Rewards</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="special-waste.html">
+                            <i class="ri-alert-line"></i>
+                            <span data-i18n="special_waste_menu">Special Waste</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="profile.html">
+                            <i class="ri-settings-4-line"></i>
+                            <span data-i18n="profile_menu">Profile</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="ri-logout-box-line"></i>
+                    <span data-i18n="logout_btn">Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-search" style="opacity: 0; pointer-events: none;">
+                    <!-- Placeholder to keep layout alignment -->
+                    <i class="ri-search-line"></i>
+                    <input type="text">
+                </div>
+
+                <div class="header-profile">
+                    <div class="notification-badge">
+                        <i class="ri-notification-3-line"></i>
+                        <span class="dot"></span>
+                    </div>
+                    <div class="user-info">
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=10b981&color=fff"
+                            alt="Profile">
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-grid" style="display: block;">
+                <h2 style="margin-bottom: 20px; color: #1e293b;">Scan History & Impact</h2>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="ri-scan-2-line"></i></div>
+                        <div class="stat-info">
+                            <h3 id="totalScans">0</h3>
+                            <p>Total Scans</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color:#f59e0b; background:rgba(245,158,11,0.1)"><i
+                                class="ri-coin-line"></i></div>
+                        <div class="stat-info">
+                            <h3 id="ecoCredits">0</h3>
+                            <p>Eco Credits</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color:#3b82f6; background:rgba(59, 130, 246, 0.1)"><i
+                                class="ri-earth-line"></i></div>
+                        <div class="stat-info">
+                            <h3 id="carbonSaved">0</h3>
+                            <p>Carbon Saved</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters-container"
+                    style="background: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);">
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label
+                            style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 5px; font-weight: 500;">Date</label>
+                        <input type="date" id="filterDate"
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; color: #334155; outline: none;">
+                    </div>
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label
+                            style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 5px; font-weight: 500;">Waste
+                            Type</label>
+                        <select id="filterType"
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; color: #334155; outline: none;">
+                            <option value="">All Types</option>
+                            <option value="Plastic">Plastic</option>
+                            <option value="Organic">Organic</option>
+                            <option value="Paper">Paper</option>
+                            <option value="Glass">Glass</option>
+                            <option value="Metal">Metal</option>
+                            <option value="E-Waste">E-Waste</option>
+                            <option value="Hazardous">Hazardous</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label
+                            style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 5px; font-weight: 500;">Recycling
+                            Status</label>
+                        <select id="filterStatus"
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 6px; color: #334155; outline: none;">
+                            <option value="">All Statuses</option>
+                            <option value="Recycle">Recycled</option>
+                            <option value="Compost">Composted</option>
+                            <option value="Disposal">Disposal / Landfill</option>
+                            <option value="Hazardous">Hazardous Handling</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions" style="display: flex; align-items: flex-end;">
+                        <button id="resetFilters"
+                            style="padding: 8px 16px; background: #f1f5f9; color: #64748b; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; height: 38px; margin-top: 22px;">Reset</button>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="history-table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Item</th>
+                                    <th>Category</th>
+                                    <th>Confidence</th>
+                                    <th>Disposal Method</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align:center;">Loading history...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+        </main>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/history.js"></script>
+    <script>
+        // Simple script to handle logout to match dashboard behavior
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '../index.html';
+        });
+    </script>
+</body>
+
+</html>

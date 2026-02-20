@@ -6,10 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
-            if (confirm('Logout?')) {
+            window.showCustomConfirm('Logout', 'Are you sure you want to logout from Admin Panel?', () => {
                 localStorage.removeItem('adminUser');
                 window.location.href = 'login-user.html';
-            }
+            });
         });
     }
 });
@@ -54,6 +54,7 @@ function renderUsers(query = '') {
         } else {
             actionButtons = `
                 <button class="table-action-btn btn-activate" onclick="toggleStatus(${u.user_id}, 'active')">Activate</button>
+                <button class="table-action-btn btn-delete" onclick="deleteUser(${u.user_id})" style="background:#EF4444; margin-left:5px;">Delete</button>
             `;
         }
 
@@ -66,7 +67,7 @@ function renderUsers(query = '') {
             <td style="padding:10px;">${new Date(u.created_at).toLocaleDateString()}</td>
             <td style="padding:10px;"><span style="color:${statusColor}; font-weight:600;">${u.status || 'active'}</span></td>
             <td style="padding:10px;">
-                ${actionButtons}
+                <div style="display:flex; gap:5px;">${actionButtons}</div>
             </td>
         `;
         tbody.appendChild(row);
@@ -79,34 +80,42 @@ window.filterUsers = () => {
 };
 
 window.toggleStatus = async (id, status) => {
-    if (!confirm(`Are you sure you want to change user status to ${status}?`)) return;
-    try {
-        const res = await fetch('/api/admin/user-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: id, status: status })
-        });
-        if (res.ok) fetchUsers();
-        else alert("Failed to update status");
-    } catch (e) { alert("Connection Error"); }
+    window.showCustomConfirm("Change Status", `Are you sure you want to change user status to ${status}?`, async () => {
+        try {
+            const res = await fetch('/api/admin/user-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: id, status: status })
+            });
+            if (res.ok) {
+                window.showSuccess(`User status updated to ${status}`);
+                fetchUsers();
+            } else {
+                window.showError("Failed to update status");
+            }
+        } catch (e) {
+            window.showError("Connection Error");
+        }
+    });
 };
 
 window.deleteUser = async (id) => {
-    if (!confirm('Are you sure you want to PERMANENTLY delete this user? This action cannot be undone.')) return;
-    try {
-        const res = await fetch(`/api/admin/users/${id}`, {
-            method: 'DELETE'
-        });
+    window.showCustomConfirm("Permanent Delete", "Are you sure you want to PERMANENTLY delete this user? This action cannot be undone.", async () => {
+        try {
+            const res = await fetch(`/api/admin/users/${id}`, {
+                method: 'DELETE'
+            });
 
-        if (res.ok) {
-            // alert('User deleted successfully');
-            fetchUsers();
-        } else {
-            const result = await res.json().catch(() => ({ message: "Failed to parse response" }));
-            alert(result.message || "Failed to delete user");
+            if (res.ok) {
+                window.showSuccess("User permanently deleted.");
+                fetchUsers();
+            } else {
+                const result = await res.json().catch(() => ({ message: "Failed to parse response" }));
+                window.showError(result.message || "Failed to delete user");
+            }
+        } catch (e) {
+            console.error("Delete user error:", e);
+            window.showError("Connection Error deleting user: " + e.message);
         }
-    } catch (e) {
-        console.error("Delete user error:", e);
-        alert("Connection Error deleting user: " + e.message);
-    }
+    });
 };

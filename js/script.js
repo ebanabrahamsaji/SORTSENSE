@@ -1,3 +1,145 @@
+/**
+ * SortSense Premium UI System
+ * Hijacks native alert/confirm to show custom premium UI
+ */
+(function () {
+    // 1. Create UI Containers if they don't exist
+    function initPremiumUI() {
+        if (!document.getElementById('toast-container')) {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container';
+            document.body.appendChild(container);
+        }
+
+        if (!document.getElementById('confirmModal')) {
+            const modal = document.createElement('div');
+            modal.id = 'confirmModal';
+            modal.className = 'modal-overlay';
+            modal.style.display = 'none';
+            modal.innerHTML = `
+                <div class="confirm-modal-card">
+                    <div class="confirm-icon"><i class="ri-question-line"></i></div>
+                    <h3 id="confirmTitle">Confirm Action</h3>
+                    <p id="confirmMessage">Are you sure you want to proceed?</p>
+                    <div class="confirm-actions">
+                        <button id="confirmCancelBtn" class="confirm-btn cancel">Cancel</button>
+                        <button id="confirmProceedBtn" class="confirm-btn proceed">Proceed</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+    }
+
+    // 2. Global showToast & Helpers
+    window.showToast = function (message, type = 'info', title = '') {
+        initPremiumUI();
+        const container = document.getElementById('toast-container');
+        if (!container) return; // Fail safe
+
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        const iconMap = {
+            'success': 'ri-checkbox-circle-line',
+            'error': 'ri-error-warning-line',
+            'warning': 'ri-alert-line',
+            'info': 'ri-information-line'
+        };
+        const iconClass = iconMap[type] || iconMap.info;
+
+        // Auto-assign title if missing based on type
+        if (!title) {
+            if (type === 'success') title = 'Success';
+            if (type === 'error') title = 'Error';
+            if (type === 'warning') title = 'Warning';
+            if (type === 'info') title = 'Information';
+        }
+
+        toast.innerHTML = `
+            <div class="toast-icon"><i class="${iconClass}"></i></div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <div class="toast-close" onclick="this.parentElement.remove()"><i class="ri-close-line"></i></div>
+        `;
+        container.appendChild(toast);
+
+        // Auto remove
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 400);
+            }
+        }, 5000);
+    };
+
+    window.showSuccess = (msg) => window.showToast(msg, 'success');
+    window.showError = (msg) => window.showToast(msg, 'error');
+    window.showWarning = (msg) => window.showToast(msg, 'warning');
+    window.showInfo = (msg) => window.showToast(msg, 'info');
+
+    // 3. Global showCustomConfirm
+    window.showCustomConfirm = function (title, message, onProceed) {
+        initPremiumUI();
+        const modal = document.getElementById('confirmModal');
+        const titleEl = document.getElementById('confirmTitle');
+        const messageEl = document.getElementById('confirmMessage');
+        const proceedBtn = document.getElementById('confirmProceedBtn');
+        const cancelBtn = document.getElementById('confirmCancelBtn');
+
+        if (!modal) return;
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        modal.style.display = 'flex';
+
+        const newProceed = proceedBtn.cloneNode(true);
+        proceedBtn.parentNode.replaceChild(newProceed, proceedBtn);
+        const newCancel = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+        newProceed.addEventListener('click', () => {
+            modal.style.display = 'none';
+            if (onProceed) onProceed();
+        });
+        newCancel.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    };
+
+    // 4. HIJACK NATIVE FUNCTIONS
+    // This removes "localhost:8000 says"
+    window.alert = function (msg) {
+        console.log("SortSense Alert Hijacked:", msg);
+        const lower = msg.toLowerCase();
+        if (lower.includes('success') || lower.includes('complete') || lower.includes('unlocked')) {
+            window.showSuccess(msg);
+        } else if (lower.includes('error') || lower.includes('fail') || lower.includes('denied') || lower.includes('invalid')) {
+            window.showError(msg);
+        } else if (lower.includes('please') || lower.includes('warning') || lower.includes('match')) {
+            window.showWarning(msg);
+        } else {
+            window.showInfo(msg);
+        }
+    };
+
+    window.confirm = function (msg, callback) {
+        window.showCustomConfirm("Confirm Action", msg, callback);
+        return false; // Prevents default browser alert
+    };
+
+    // Prompt Hijack (Simple placeholder as prompt is rare)
+    window.prompt = function (msg) {
+        window.showWarning("Interactive prompts are disabled for security. Message: " + msg);
+        return null;
+    };
+
+    document.addEventListener('DOMContentLoaded', initPremiumUI);
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Scroll Reveal Animation ---
     const revealElements = document.querySelectorAll('.reveal');
@@ -117,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .catch(err => {
                     console.error("Login Error:", err);
-                    alert("Connection failed. Ensure server is running on localhost:8000.");
+                    window.showError("Connection failed. Ensure server is running on localhost:8000.");
                 });
         });
     }
@@ -135,19 +277,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // Email Validation
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(email)) {
-                alert('Please enter a valid email address.');
+                window.showWarning('Please enter a valid email address.');
                 return;
             }
 
             if (password !== confirmPassword) {
-                alert('Passwords do not match!');
+                window.showWarning('Passwords do not match!');
                 return;
             }
 
             console.log('User Registration:', { fullname, email });
 
             if (password.length < 8) {
-                alert('Password must be at least 8 characters long!');
+                window.showWarning('Password must be at least 8 characters long!');
                 return;
             }
 
@@ -179,12 +321,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         // Redirect to dashboard
                         window.location.href = 'dashboard.html';
                     } else {
-                        alert('Registration failed: ' + (body.message || 'Unknown error'));
+                        window.showError('Registration failed: ' + (body.message || 'Unknown error'));
                     }
                 })
                 .catch(err => {
                     console.error("Register Error:", err);
-                    alert('Error connecting to server. Is Node running?');
+                    window.showError('Error connecting to server. Is Node running?');
                 });
         });
     }

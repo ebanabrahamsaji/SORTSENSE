@@ -91,13 +91,18 @@ export const identifyWaste = async (req, res) => {
             details = getDisposalInfo(categoryDisplay);
         }
 
-        res.json({
-            category: categoryDisplay,
-            confidence: aiResult.confidence || 0,
-            message: `Identified as ${categoryDisplay}`,
-            details: details,
-            is_hazardous: ['Hazardous', 'E-Waste', 'Biomedical'].includes(categoryDisplay)
-        });
+        // Send response if no userId present (otherwise gamification block below handles it)
+        if (!req.body.userId) {
+            return res.json({
+                category: categoryDisplay,
+                confidence: aiResult.confidence || 0,
+                status: "Likely Identified",
+                message: `Identified as ${categoryDisplay}`,
+                details: details,
+                is_hazardous: ['Hazardous', 'E-Waste', 'Biomedical'].includes(categoryDisplay),
+                imageUrl: `/${imagePath.replace(/\\/g, '/')}`
+            });
+        }
 
         // Sync to Transactional Records
         if (req.body.userId) {
@@ -107,27 +112,68 @@ export const identifyWaste = async (req, res) => {
                 category: categoryDisplay,
                 scanMethod: 'SCAN',
                 location: req.body.location || 'Scan Location',
-                status: 'Scanned' // Auto-verified? No, just scanned.
+                status: 'Scanned'
             });
+
+            // --- GAMIFICATION ENGINE START ---
+            try {
+                const POINTS_MAP = {
+                    'Plastic': 10, 'Organic': 8, 'Metal': 12, 'Glass': 12,
+                    'Mixed': 15, 'Hazardous': 20, 'E-Waste': 20, 'Paper': 10, 'Textile': 10
+                };
+                const pointsAwarded = POINTS_MAP[categoryDisplay] || 5;
+
+                const [users] = await db.query("SELECT green_score FROM tbl_users WHERE user_id = ?", [req.body.userId]);
+                let newScore = 0;
+                let currentLevelName = 'Beginner 🌱';
+                let motivationalMsg = "Great job recycling! You're helping the planet 🌎";
+
+                if (users.length > 0) {
+                    const currentScore = users[0].green_score || 0;
+                    newScore = currentScore + pointsAwarded;
+                    await db.query("UPDATE tbl_users SET green_score = ?, monthly_points = monthly_points + ? WHERE user_id = ?", [newScore, pointsAwarded, req.body.userId]);
+
+                    const LEVELS = [
+                        { name: 'Beginner 🌱', max: 50 },
+                        { name: 'Eco Learner 🍃', max: 150 },
+                        { name: 'Green Warrior 🌿', max: 300 },
+                        { name: 'Recycling Champion ♻️', max: 600 },
+                        { name: 'Eco Hero 🌍', max: Infinity }
+                    ];
+                    currentLevelName = (LEVELS.find(l => newScore <= l.max) || LEVELS[LEVELS.length - 1]).name;
+
+                    const MESSAGES = ["Great job!", "Keep going!", "You're an Eco Hero!", "Sustainable choice!", "Well done!"];
+                    motivationalMsg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+                }
+
+                const historyPayload = {
+                    category: categoryDisplay,
+                    confidence: aiResult.confidence || 0,
+                    points: pointsAwarded
+                };
+                db.query("INSERT INTO tbl_user_history (user_id, activity_type, details) VALUES (?, 'SCAN', ?)", [req.body.userId, JSON.stringify(historyPayload)]);
+
+                // Final Response with everything
+                return res.json({
+                    category: categoryDisplay,
+                    confidence: aiResult.confidence || 0,
+                    status: "Likely Identified",
+                    message: `Identified as ${categoryDisplay}`,
+                    details: details,
+                    is_hazardous: ['Hazardous', 'E-Waste', 'Biomedical'].includes(categoryDisplay),
+                    imageUrl: `/${imagePath.replace(/\\/g, '/')}`,
+                    points_awarded: pointsAwarded,
+                    total_points: newScore,
+                    user_level: currentLevelName,
+                    motivational_message: motivationalMsg
+                });
+            } catch (gameErr) { console.error("Game Error:", gameErr); }
         }
-
-        // Record History
-        if (req.body.userId) {
-            const historyPayload = {
-                category: categoryDisplay,
-                result: categoryDisplay, // Dual field for compatibility
-                confidence: aiResult.confidence || 0
-            };
-
-            db.query(
-                "INSERT INTO tbl_user_history (user_id, activity_type, details) VALUES (?, 'SCAN', ?)",
-                [req.body.userId, JSON.stringify(historyPayload)]
-            ).catch(e => console.error("Scan History Error:", e));
-        }
-
     } catch (error) {
         console.error("AI Service Error:", error.message);
-        res.status(500).json({ message: 'Failed to process image.' });
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Failed to process image.' });
+        }
     }
 };
 

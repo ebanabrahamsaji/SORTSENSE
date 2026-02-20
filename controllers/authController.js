@@ -70,8 +70,13 @@ export const registerUser = async (req, res) => {
 export const loginUser = async (req, res) => {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+        return res.status(400).json({ message: 'Email and password are required.' });
+    }
+
     try {
-        console.log("Login Attempt:", { email, password }); // DEBUG
+        console.log("Login Attempt:", { email }); // DEBUG (don't log password)
+
         // Allow login via Email OR Name (Username)
         const [users] = await db.query(
             'SELECT * FROM tbl_users WHERE email = ? OR name = ?',
@@ -80,14 +85,27 @@ export const loginUser = async (req, res) => {
         console.log("Login Query Found:", users.length, "users"); // DEBUG
 
         if (users.length === 0) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
+            return res.status(401).json({ message: 'No account found with that email.' });
         }
 
         const user = users[0];
+
+        // If no password hash (Google-only account), direct them to Google Sign-In
+        if (!user.password_hash) {
+            return res.status(401).json({ message: 'This account uses Google Sign-In. Please click "Sign in with Google".' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password_hash);
 
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid email or password.' });
+            // If user has a profile_picture, they likely registered via Google Sign-In.
+            // Their password_hash is a dummy value that won't match anything.
+            const isGoogleAccount = !!user.profile_picture;
+            return res.status(401).json({
+                message: isGoogleAccount
+                    ? 'This account was created with Google Sign-In. Please click "Sign in with Google" button above.'
+                    : 'Incorrect password. Please try again or use "Forgot password?".'
+            });
         }
 
         // Return user info (omit password)
@@ -99,7 +117,7 @@ export const loginUser = async (req, res) => {
         res.json({ message: 'Login successful.', user: userInfo });
 
     } catch (error) {
-        console.error(error);
+        console.error("Login Error:", error);
         res.status(500).json({ message: 'Server error during login.' });
     }
 };

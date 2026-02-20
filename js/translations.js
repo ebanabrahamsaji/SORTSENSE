@@ -27,7 +27,9 @@ const TRANSLATIONS = {
         // Sidebar
         dashboard_menu: "Dashboard",
         history_menu: "History",
-        rewards_menu: "Rewards",
+        rewards_menu: "Rewards & Leaderboard",
+        marketplace_menu: "Marketplace",
+        special_waste_menu: "Special Waste",
         profile_menu: "Profile",
         logout_btn: "Logout",
 
@@ -120,6 +122,8 @@ const TRANSLATIONS = {
         dashboard_menu: "ഡാഷ്ബോർഡ്",
         history_menu: "ചരിത്രം",
         rewards_menu: "റിവാർഡുകൾ",
+        marketplace_menu: "മാർക്കറ്റ്പ്ലേസ്",
+        special_waste_menu: "സ്പെഷ്യൽ വേസ്റ്റ്",
         profile_menu: "പ്രൊഫൈൽ",
         logout_btn: "ലോഗ് ഔട്ട്",
 

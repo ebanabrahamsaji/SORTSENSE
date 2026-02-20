@@ -98,6 +98,8 @@
         </div>
     </div>
 
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js"></script>
     <script>
         function previewImage() {
             const file = document.getElementById('fileInput').files[0];
@@ -117,7 +119,7 @@
             const file = fileInput.files[0];
 
             if (!file) {
-                alert("Please select an image first!");
+                window.showWarning("Please select an image first!");
                 return;
             }
 
@@ -133,7 +135,7 @@
             try {
                 // Send to Node.js Backend (which proxies to Python)
                 // Assuming Node.js is running on port 8000
-                const response = await fetch('http://localhost:8000/api/waste/identify', {
+                const response = await fetch('/api/waste/identify', {
                     method: 'POST',
                     body: formData
                 });
@@ -151,7 +153,7 @@
 
             } catch (error) {
                 console.error(error);
-                alert("Analysis failed: " + error.message);
+                window.showError("Analysis failed: " + error.message);
             }
         }
     </script>

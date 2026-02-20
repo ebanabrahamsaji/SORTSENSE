@@ -14,12 +14,25 @@ const WASTE_RULES = {
 };
 
 // Create Request
+// Create Request
 export const createRequest = async (req, res) => {
+    console.log("Create Request Body:", req.body); // Debug log
     const { userId, category, quantity, description, preferredDate, location } = req.body;
     const imageFile = req.file;
 
-    if (!userId || !category || !quantity || !preferredDate || !location) {
-        return res.status(400).json({ message: 'All fields are required.' });
+    if (!userId || !category || !quantity || !preferredDate || !location || !description) {
+        const missing = [];
+        if (!userId) missing.push('userId');
+        if (!category) missing.push('category');
+        if (!quantity) missing.push('quantity');
+        if (!preferredDate) missing.push('preferredDate');
+        if (!location) missing.push('location');
+        if (!description) missing.push('description');
+        return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
+    }
+
+    if (description.trim().length < 20) {
+        return res.status(400).json({ message: 'Description must be at least 20 characters.' });
     }
 
     const rule = WASTE_RULES[category];
