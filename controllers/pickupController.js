@@ -202,7 +202,7 @@ export const getUserRequests = async (req, res) => {
         const query = `
             SELECT r.*, c.center_name, c.latitude as center_lat, c.longitude as center_lng
             FROM tbl_pickup_requests r
-            JOIN tbl_collection_centers c ON r.center_id = c.center_id
+            LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
             WHERE r.user_id = ?
             ORDER BY r.created_at DESC
         `;
@@ -269,24 +269,8 @@ export const getCenterRequests = async (req, res) => {
     }
 };
 
-// 3.5. Get ALL Requests for ADMIN
-export const getAllPickupRequests = async (req, res) => {
-    try {
-        // Admin sees EVERYTHING
-        const query = `
-            SELECT r.*, u.name as user_name, u.email as user_email, u.phone as user_phone, c.center_name 
-            FROM tbl_pickup_requests r
-            JOIN tbl_users u ON r.user_id = u.user_id
-            LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
-            ORDER BY r.created_at DESC
-        `;
-        const [rows] = await db.query(query);
-        res.json(rows);
-    } catch (error) {
-        console.error("Get All Requests Error:", error);
-        res.status(500).json({ message: "Error fetching requests." });
-    }
-};
+// getAllPickupRequests is defined and exported at the bottom of this file (Admin/Reports).
+
 
 // 4. Update Status
 export const updatePickupStatus = async (req, res) => {
@@ -606,3 +590,36 @@ export const getPickupTrend = async (req, res) => {
         res.json({ today: 0, yesterday: 0, week: 0 });
     }
 };
+// 10. Get All Pickup Requests (Admin/Reports)
+export const getAllPickupRequests = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                r.request_id,
+                r.status,
+                r.waste_type,
+                r.quantity,
+                r.address,
+                r.created_at,
+                r.estimated_pickup_time,
+                u.name  AS user_name,
+                u.email AS user_email,
+                COALESCE(c.center_name, 'Unassigned') AS center_name
+            FROM tbl_pickup_requests r
+            INNER JOIN tbl_users u ON r.user_id = u.user_id
+            LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+            ORDER BY r.created_at DESC
+            LIMIT 50
+        `;
+        const [rows] = await db.query(query);
+        res.json(rows);
+    } catch (error) {
+        console.error('[getAllPickupRequests] DB Error:', error.message, error.code);
+        res.status(500).json({
+            message: 'Error fetching pickup requests.',
+            detail: error.message,
+            code: error.code
+        });
+    }
+};
+

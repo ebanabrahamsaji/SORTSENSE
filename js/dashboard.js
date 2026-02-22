@@ -176,6 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof initGamification === 'function') {
         initGamification();
     }
+
+    // 9. Load Dashboard Reports
+    loadDashboardReports();
 });
 
 function displayDailyTip() {
@@ -2021,4 +2024,85 @@ window.toggleRewardLog = function () {
         }
     }
 }
+async function loadDashboardReports() {
+    const userId = window.currentUserId || localStorage.getItem('app_user_id');
+    const tbody = document.getElementById('dashboardReportsBody');
+    if (!tbody || !userId) return;
 
+    try {
+        const response = await fetch(`/api/reports?userId=${userId}`);
+        const data = await response.json();
+
+        if (!data.reports || data.reports.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="padding:40px; text-align:center; color:#94a3b8;">No collection reports found yet. Start by scheduling a pickup!</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.reports.forEach(r => {
+            const date = new Date(r.created_at).toLocaleDateString();
+            const statusColor = r.status === 'Completed' ? '#10b981' : (r.status === 'Rejected' ? '#ef4444' : '#f59e0b');
+
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+            tr.innerHTML = `
+                <td style="padding:15px; font-weight:600;">#${r.request_id}</td>
+                <td style="padding:15px; color:#10b981;">${r.waste_type}</td>
+                <td style="padding:15px;">${r.quantity} kg</td>
+                <td style="padding:15px; color:#94a3b8;">${date}</td>
+                <td style="padding:15px;">
+                    <span style="background:${statusColor}20; color:${statusColor}; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:600;">
+                        ${r.status.toUpperCase()}
+                    </span>
+                </td>
+                <td style="padding:15px; text-align:right;">
+                    <button class="download-pdf-btn" onclick="downloadReportPDF(${r.report_id || 'null'}, ${r.request_id})" 
+                        style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.2); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
+                        <i class="ri-file-pdf-line"></i> Download PDF
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error("Load Dashboard Reports Error:", err);
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:40px; text-align:center; color:#ef4444;">Failed to load reports.</td></tr>`;
+    }
+}
+
+window.downloadReportPDF = async function (reportId, requestId) {
+    const userId = window.currentUserId || localStorage.getItem('app_user_id');
+    if (!userId) return window.showError("Auth session expired.");
+
+    window.showInfo("Preparing your PDF report...");
+
+    try {
+        // Use the new endpoint if reportId exists, otherwise use request-based one
+        let url = reportId
+            ? `/api/user/report/download/${reportId}?userId=${userId}`
+            : `/api/reports/request/${requestId}?userId=${userId}`;
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.message || "Failed to download");
+        }
+
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = downloadUrl;
+        a.download = `SortSense_Report_${requestId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(downloadUrl);
+        window.showSuccess("Report downloaded successfully.");
+
+    } catch (err) {
+        console.error("PDF Download Error:", err);
+        window.showError(err.message);
+    }
+}

@@ -19,6 +19,7 @@ function checkAdminAuth() {
     }
 }
 
+
 // Populate Recent Activity Table - REMOVED to avoid duplication with dedicated page
 // async function populateRecentActivity() {
 //     const activityTableBody = document.getElementById('activityTableBody');
@@ -1165,5 +1166,166 @@ function resetAllSettings() {
     }
 }
 
-// Make resetAllSettings globally accessible
-window.resetAllSettings = resetAllSettings;
+// --- Reports Module Implementation ---
+
+function hideAllSections() {
+    document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
+    document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+}
+
+window.showSection = function (id) {
+    hideAllSections();
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'block';
+};
+
+// Wiring up Navigation
+const reportsNav = document.getElementById('reportsNav');
+if (reportsNav) {
+    reportsNav.onclick = (e) => {
+        e.preventDefault();
+        window.showSection('reportsSection');
+        reportsNav.parentElement.classList.add('active');
+        fetchReportRecords();
+    };
+}
+
+const analyticsNav = document.getElementById('analyticsNav');
+if (analyticsNav) {
+    analyticsNav.onclick = (e) => {
+        e.preventDefault();
+        window.showSection('analyticsSection');
+        analyticsNav.parentElement.classList.add('active');
+    };
+}
+
+const systemSettingsNav = document.getElementById('systemSettingsNav');
+if (systemSettingsNav) {
+    systemSettingsNav.onclick = (e) => {
+        e.preventDefault();
+        window.showSection('systemSettingsSection');
+        systemSettingsNav.parentElement.classList.add('active');
+    };
+}
+
+// Handle Report Type Toggle
+const reportTypeSelect = document.getElementById('reportType');
+if (reportTypeSelect) {
+    reportTypeSelect.onchange = (e) => {
+        const userGroup = document.getElementById('userFilterGroup');
+        if (userGroup) userGroup.style.display = e.target.value === 'summary' ? 'none' : 'block';
+    };
+}
+
+// Fetch Records for Report Table
+async function fetchReportRecords() {
+    const tbody = document.getElementById('reportRecordsTableBody');
+    if (!tbody) return;
+
+    // Show loading state
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">
+        <i class="ri-loader-4-line" style="animation:spin 1s linear infinite; display:inline-block;"></i>
+        Loading records…
+    </td></tr>`;
+
+    try {
+        const res = await fetch('/api/pickup/all');
+
+        // Check HTTP status before trying to parse
+        if (!res.ok) {
+            let detail = `HTTP ${res.status}`;
+            try {
+                const errBody = await res.json();
+                detail = errBody.detail || errBody.message || detail;
+            } catch (_) { /* body not JSON */ }
+            throw new Error(detail);
+        }
+
+        const records = await res.json();
+
+        if (!Array.isArray(records) || records.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">
+                <i class="ri-inbox-line" style="font-size:1.5rem;"></i><br>No records found.
+            </td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = records.slice(0, 50).map(r => `
+            <tr>
+                <td>#${r.request_id}</td>
+                <td>${r.user_name || '—'}</td>
+                <td>${r.waste_type || '—'}</td>
+                <td>${r.quantity != null ? r.quantity + ' kg' : '—'}</td>
+                <td><span class="status-badge status-${(r.status || '').toLowerCase()}">${r.status || '—'}</span></td>
+                <td>
+                    <button onclick="downloadAdminReport(${r.request_id})" class="btn btn-sm btn-outline" style="padding:4px 8px; font-size:0.75rem;">
+                        <i class="ri-file-pdf-line"></i> PDF
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (e) {
+        console.error('[Reports] fetchReportRecords error:', e.message);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem;">
+            <span style="color:#ef4444;"><i class="ri-error-warning-line"></i> Error loading records: <code style="font-size:0.8rem;">${e.message}</code></span><br>
+            <button onclick="fetchReportRecords()" class="btn btn-sm btn-outline" style="margin-top:0.75rem; padding:4px 12px;">
+                <i class="ri-refresh-line"></i> Retry
+            </button>
+        </td></tr>`;
+    }
+}
+
+
+// Download Report (Admin Actions)
+window.downloadAdminReport = async function (requestId) {
+    try {
+        showToast('Processing report...', 'info');
+        const response = await fetch(`/api/reports/request/${requestId}`, {
+            headers: { 'admin-id': localStorage.getItem('admin_sys_id') }
+        });
+
+        if (!response.ok) throw new Error('Generation failed');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SortSense_Official_Report_${requestId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+
+        showToast('PDF downloaded successfully.', 'success');
+    } catch (error) {
+        showToast('Failed to generate PDF.', 'error');
+    }
+};
+
+// Bulk/Summary Report Generation
+if (document.getElementById('btnGenerateReport')) {
+    document.getElementById('btnGenerateReport').onclick = async () => {
+        const type = document.getElementById('reportType').value;
+        const from = document.getElementById('reportFromDate').value;
+        const to = document.getElementById('reportToDate').value;
+        const userId = document.getElementById('reportUserId').value;
+
+        if (type === 'summary') {
+            let url = `/api/reports/summary?fromDate=${from}&toDate=${to}`;
+            if (userId) url += `&userId=${userId}`;
+
+            showToast('Generating Summary PDF...', 'info');
+            window.location.href = url; // Browser handles PDF stream
+        } else {
+            showToast('Please select a specific record from the table below for individual reports.', 'warning');
+        }
+    };
+}
+
+window.resetReportFilters = () => {
+    document.getElementById('reportFromDate').value = '';
+    document.getElementById('reportToDate').value = '';
+    document.getElementById('reportUserId').value = '';
+    document.getElementById('reportType').value = 'summary';
+    document.getElementById('userFilterGroup').style.display = 'none';
+};

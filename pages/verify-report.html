@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Report | SortSense</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@2.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .verify-card {
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status-header {
+            margin-bottom: 2rem;
+        }
+
+        .status-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+
+        .valid {
+            color: var(--primary);
+        }
+
+        .invalid {
+            color: #ef4444;
+        }
+
+        .details-box {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: left;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 8px;
+        }
+
+        .detail-item:last-child {
+            border: none;
+        }
+
+        .label {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .value {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="verify-card">
+        <div class="logo">
+            <i class="ri-recycle-fill"></i> SortSense
+        </div>
+
+        <div id="loadingState">
+            <div class="loading-spinner"></div>
+            <p>Verifying report authenticity...</p>
+        </div>
+
+        <div id="resultState" style="display: none;">
+            <div class="status-header">
+                <i id="statusIcon" class="status-icon ri-checkbox-circle-fill valid"></i>
+                <h2 id="statusTitle">Report Verified</h2>
+                <p id="statusMsg" style="color: #94a3b8;"></p>
+            </div>
+
+            <div class="details-box" id="detailsBox">
+                <div class="detail-item">
+                    <span class="label">Report Hash</span>
+                    <span class="value" id="resHash" style="font-size: 0.7rem; color: #64748b;">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">User Name</span>
+                    <span class="value" id="resUser">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">Date Generated</span>
+                    <span class="value" id="resDate">--</span>
+                </div>
+                <div class="detail-item">
+                    <span class="label">CO2 Saved</span>
+                    <span class="value" id="resImpact" style="color: var(--primary);">--</span>
+                </div>
+            </div>
+
+            <a href="dashboard.html" class="btn">Return to Portal</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const hash = params.get('h') || window.location.pathname.split('/').pop();
+
+            if (!hash || hash === 'verify-report.html') {
+                showError("No report hash provided.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/reports/verify/${hash}`);
+                const data = await response.json();
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('resultState').style.display = 'block';
+
+                if (data.valid) {
+                    const r = data.data;
+                    const impact = JSON.parse(r.impact_json || '{}');
+
+                    document.getElementById('statusTitle').textContent = "Authentic Report";
+                    document.getElementById('statusMsg').textContent = "This document is an official SortSense waste record.";
+                    document.getElementById('resHash').textContent = r.report_hash;
+                    document.getElementById('resUser').textContent = r.user_name || "Verified Participant";
+                    document.getElementById('resDate').textContent = new Date(r.date_generated).toLocaleString();
+                    document.getElementById('resImpact').textContent = `${impact.co2Saved || 0} kg CO2 Avoided`;
+                } else {
+                    showError("Invalid or Forged Report. This hash does not match our official records.");
+                }
+            } catch (error) {
+                showError("Verification service unavailable. Please try again later.");
+            }
+        });
+
+        function showError(msg) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('resultState').style.display = 'block';
+            document.getElementById('statusIcon').className = "status-icon ri-error-warning-fill invalid";
+            document.getElementById('statusTitle').textContent = "Verification Failed";
+            document.getElementById('statusMsg').textContent = msg;
+            document.getElementById('detailsBox').style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>

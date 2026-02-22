@@ -103,13 +103,33 @@ app.use('/api/special-waste', specialWasteRoutes);
 import chatbotRoutes from './routes/chatbotRoutes.js';
 app.use('/api/chatbot', chatbotRoutes);
 
-// Feature 2: Scan History Route
-import historyRoutes from './routes/historyRoutes.js';
-app.use('/api/user', historyRoutes);
-
-// Strict User Profile Route
+// Unified User & History Routes
 import userRoutes from './routes/userRoutes.js';
+import { getUserRewards } from './controllers/userController.js';
+import { getUserRequests } from './controllers/pickupController.js';
+
 app.use('/api/user', userRoutes);
+app.get('/api/rewards/:userId', getUserRewards);
+app.get('/api/reports', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    try {
+        const query = `
+            SELECT r.*, c.center_name, rep.report_id
+            FROM tbl_pickup_requests r
+            LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+            LEFT JOIN tbl_reports rep ON r.request_id = rep.request_id AND rep.report_type = 'SINGLE'
+            WHERE r.user_id = ?
+            ORDER BY r.created_at DESC
+            LIMIT 10
+        `;
+        const [reports] = await db.query(query, [userId]);
+        res.json({ reports });
+    } catch (err) {
+        console.error("Dashboard Reports Error:", err);
+        res.status(500).json({ message: "Error fetching reports." });
+    }
+});
 
 // Pickup Routes
 import pickupRoutes from './routes/pickupRoutes.js';
@@ -118,8 +138,10 @@ app.use('/api/pickup', pickupRoutes);
 // Gamification & Marketplace Routes
 import leaderboardRoutes from './routes/leaderboardRoutes.js';
 import marketplaceRoutes from './routes/marketplaceRoutes.js';
+import reportRoutes from './routes/reportRoutes.js';
 app.use('/api/gamification', leaderboardRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/reports', reportRoutes);
 
 // ── Step 3: Marketplace Save & Contact ───────────────
 const savedItems = new Map(); // In-memory store (upgrade to DB later)

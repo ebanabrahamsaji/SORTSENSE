@@ -82,3 +82,103 @@ export const clearUserHistory = async (req, res) => {
         res.status(500).json({ message: "Error clearing history" });
     }
 };
+// Get User Environmental Impact Stats
+export const getUserStats = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        // 1. Total waste collected (Completed only)
+        const [rows] = await db.query(
+            "SELECT SUM(quantity) as total_kg FROM tbl_pickup_requests WHERE user_id = ? AND status = 'Completed'",
+            [userId]
+        );
+        const collectedKg = parseFloat(rows[0].total_kg || 0);
+
+        // 2. Total waste submitted (All requests)
+        const [subRows] = await db.query(
+            "SELECT SUM(quantity) as total_kg FROM tbl_pickup_requests WHERE user_id = ?",
+            [userId]
+        );
+        const submittedKg = parseFloat(subRows[0].total_kg || 0);
+
+        // 3. Total completed pickups count
+        const [countRows] = await db.query(
+            "SELECT COUNT(*) as completed_count FROM tbl_pickup_requests WHERE user_id = ? AND status = 'Completed'",
+            [userId]
+        );
+        const completedCount = countRows[0].completed_count || 0;
+
+        // 4. Scan impact bonus
+        const [scans] = await db.query(
+            "SELECT COUNT(*) as scan_count FROM tbl_user_history WHERE user_id = ? AND activity_type = 'SCAN'",
+            [userId]
+        );
+        const scanBonusKg = (scans[0].scan_count || 0) * 0.1;
+
+        // Final Impact Metrics
+        const finalWeightStr = (collectedKg + scanBonusKg).toFixed(1);
+        const finalWeightNum = parseFloat(finalWeightStr);
+        const co2 = (finalWeightNum * 2.1).toFixed(1);
+        const trees = (parseFloat(co2) / 20).toFixed(1);
+
+        res.json({
+            totalWeight: finalWeightStr, // Legacy support
+            collectedKg: collectedKg.toFixed(1),
+            submittedKg: submittedKg.toFixed(1),
+            completedCount: completedCount,
+            co2Saved: co2,
+            treesSaved: trees
+        });
+    } catch (error) {
+        console.error("Stats Fetch Error:", error);
+        res.status(500).json({ message: "Error fetching stats" });
+    }
+};
+
+// Get Comprehensive Rewards Data
+export const getUserRewards = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        const [users] = await db.query(
+            "SELECT eco_credits as green_score, monthly_points, streak, carbon_saved_kg FROM tbl_users WHERE user_id = ?",
+            [userId]
+        );
+
+        if (users.length === 0) return res.status(404).json({ message: "User not found" });
+        const user = users[0];
+
+        // Level Logic: 1000 XP per level
+        const xp = user.green_score || 0;
+        const level = Math.floor(xp / 1000) + 1;
+        const xpInLevel = xp % 1000;
+        const xpToNext = 1000;
+
+        // Badge Calculations (Verified server-side)
+        const [statsRows] = await db.query(
+            "SELECT SUM(quantity) as total_kg FROM tbl_pickup_requests WHERE user_id = ? AND status = 'Completed'",
+            [userId]
+        );
+        const totalWeight = parseFloat(statsRows[0].total_kg || 0);
+
+        const badges = [
+            { id: 'b1', name: "First Steps", unlocked: xp > 0 },
+            { id: 'b2', name: "Recycling Pro", unlocked: totalWeight >= 50 },
+            { id: 'b3', name: "Streak Master", unlocked: user.streak >= 7 },
+            { id: 'b4', name: "Eco Legend", unlocked: level >= 5 }
+        ];
+
+        res.json({
+            points: xp,
+            monthlyPoints: user.monthly_points,
+            streak: user.streak,
+            level: level,
+            xpInLevel: xpInLevel,
+            xpToNext: xpToNext,
+            badges: badges,
+            unlockedCount: badges.filter(b => b.unlocked).length
+        });
+
+    } catch (error) {
+        console.error("Rewards Fetch Error:", error);
+        res.status(500).json({ message: "Error fetching rewards" });
+    }
+};

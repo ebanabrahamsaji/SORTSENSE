@@ -1,14 +1,21 @@
 
 import db from '../db.js';
 
-// 1. Get Monthly Leaderboard (Top 10)
+// 1. Get Leaderboard (Top 20) with Filtering
 export const getLeaderboard = async (req, res) => {
+    const { period } = req.query; // weekly, monthly, alltime
+
     try {
+        let orderBy = "monthly_points";
+        if (period === 'alltime') orderBy = "green_score";
+        // Note: For weekly, we'd ideally have a weekly_points column, 
+        // but for now we'll use monthly as a reasonable proxy or fallback.
+
         const query = `
             SELECT user_id, name, monthly_points, green_score
             FROM tbl_users
-            ORDER BY monthly_points DESC
-            LIMIT 10
+            ORDER BY ${orderBy} DESC
+            LIMIT 20
         `;
         const [users] = await db.query(query);
 

@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Documents | SortSense</title>
+    <meta name="description"
+        content="Download verified waste collection PDF reports, environmental impact audits, and monthly summaries from SortSense.">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --secondary: #3b82f6;
+            --accent: #8b5cf6;
+            --bg: #0f172a;
+            --bg2: #1e293b;
+            --bg3: #334155;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: rgba(255, 255, 255, .08);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --card-radius: 20px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── TOP NAV ────────────────────────────────────── */
+        .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, .92);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--primary);
+            font-family: 'Outfit', sans-serif;
+            text-decoration: none;
+        }
+
+        .nav-logo i {
+            font-size: 1.4rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: .5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-size: .88rem;
+            text-decoration: none;
+            transition: all .2s;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--text);
+            background: rgba(255, 255, 255, .05);
+        }
+
+        /* ── PAGE LAYOUT ────────────────────────────────── */
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* ── PAGE HEADER ────────────────────────────────── */
+        .page-header {
+            margin-bottom: 2.5rem;
+        }
+
+        .page-header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin-bottom: .25rem;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #10b981, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* ── IMPACT SUMMARY CARDS ───────────────────────── */
+        .impact-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .impact-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            transition: transform 0.3s;
+        }
+
+        .impact-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .impact-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+        }
+
+        .impact-card.blue .impact-icon {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--secondary);
+        }
+
+        .impact-card.purple .impact-icon {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--accent);
+        }
+
+        .impact-info h4 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: white;
+            line-height: 1;
+        }
+
+        .impact-info p {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+
+        /* ── FILTER PANEL ───────────────────────────────── */
+        .filter-panel {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .filter-panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .filter-panel-header i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .filter-group label {
+            display: block;
+            color: var(--text-muted);
+            font-size: .78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 6px;
+        }
+
+        .filter-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: .9rem;
+            font-family: inherit;
+            transition: border-color .2s, box-shadow .2s;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, .15);
+        }
+
+        .filter-input option {
+            background: #1e293b;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+
+        /* ── BUTTONS ────────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: .9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            transition: all .25s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, .3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(16, 185, 129, .4);
+        }
+
+        .btn-blue {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, .3);
+        }
+
+        .btn-blue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, .4);
+        }
+
+        .btn-purple {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(139, 92, 246, .3);
+        }
+
+        .btn-purple:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, .4);
+        }
+
+        .btn-ghost {
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, .1);
+            color: var(--text);
+        }
+
+        .btn:disabled {
+            opacity: .55;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ── REPORT TYPE CARDS ──────────────────────────── */
+        .report-types-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .report-type-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            padding: 2rem;
+            transition: transform .3s, border-color .3s, box-shadow .3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .report-type-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .report-type-card.green::before {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .report-type-card.blue::before {
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+        }
+
+        .report-type-card.purple::before {
+            background: linear-gradient(90deg, #8b5cf6, #7c3aed);
+        }
+
+        .report-type-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, .35);
+        }
+
+        .report-type-card.green:hover {
+            border-color: rgba(16, 185, 129, .3);
+        }
+
+        .report-type-card.blue:hover {
+            border-color: rgba(59, 130, 246, .3);
+        }
+
+        .report-type-card.purple:hover {
+            border-color: rgba(139, 92, 246, .3);
+        }
+
+        .card-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-icon.green {
+            background: rgba(16, 185, 129, .1);
+            color: #10b981;
+        }
+
+        .card-icon.blue {
+            background: rgba(59, 130, 246, .1);
+            color: #3b82f6;
+        }
+
+        .card-icon.purple {
+            background: rgba(139, 92, 246, .1);
+            color: #8b5cf6;
+        }
+
+        .card-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: .72rem;
+            font-weight: 700;
+            margin-bottom: .75rem;
+            letter-spacing: .05em;
+        }
+
+        .badge-green {
+            background: rgba(16, 185, 129, .15);
+            color: #10b981;
+        }
+
+        .badge-blue {
+            background: rgba(59, 130, 246, .15);
+            color: #3b82f6;
+        }
+
+        .badge-purple {
+            background: rgba(139, 92, 246, .15);
+            color: #8b5cf6;
+        }
+
+        .report-type-card h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: .5rem;
+        }
+
+        .report-type-card p {
+            color: var(--text-muted);
+            font-size: .875rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-tag {
+            background: rgba(255, 255, 255, .05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            padding: 2px 8px;
+            font-size: .72rem;
+        }
+
+        /* ── RECORDS TABLE SECTION ──────────────────────── */
+        .records-section {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--card-radius);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .records-header {
+            padding: 1.5rem 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .records-header h3 {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .records-header p {
+            color: var(--text-muted);
+            font-size: .82rem;
+            margin-top: 2px;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, .03);
+            color: var(--text-muted);
+            font-size: .8rem;
+            font-weight: 600;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, .04);
+            transition: background .15s;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, .03);
+        }
+
+        tbody td {
+            padding: 12px 16px;
+            font-size: .875rem;
+        }
+
+        .status-pill {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: .75rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .status-Completed {
+            background: rgba(16, 185, 129, .15);
+            color: #10b981;
+        }
+
+        .status-Pending {
+            background: rgba(245, 158, 11, .15);
+            color: #f59e0b;
+        }
+
+        .status-Approved {
+            background: rgba(59, 130, 246, .15);
+            color: #3b82f6;
+        }
+
+        .status-Collected {
+            background: rgba(139, 92, 246, .15);
+            color: #8b5cf6;
+        }
+
+        .status-Rejected {
+            background: rgba(239, 68, 68, .15);
+            color: #ef4444;
+        }
+
+        .status-Cancelled {
+            background: rgba(148, 163, 184, .15);
+            color: #94a3b8;
+        }
+
+        .download-btn-sm {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 8px;
+            background: rgba(16, 185, 129, .1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, .2);
+            font-size: .78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .download-btn-sm:hover {
+            background: rgba(16, 185, 129, .2);
+            transform: scale(1.05);
+        }
+
+        /* ── LOADING OVERLAY ────────────────────────────── */
+        .pdf-loading-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, .85);
+            backdrop-filter: blur(12px);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .pdf-loading-overlay.active {
+            display: flex;
+        }
+
+        .pdf-spinner {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 4px solid rgba(255, 255, 255, .1);
+            border-top-color: #10b981;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #f8fafc;
+        }
+
+        .loading-sub {
+            color: var(--text-muted);
+            font-size: .875rem;
+            margin-top: 4px;
+        }
+
+        /* ── TOAST ──────────────────────────────────────── */
+        #toastContainer {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            z-index: 99999;
+        }
+
+        .toast {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 18px;
+            min-width: 320px;
+            max-width: 420px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, .5);
+            animation: toastIn .35s cubic-bezier(.16, 1, .3, 1) both;
+        }
+
+        @keyframes toastIn {
+            from {
+                transform: translateX(110%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.hide {
+            animation: toastOut .3s ease forwards;
+        }
+
+        @keyframes toastOut {
+            to {
+                transform: translateX(110%);
+                opacity: 0;
+            }
+        }
+
+        .toast-icon {
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .toast-title {
+            font-weight: 700;
+            font-size: .9rem;
+            margin-bottom: 2px;
+        }
+
+        .toast-msg {
+            font-size: .8rem;
+            color: var(--text-muted);
+        }
+
+        .toast-success .toast-icon {
+            color: #10b981;
+        }
+
+        .toast-error .toast-icon {
+            color: #ef4444;
+        }
+
+        .toast-info .toast-icon {
+            color: #3b82f6;
+        }
+
+        /* ── EMPTY STATE ────────────────────────────────── */
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: .4;
+            display: block;
+        }
+
+        /* ── RESPONSIVES ────────────────────────────────── */
+        @media (max-width: 768px) {
+            .filter-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .report-types-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- TOP NAV -->
+    <nav class="top-nav">
+        <a href="dashboard.html" class="nav-logo">
+            <i class="ri-leaf-fill"></i>SortSense
+        </a>
+        <div class="nav-links">
+            <a href="dashboard.html" class="nav-link"><i class="ri-dashboard-line"></i> Dashboard</a>
+            <a href="history.html" class="nav-link"><i class="ri-history-line"></i> History</a>
+            <a href="reports.html" class="nav-link active"><i class="ri-file-chart-line"></i> Reports</a>
+        </div>
+    </nav>
+
+    <!-- PDF LOADING OVERLAY -->
+    <div class="pdf-loading-overlay" id="pdfLoading">
+        <div class="pdf-spinner"></div>
+        <div>
+            <div class="loading-text"><i class="ri-file-pdf-line"></i> Generating PDF Report...</div>
+            <div class="loading-sub">Signing, encrypting and packaging your official document</div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer"></div>
+
+    <!-- MAIN PAGE CONTENT -->
+    <div class="page-container">
+
+        <!-- PAGE HEADER -->
+        <div class="page-header">
+            <h1 id="userGreeting">Your <span class="gradient-text">Impact Reports</span></h1>
+            <p>Track your recycling progress and download documents for your activities.</p>
+        </div>
+
+        <!-- IMPACT SUMMARY -->
+        <div class="impact-summary" id="impactSummary">
+            <div class="impact-card">
+                <div class="impact-icon"><i class="ri-scales-3-line"></i></div>
+                <div class="impact-info">
+                    <h4 id="statTotalWaste">0.0 kg</h4>
+                    <p>Waste Submitted</p>
+                </div>
+            </div>
+            <div class="impact-card blue">
+                <div class="impact-icon"><i class="ri-checkbox-circle-line"></i></div>
+                <div class="impact-info">
+                    <h4 id="statCollected">0.0 kg</h4>
+                    <p>Waste Collected</p>
+                </div>
+            </div>
+            <div class="impact-card purple">
+                <div class="impact-icon"><i class="ri-leaf-line"></i></div>
+                <div class="impact-info">
+                    <h4 id="statCO2">0.0 kg</h4>
+                    <p>CO₂ Saved</p>
+                </div>
+            </div>
+            <div class="impact-card">
+                <div class="impact-icon"><i class="ri-tree-line"></i></div>
+                <div class="impact-info">
+                    <h4 id="statTrees">0.0</h4>
+                    <p>Trees Preserved</p>
+                </div>
+            </div>
+            <div class="impact-card blue">
+                <div class="impact-icon"><i class="ri-truck-line"></i></div>
+                <div class="impact-info">
+                    <h4 id="statPickups">0</h4>
+                    <p>Completed Pickups</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN ACTIONS LAYER -->
+        <div
+            style="display: grid; grid-template-columns: 1fr auto; gap: 2rem; align-items: flex-end; margin-bottom: 2rem;">
+            <!-- Simple Filter -->
+            <div class="filter-panel" style="margin-bottom: 0; padding: 1.25rem;">
+                <div class="filter-grid"
+                    style="margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                    <div class="filter-group">
+                        <label>From</label>
+                        <input type="date" id="filterFrom" class="filter-input"
+                            style="padding: 8px 12px; height: 40px;">
+                    </div>
+                    <div class="filter-group">
+                        <label>To</label>
+                        <input type="date" id="filterTo" class="filter-input" style="padding: 8px 12px; height: 40px;">
+                    </div>
+                    <div class="filter-group">
+                        <label>Type</label>
+                        <select id="filterCategory" class="filter-input" style="padding: 8px 12px; height: 40px;">
+                            <option value="">All Types</option>
+                            <option value="Plastic">Plastic</option>
+                            <option value="Paper">Paper</option>
+                            <option value="Organic">Organic</option>
+                            <option value="Metal">Metal</option>
+                            <option value="Glass">Glass</option>
+                            <option value="E-Waste">E-Waste</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-ghost" onclick="loadUserRecords()"
+                            style="width: 100%; height: 40px; padding: 0 15px;">
+                            <i class="ri-refresh-line"></i> Update
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Download Button -->
+            <div style="padding-bottom: 5px;">
+                <button class="btn btn-primary" onclick="downloadMonthlyReport()"
+                    style="height: 54px; padding: 0 30px; border-radius: 16px;">
+                    <i class="ri-download-cloud-2-line"></i> Download Monthly Report
+                </button>
+            </div>
+        </div>
+
+        <!-- INDIVIDUAL RECEIPTS TABLE -->
+        <div class="records-section">
+            <div class="records-header">
+                <div>
+                    <h3>Recent Collection Receipts</h3>
+                    <p>Individual verifiable receipts for each pickup. Click download for a detailed PDF.</p>
+                </div>
+                <button class="btn btn-ghost" onclick="loadUserRecords()">
+                    <i class="ri-refresh-line"></i> Refresh
+                </button>
+            </div>
+            <div class="table-wrap">
+                <table id="recordsTable">
+                    <thead>
+                        <tr>
+                            <th>Req #</th>
+                            <th>Waste Category</th>
+                            <th>Quantity</th>
+                            <th>Location</th>
+                            <th>Collector Center</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody">
+                        <tr>
+                            <td colspan="8" class="empty-state">
+                                <i class="ri-loader-4-line ri-spin"></i>
+                                Loading your records...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div><!-- /page-container -->
+
+    <script src="../js/config.js"></script>
+    <script>
+        // ── HELPER: Get current user ──────────────────────────────────────
+        function getUserId() {
+            return localStorage.getItem('userId') || localStorage.getItem('app_user_id');
+        }
+
+        const userId = getUserId();
+        const API = typeof window.API_BASE !== 'undefined' ? window.API_BASE : '';
+
+        // Redirect if not logged in
+        if (!userId) {
+            window.location.href = 'login-user.html?redirect=reports.html';
+        }
+
+        // ── TOAST ─────────────────────────────────────────────────────────
+        function showToast(type, title, msg, duration = 4000) {
+            const icons = { success: 'ri-checkbox-circle-fill', error: 'ri-close-circle-fill', info: 'ri-information-line' };
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const el = document.createElement('div');
+            el.className = `toast toast-${type}`;
+            el.innerHTML = `
+                <div class="toast-icon"><i class="${icons[type] || icons.info}"></i></div>
+                <div>
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-msg">${msg}</div>
+                </div>`;
+            container.appendChild(el);
+            setTimeout(() => { el.classList.add('hide'); setTimeout(() => el.remove(), 400); }, duration);
+        }
+
+        // ── PDF LOADING STATE ─────────────────────────────────────────────
+        function showPdfLoading(on) {
+            const el = document.getElementById('pdfLoading');
+            if (el) el.classList.toggle('active', on);
+        }
+
+        // ── GENERIC DOWNLOAD HELPER ───────────────────────────────────────
+        async function downloadPdf(url, filename) {
+            showPdfLoading(true);
+            try {
+                const res = await fetch(url);
+                if (res.status === 401) {
+                    window.location.href = 'login-user.html';
+                    return;
+                }
+                if (!res.ok) {
+                    const json = await res.json().catch(() => ({}));
+                    throw new Error(json.message || `Server error ${res.status}`);
+                }
+                const blob = await res.blob();
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+                showToast('success', 'Report Saved', `Digital copy saved successfully.`);
+            } catch (err) {
+                showToast('error', 'Download Failed', err.message || 'Could not generate report.');
+            } finally {
+                showPdfLoading(false);
+            }
+        }
+
+        // ── LOAD IMPACT SUMMARY ───────────────────────────────────────────
+        async function loadImpactSummary() {
+            if (!userId) return;
+            try {
+                const res = await fetch(`${API}/api/user/${userId}/stats`);
+                if (!res.ok) return;
+                const stats = await res.json();
+
+                document.getElementById('statTotalWaste').textContent = `${stats.submittedKg || '0.0'} kg`;
+                document.getElementById('statCollected').textContent = `${stats.collectedKg || '0.0'} kg`;
+                document.getElementById('statCO2').textContent = `${stats.co2Saved || '0.0'} kg`;
+                document.getElementById('statTrees').textContent = stats.treesSaved || '0.0';
+                document.getElementById('statPickups').textContent = stats.completedCount || '0';
+
+                const userName = localStorage.getItem('userName') || 'User';
+                document.getElementById('userGreeting').innerHTML = `${userName}'s <span class="gradient-text">Impact Reports</span>`;
+            } catch (err) {
+                console.warn("Stats Load Error:", err);
+            }
+        }
+
+        // ── DOWNLOAD: Monthly Report ──────────────────────────────────────
+        async function downloadMonthlyReport() {
+            if (!userId) return;
+            const now = new Date();
+            const url = `${API}/api/reports/monthly?year=${now.getFullYear()}&month=${now.getMonth() + 1}&userId=${userId}`;
+            await downloadPdf(url, `SortSense_Monthly_Report_${now.getMonth() + 1}_${now.getFullYear()}.pdf`);
+        }
+
+        // ── DOWNLOAD: Single Request Receipt ─────────────────────────────
+        async function downloadRequestReport(requestId) {
+            const url = `${API}/api/reports/request/${requestId}?userId=${userId}`;
+            await downloadPdf(url, `Collection_Receipt_#${requestId}.pdf`);
+        }
+
+        // ── LOAD USER RECORDS ─────────────────────────────────────────────
+        async function loadUserRecords() {
+            const tbody = document.getElementById('recordsTableBody');
+            if (!userId) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Please log in to see your records.</td></tr>`;
+                return;
+            }
+
+            try {
+                const from = document.getElementById('filterFrom').value;
+                const to = document.getElementById('filterTo').value;
+                const cat = document.getElementById('filterCategory').value;
+
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state"><i class="ri-loader-4-line ri-spin"></i> Syncing your records...</td></tr>`;
+
+                const res = await fetch(`${API}/api/pickup/user/${userId}`);
+                if (!res.ok) throw new Error('Failed to fetch');
+                let records = await res.json();
+
+                // Simple Client-Side Filtering
+                if (from) records = records.filter(r => new Date(r.created_at) >= new Date(from));
+                if (to) {
+                    const toDate = new Date(to);
+                    toDate.setHours(23, 59, 59);
+                    records = records.filter(r => new Date(r.created_at) <= toDate);
+                }
+                if (cat) records = records.filter(r => r.waste_type && r.waste_type.includes(cat));
+
+                if (!records || records.length === 0) {
+                    tbody.innerHTML = `
+                        <tr><td colspan="8" class="empty-state">
+                            <i class="ri-history-line"></i> You haven't made any waste requests yet.
+                        </td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = records.map(r => {
+                    const date = r.created_at ? new Date(r.created_at).toLocaleDateString('en-GB') : '—';
+                    const qty = r.quantity ? `${r.quantity} kg` : '—';
+                    const loc = (r.address || 'Location on file').slice(0, 35);
+                    const center = (r.center_name || 'Processing...').slice(0, 25);
+                    return `
+                        <tr>
+                            <td><strong>#${r.request_id}</strong></td>
+                            <td>${r.waste_type || 'General'}</td>
+                            <td>${qty}</td>
+                            <td>${loc}</td>
+                            <td>${center}</td>
+                            <td>${date}</td>
+                            <td><span class="status-pill status-${r.status || 'Pending'}">${r.status || 'Pending'}</span></td>
+                            <td style="text-align:right;">
+                                <button class="download-btn-sm" onclick="downloadRequestReport(${r.request_id})">
+                                    <i class="ri-file-pdf-line"></i> Receipt
+                                </button>
+                            </td>
+                        </tr>`;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Error syncronizing records. Please try again.</td></tr>`;
+            }
+        }
+
+        // ── INIT ──────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const fromInput = document.getElementById('filterFrom');
+            const toInput = document.getElementById('filterTo');
+
+            if (fromInput) fromInput.value = firstDay.toISOString().split('T')[0];
+            if (toInput) toInput.value = now.toISOString().split('T')[0];
+
+            loadImpactSummary();
+            loadUserRecords();
+        });
+
+        // ── ADMIN: Show center filter if admin ────────────────────────────
+        const adminData = localStorage.getItem('adminData') || sessionStorage.getItem('adminData');
+        if (adminData) {
+            const ad = document.getElementById('adminCenterFilter');
+            if (ad) ad.style.display = 'block';
+        }
+
+        // ── INIT ──────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set default filter dates (current month)
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            document.getElementById('filterFrom').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('filterTo').value = now.toISOString().split('T')[0];
+
+            loadUserRecords();
+        });
+    </script>
+</body>
+
+</html>

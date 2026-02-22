@@ -438,9 +438,10 @@
             display: flex;
             gap: 0.75rem;
             align-items: flex-start;
+            position: relative;
         }
 
-        .warning-box i {
+        .warning-box i.warn-icon {
             color: #fbbf24;
             font-size: 1.2rem;
             flex-shrink: 0;
@@ -451,6 +452,32 @@
             font-size: 0.78rem;
             color: var(--text-muted);
             line-height: 1.6;
+            flex: 1;
+        }
+
+        .warning-dismiss {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #64748b;
+            font-size: 0.72rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 2px 4px;
+            border-radius: 6px;
+            flex-shrink: 0;
+            transition: color 0.2s;
+            line-height: 1.2;
+        }
+
+        .warning-dismiss:hover {
+            color: #fbbf24;
+        }
+
+        .warning-dismiss i {
+            font-size: 0.9rem;
         }
 
         /* Back link */
@@ -583,9 +610,13 @@
                     <div id="errorMsg"></div>
                 </form>
 
-                <div class="warning-box">
-                    <i class="ri-error-warning-line"></i>
+                <div class="warning-box" id="securityNotice">
+                    <i class="ri-error-warning-line warn-icon"></i>
                     <p>This area is for authorized personnel only. All access attempts are logged and monitored.</p>
+                    <button class="warning-dismiss" onclick="dismissNotice()" title="Don't show again">
+                        <i class="ri-close-line"></i>
+                        <span>Don't show</span>
+                    </button>
                 </div>
 
                 <a href="../index.html" class="back-link">
@@ -636,10 +667,17 @@
                         return;
                     }
 
-                    localStorage.setItem('admin_sys_id', user.user_id);
-                    localStorage.setItem('admin_sys_email', user.email);
-                    localStorage.setItem('admin_sys_role', 'ADMIN');
-                    if (user.name) localStorage.setItem('admin_sys_name', user.name);
+                    // Create a full, expiry-stamped session via AdminAuth
+                    if (window.AdminAuth) {
+                        window.AdminAuth.createSession(user);
+                    } else {
+                        // Fallback (should not happen)
+                        localStorage.setItem('admin_sys_id', user.user_id);
+                        localStorage.setItem('admin_sys_email', user.email);
+                        localStorage.setItem('admin_sys_role', 'ADMIN');
+                        if (user.name) localStorage.setItem('admin_sys_name', user.name);
+                        localStorage.setItem('adminUser', user.user_id);
+                    }
 
                     window.location.href = 'admin-dashboard.html';
                 } else {
@@ -660,6 +698,27 @@
         const style = document.createElement('style');
         style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
         document.head.appendChild(style);
+
+        // Security notice dismiss
+        function dismissNotice() {
+            const el = document.getElementById('securityNotice');
+            if (el) {
+                el.style.transition = 'opacity 0.3s, max-height 0.4s, margin 0.4s, padding 0.4s';
+                el.style.opacity = '0';
+                el.style.maxHeight = '0';
+                el.style.margin = '0';
+                el.style.padding = '0';
+                el.style.overflow = 'hidden';
+                el.style.border = 'none';
+            }
+            localStorage.setItem('admin_notice_dismissed', '1');
+        }
+
+        // Hide on load if previously dismissed
+        if (localStorage.getItem('admin_notice_dismissed') === '1') {
+            const el = document.getElementById('securityNotice');
+            if (el) el.style.display = 'none';
+        }
     </script>
 </body>
 

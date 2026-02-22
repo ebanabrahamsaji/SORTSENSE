@@ -134,6 +134,12 @@
                             <span data-i18n="marketplace_menu">Marketplace</span>
                         </a>
                     </li>
+                    <li id="reportsLi">
+                        <a href="javascript:void(0)" onclick="showSection('reportsSection')">
+                            <i class="ri-file-chart-line"></i>
+                            <span data-i18n="reports_menu">Reports</span>
+                        </a>
+                    </li>
                     <li id="messagesLi">
                         <a href="javascript:void(0)" onclick="showSection('messagesSection'); loadInbox();">
                             <i class="ri-chat-1-line"></i>
@@ -407,6 +413,57 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Reports Section (Recent Activity) -->
+                <section class="reports-section" style="grid-column: 1 / -1; margin-top: 1rem;">
+                    <div class="section-header">
+                        <h2 data-i18n="recent_reports_title">Waste Collection Reports</h2>
+                        <a href="reports.html" class="view-all">View Analytics <i
+                                class="ri-arrow-right-up-line"></i></a>
+                    </div>
+                    <div class="reports-table-wrapper"
+                        style="background:rgba(30,41,59,0.4); border:1px solid rgba(255,255,255,0.05); border-radius:24px; padding:1.5rem; margin-top:1rem; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; color:white; font-size:0.9rem;">
+                            <thead>
+                                <tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left;">
+                                    <th style="padding:15px; color:#94a3b8; font-weight:600;">Request #</th>
+                                    <th style="padding:15px; color:#94a3b8; font-weight:600;">Category</th>
+                                    <th style="padding:15px; color:#94a3b8; font-weight:600;">Quantity</th>
+                                    <th style="padding:15px; color:#94a3b8; font-weight:600;">Date</th>
+                                    <th style="padding:15px; color:#94a3b8; font-weight:600;">Status</th>
+                                    <th style="padding:15px; color:#94a3b8; font-weight:600; text-align:right;">Action
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboardReportsBody">
+                                <tr>
+                                    <td colspan="6" style="padding:40px; text-align:center; color:#94a3b8;">
+                                        <i class="ri-loader-4-line ri-spin"
+                                            style="font-size:2rem; display:block; margin-bottom:10px;"></i>
+                                        Loading your collection reports...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Reports Section Placeholder for showSection -->
+            <div id="reportsSection" class="user-section" style="display:none; flex-direction:column; gap:20px;">
+                <div class="mp-header">
+                    <div class="mp-header-text">
+                        <h1>Waste <span class="gradient-text">Reports</span></h1>
+                        <p>Detailed analysis of your recycling activity and environmental impact.</p>
+                    </div>
+                    <a href="reports.html" class="btn-post-item" style="text-decoration:none;">
+                        <i class="ri-external-link-line"></i> Open Full Reports Page
+                    </a>
+                </div>
+                <div id="fullReportsTable"
+                    style="background:rgba(30,41,59,0.4); border:1px solid rgba(255,255,255,0.05); border-radius:24px; padding:1.5rem;">
+                    <!-- Reuse table logic or redirect -->
+                </div>
             </div>
 
             <!-- ═══════════════════════════════════════
@@ -844,6 +901,7 @@
                 if (sectionId === 'dashboardSection') liId = "dashboardLi";
                 if (sectionId === 'rewardsSection') liId = "rewardsLi";
                 if (sectionId === 'marketplaceSection') liId = "marketLi";
+                if (sectionId === 'reportsSection') liId = "reportsLi";
                 if (sectionId === 'messagesSection') liId = "messagesLi";
 
                 const items = document.querySelectorAll(".sidebar-nav li");

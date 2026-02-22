@@ -404,31 +404,53 @@ const smartPool = {
         const conn = await pool.getConnection();
         console.log('✅ Connected to MySQL Database (Live)');
 
-        // Auto-Migration for Center Columns (Split for safety)
-        const migrateColumn = async (colDef) => {
+        // Migration Helper
+        const migrate = async (table, colDef) => {
             try {
-                await conn.query(`ALTER TABLE tbl_collection_centers ADD COLUMN ${colDef}`);
-                console.log(`✅ Column added: ${colDef.split(' ')[0]}`);
+                await conn.query(`ALTER TABLE ${table} ADD COLUMN ${colDef}`);
+                console.log(`✅ Column added to ${table}: ${colDef.split(' ')[0]}`);
             } catch (err) {
-                if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`Update skipped for ${colDef.split(' ')[0]}:`, err.message);
+                if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`Update skipped for ${table}.${colDef.split(' ')[0]}:`, err.message);
             }
         };
 
-        await migrateColumn("status VARCHAR(10) DEFAULT 'OPEN'");
-        await migrateColumn("available_slots INT DEFAULT 10");
-        await migrateColumn("max_slots INT DEFAULT 10");
-        await migrateColumn("is_primary BOOLEAN DEFAULT FALSE");
+        // 1. Users Table Enhancements
+        await migrate("tbl_users", "green_score INT DEFAULT 0");
+        await migrate("tbl_users", "monthly_points INT DEFAULT 0");
+        await migrate("tbl_users", "streak INT DEFAULT 0");
+        await migrate("tbl_users", "carbon_saved_kg DECIMAL(10,2) DEFAULT 0");
+        await migrate("tbl_users", "leaderboard_rank INT DEFAULT 0");
 
-        // Auto-Migration for Pickup Requests
-        const migratePickup = async (colDef) => {
-            try {
-                await conn.query(`ALTER TABLE tbl_pickup_requests ADD COLUMN ${colDef}`);
-                console.log(`✅ Column added to pickups: ${colDef.split(' ')[0]}`);
-            } catch (err) {
-                if (err.code !== 'ER_DUP_FIELDNAME') console.warn(`Update skipped for pickups ${colDef.split(' ')[0]}:`, err.message);
-            }
-        };
-        await migratePickup("is_urgent BOOLEAN DEFAULT FALSE");
+        // 2. Center Table Migrations
+        await migrate("tbl_collection_centers", "status VARCHAR(10) DEFAULT 'OPEN'");
+        await migrate("tbl_collection_centers", "available_slots INT DEFAULT 10");
+        await migrate("tbl_collection_centers", "max_slots INT DEFAULT 10");
+        await migrate("tbl_collection_centers", "is_primary BOOLEAN DEFAULT FALSE");
+
+        // 3. Pickup Requests Migrations
+        await migrate("tbl_pickup_requests", "is_urgent BOOLEAN DEFAULT FALSE");
+
+        // 4. Reports Table Initialization
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS tbl_reports (
+                    report_id INT AUTO_INCREMENT PRIMARY KEY,
+                    request_id INT,
+                    user_id INT NOT NULL,
+                    center_id INT,
+                    report_type ENUM('SINGLE', 'SUMMARY', 'PERIODIC') DEFAULT 'SINGLE',
+                    date_generated DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    report_hash VARCHAR(255) UNIQUE,
+                    impact_json JSON,
+                    filters_json JSON,
+                    generated_by INT,
+                    FOREIGN KEY (user_id) REFERENCES tbl_users(user_id)
+                )
+            `);
+            console.log("✅ Reports Table verified");
+        } catch (err) {
+            console.error("❌ Reports Table Migration Error:", err);
+        }
 
         conn.release();
     } catch (e) {
