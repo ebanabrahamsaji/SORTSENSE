@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Support both old key ('adminUser') and new key ('admin_sys_id')
     const isAdmin = localStorage.getItem('admin_sys_id') || localStorage.getItem('adminUser');
     if (!isAdmin) {
-        window.location.href = 'login-admin.html';
+        window.location.href = 'login.html?role=admin';
         return;
     }
 
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.removeItem('admin_sys_id');
                 localStorage.removeItem('admin_sys_email');
                 localStorage.removeItem('admin_sys_role');
-                window.location.href = 'login-admin.html';
+                window.location.href = 'login.html?role=admin';
             });
         });
     }

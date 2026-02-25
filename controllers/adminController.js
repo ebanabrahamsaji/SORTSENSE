@@ -2,6 +2,7 @@
 import db from '../db.js';
 import bcrypt from 'bcrypt';
 import { transporter } from '../email.js';
+import moderationService from '../services/moderationService.js';
 
 export const getDashboardStats = async (req, res) => {
     try {
@@ -268,7 +269,11 @@ export const deleteActivity = async (req, res) => {
 
 export const getAllUsers = async (req, res) => {
     try {
-        const [users] = await db.query("SELECT user_id, name, email, role, status, created_at FROM tbl_users ORDER BY created_at DESC");
+        const [users] = await db.query(`
+            SELECT user_id, name, email, role, status, user_status, risk_score, report_count, last_violation, last_active, created_at 
+            FROM tbl_users 
+            ORDER BY created_at DESC
+        `);
         res.json(users);
     } catch (e) {
         console.error("Fetch Users Error:", e);
@@ -277,13 +282,48 @@ export const getAllUsers = async (req, res) => {
 };
 
 export const updateUserStatus = async (req, res) => {
-    const { userId, status } = req.body;
+    const { userId, status, reason, adminName } = req.body;
     try {
-        await db.query("UPDATE tbl_users SET status = ? WHERE user_id = ?", [status, userId]);
-        res.json({ message: "Status updated" });
+        const [user] = await db.query("SELECT name FROM tbl_users WHERE user_id = ?", [userId]);
+        if (user.length === 0) return res.status(404).json({ message: "User not found" });
+
+        // Update BOTH status (legacy) and user_status (new) for consistency if applicable
+        // The requirement asks for 'active','flagged','suspended' for user_status
+        await db.query("UPDATE tbl_users SET user_status = ?, status = ? WHERE user_id = ?", [status, status === 'suspended' ? 'inactive' : 'active', userId]);
+
+        // Audit Log
+        await db.query(`
+            INSERT INTO tbl_user_audit_logs (admin_name, action, target_user, reason) 
+            VALUES (?, ?, ?, ?)`,
+            [adminName || 'Admin', `Changed status to ${status}`, user[0].name, reason || 'Manual update']
+        );
+
+        res.json({ message: `User status updated to ${status}` });
     } catch (e) {
-        console.error("Update User Error:", e);
+        console.error("Update User Status Error:", e);
         res.status(500).json({ message: "Update failed" });
+    }
+};
+
+export const resetRiskScore = async (req, res) => {
+    const { userId, adminName } = req.body;
+    try {
+        const [user] = await db.query("SELECT name FROM tbl_users WHERE user_id = ?", [userId]);
+        if (user.length === 0) return res.status(404).json({ message: "User not found" });
+
+        await db.query("UPDATE tbl_users SET risk_score = 0, user_status = 'active' WHERE user_id = ?", [userId]);
+
+        // Audit Log
+        await db.query(`
+            INSERT INTO tbl_user_audit_logs (admin_name, action, target_user, reason) 
+            VALUES (?, ?, ?, ?)`,
+            [adminName || 'Admin', 'Reset Risk Score', user[0].name, 'Manual reset by admin']
+        );
+
+        res.json({ message: "Risk score reset successfully" });
+    } catch (e) {
+        console.error("Reset Risk Score Error:", e);
+        res.status(500).json({ message: "Reset failed" });
     }
 };
 
@@ -685,12 +725,16 @@ export const deleteWasteRecord = async (req, res) => {
 export const syncWasteRecord = async (data) => {
     try {
         // Check for duplicate if it's a scan (prevent same user scanning same type at same location in same minute)
-        if (data.scanMethod === 'SCAN') {
+        if (data.scanMethod === 'SCAN' && data.userId) {
             const [existing] = await db.query(
-                "SELECT * FROM tbl_waste_records WHERE user_id = ? AND waste_type = ? AND location = ? AND created_at > NOW() - INTERVAL 1 MINUTE",
+                "SELECT * FROM tbl_waste_records WHERE user_id = ? AND waste_type = ? AND location = ? AND created_at > NOW() - INTERVAL 5 MINUTE",
                 [data.userId, data.wasteType, data.location]
             );
-            if (existing.length > 0) return existing[0].record_id;
+            if (existing.length > 0) {
+                console.log(`⚠️ Duplicate scan detected for User ${data.userId}. Incrementing risk score.`);
+                await moderationService.handleContentViolation(data.userId, 'DUPLICATE_ENTRY', `Repeated scans of ${data.wasteType} at same location`);
+                return existing[0].record_id;
+            }
         }
 
         const [result] = await db.query(

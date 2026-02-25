@@ -337,6 +337,144 @@
         input:checked+.slider:before {
             transform: translateX(14px);
         }
+
+        /* Center Notification Dropdown */
+        .notification-dropdown {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            width: 320px;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        .notification-dropdown.active {
+            display: block;
+        }
+
+        .dropdown-header {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .dropdown-header span {
+            font-weight: 600;
+            color: white;
+        }
+
+        .mark-read-btn {
+            background: none;
+            border: none;
+            color: #60a5fa;
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 0;
+            transition: opacity 0.2s;
+        }
+
+        .mark-read-btn:hover {
+            opacity: 0.8;
+        }
+
+        .dropdown-content {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .notification-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .notification-item.unread {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .notif-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .notif-icon.PICKUP {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .notif-icon.ALERT {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .notif-icon.SYSTEM {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+
+        .notif-content {
+            flex-grow: 1;
+        }
+
+        .notif-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 2px;
+        }
+
+        .notif-message {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 4px;
+            line-height: 1.3;
+        }
+
+        .notif-time {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .notif-dot {
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            margin-top: 6px;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 
@@ -346,7 +484,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="logo-container">
-                    <span class="logo-text">Center Admin</span>
+                    <span class="logo-text">SortSense Center</span>
                 </div>
             </div>
             <nav class="sidebar-nav">
@@ -357,8 +495,14 @@
                             Requests</a></li>
                     <li id="nav-history" onclick="switchView('history')"><a href="#"><i class="ri-history-line"></i>
                             History</a></li>
-                    <li id="nav-centers" onclick="switchView('centers')"><a href="#"><i class="ri-building-line"></i>
-                            Centers</a></li>
+                    <li id="nav-special" onclick="switchView('special-waste')"><a href="#"><i class="ri-flask-line"></i>
+                            Special Waste</a></li>
+                    <li id="nav-messages" onclick="switchView('messages')" style="position:relative;">
+                        <a href="#"><i class="ri-message-3-line"></i> Messages</a>
+                        <div id="sidebarMsgDot"
+                            style="display:none; position:absolute; right:20px; top:50%; transform:translateY(-50%); width:6px; height:6px; background:#ef4444; border-radius:50%;">
+                        </div>
+                    </li>
                     <li><a href="center-profile.html"><i class="ri-settings-4-line"></i> Settings</a></li>
                 </ul>
             </nav>
@@ -373,11 +517,30 @@
         <main class="main-content">
             <header class="top-header">
                 <div>
-                    <h1>Incoming Pickup Requests</h1>
-                    <p style="color:var(--text-muted); font-size:0.9rem;">Manage and track waste collection requests</p>
+                    <h1 id="headerCenterName" style="font-size:1.5rem; font-weight:800; letter-spacing:-0.5px;">
+                        Collection Center</h1>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 0.25rem;">
+                        <span id="centerStatusIndicator" class="status-badge"
+                            style="display: flex; align-items: center; gap: 0.4rem; padding: 0.25rem 0.75rem;">
+                            <span style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8;"></span>
+                            <span>Checking status...</span>
+                        </span>
+                        <p id="headerUsername"
+                            style="color:var(--text-muted); font-size:0.9rem; margin: 0; font-weight:500;">Center
+                            Account</p>
+                    </div>
                 </div>
 
                 <div style="display:flex; gap:0.5rem; align-items: center;">
+                    <!-- Notification Bell -->
+                    <div class="notification-badge" id="centerNotifBell"
+                        style="position:relative; cursor:pointer; background:rgba(255,255,255,0.05); width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid rgba(255,255,255,0.1); margin-right:0.5rem;">
+                        <i class="ri-notification-3-line" style="font-size:1.2rem; color:white;"></i>
+                        <div class="dot" id="centerNotifDot"
+                            style="position:absolute; top:8px; right:8px; width:10px; height:10px; background:#ef4444; border-radius:50%; border:2px solid #1e293b; display:none;">
+                        </div>
+                    </div>
+
                     <!-- Auto Refresh Toggle -->
                     <div
                         style="display:flex; align-items:center; gap:0.5rem; margin-right: 1rem; background:rgba(255,255,255,0.05); padding:0.4rem 0.8rem; border-radius:50px; border:1px solid rgba(255,255,255,0.1);">
@@ -436,136 +599,269 @@
             <!-- Tab: Dashboard Home (New) -->
             <div id="dashboardOverview" style="display:none; animation: fadeIn 0.3s ease;">
 
-                <!-- 0. Live Slot Usage (New) -->
+                <!-- Row 1: Live Slot Usage (Full Width) -->
                 <div
-                    style="background:rgba(30,41,59,0.6); padding:1rem 1.5rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
-                    <div style="display:flex; align-items:center; gap:1rem;">
-                        <div style="background:rgba(255,255,255,0.05); padding:0.5rem; border-radius:8px;">
-                            <i class="ri-cpu-line" style="font-size:1.5rem; color:#60a5fa;"></i>
+                    style="background:rgba(30,41,59,0.6); padding:1.5rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:1.5rem;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 1rem;">
+                        <div style="display:flex; align-items:center; gap:1rem;">
+                            <div
+                                style="background:rgba(96,165,250,0.1); padding:0.6rem; border-radius:10px; border: 1px solid rgba(96,165,250,0.2);">
+                                <i class="ri-radar-line" style="font-size:1.5rem; color:#60a5fa;"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin:0; font-size:1.1rem; font-weight: 700;">Live Slot Usage</h4>
+                                <small style="color:var(--text-muted);">Real-time center capacity monitoring</small>
+                            </div>
                         </div>
-                        <div>
-                            <h4 style="margin:0; font-size:1rem;">Live Slot Usage</h4>
-                            <small style="color:var(--text-muted);">Real-time center capacity</small>
+                        <div style="text-align: right;">
+                            <div id="slotCountDisplay" style="font-size: 1.25rem; font-weight: 800; color: white;">0 /
+                                50</div>
+                            <span id="slotStatusText"
+                                style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">AVAILABLE</span>
                         </div>
                     </div>
-                    <div style="flex:1; max-width:400px; min-width:200px;">
-                        <div
-                            style="display:flex; justify-content:space-between; margin-bottom:0.3rem; font-size:0.85rem; font-weight:600;">
-                            <span id="slotStatusText" style="color:#10b981;">Available</span>
-                            <span id="slotCountDisplay">0 / 50</span>
-                        </div>
-                        <div style="height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
-                            <div id="slotProgressBar"
-                                style="width:0%; height:100%; background:#10b981; transition:width 0.5s ease, background 0.3s;">
-                            </div>
+                    <div
+                        style="height:12px; background:rgba(255,255,255,0.05); border-radius:50px; overflow:hidden; border: 1px solid rgba(255,255,255,0.1);">
+                        <div id="slotProgressBar"
+                            style="width:0%; height:100%; background:linear-gradient(90deg, #10b981, #34d399); transition:width 0.8s cubic-bezier(0.4, 0, 0.2, 1);">
                         </div>
                     </div>
                 </div>
 
-                <!-- 1. Stats Row -->
+                <!-- Row 2: Key Metrics (4 cards) -->
                 <div class="dash-overview-grid">
                     <div class="stat-card-new">
-                        <div class="stat-icon-circle" style="background:#3b82f6;">
+                        <div class="stat-icon-circle"
+                            style="background:rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3);">
                             <i class="ri-truck-line"></i>
                         </div>
                         <div>
                             <small class="text-muted"
                                 style="color:#94a3b8; text-transform:uppercase; font-size:0.75rem; font-weight:600;">Today's
                                 Pickups</small>
-                            <h2 style="margin:0; font-size:1.8rem; font-weight:700;" id="statTotalToday">0</h2>
+                            <h2 style="margin:0; font-size:1.8rem; font-weight:800; color: white;" id="statTotalToday">0
+                            </h2>
                         </div>
                     </div>
                     <div class="stat-card-new">
-                        <div class="stat-icon-circle" style="background:#f59e0b;">
+                        <div class="stat-icon-circle"
+                            style="background:rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
                             <i class="ri-time-line"></i>
                         </div>
                         <div>
                             <small class="text-muted"
                                 style="color:#94a3b8; text-transform:uppercase; font-size:0.75rem; font-weight:600;">Pending
                                 Requests</small>
-                            <h2 style="margin:0; font-size:1.8rem; font-weight:700;" id="statPending">0</h2>
+                            <h2 style="margin:0; font-size:1.8rem; font-weight:800; color: white;" id="statPending">0
+                            </h2>
                         </div>
                     </div>
                     <div class="stat-card-new">
-                        <div class="stat-icon-circle" style="background:#10b981;">
+                        <div class="stat-icon-circle"
+                            style="background:rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
                             <i class="ri-check-line"></i>
                         </div>
                         <div>
                             <small class="text-muted"
                                 style="color:#94a3b8; text-transform:uppercase; font-size:0.75rem; font-weight:600;">Approved</small>
-                            <h2 style="margin:0; font-size:1.8rem; font-weight:700;" id="statApproved">0</h2>
+                            <h2 style="margin:0; font-size:1.8rem; font-weight:800; color: white;" id="statApproved">0
+                            </h2>
                         </div>
                     </div>
                     <div class="stat-card-new">
-                        <div class="stat-icon-circle" style="background:#ef4444;">
+                        <div class="stat-icon-circle"
+                            style="background:rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
                             <i class="ri-close-line"></i>
                         </div>
                         <div>
                             <small class="text-muted"
                                 style="color:#94a3b8; text-transform:uppercase; font-size:0.75rem; font-weight:600;">Rejected</small>
-                            <h2 style="margin:0; font-size:1.8rem; font-weight:700;" id="statRejected">0</h2>
+                            <h2 style="margin:0; font-size:1.8rem; font-weight:800; color: white;" id="statRejected">0
+                            </h2>
                         </div>
                     </div>
                 </div>
 
-                <!-- 1.5 Performance & Time Slot Row (New) -->
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+                <!-- Row 3: Active Requests | Performance Summary -->
+                <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+                    <!-- Active Requests Quick Panel -->
+                    <div class="chart-card" style="height: auto; max-height: none;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                            <h3 style="margin:0;"><i class="ri-flashlight-line" style="color:#fcd34d;"></i> Active
+                                Requests</h3>
+                            <button onclick="switchView('active')"
+                                style="background: none; border: none; color: #60a5fa; font-size: 0.85rem; cursor: pointer; font-weight: 600;">View
+                                All <i class="ri-arrow-right-s-line"></i></button>
+                        </div>
+                        <div id="activeRequestsQuickPanel" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <!-- JS Populated -->
+                            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                <i class="ri-loader-4-line ri-spin" style="font-size: 1.5rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Performance Summary -->
-                    <div class="chart-card" style="justify-content:center;">
-                        <h3><i class="ri-bar-chart-groupped-line"></i> Performance Summary</h3>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:1rem; text-align:center;">
-                            <div>
-                                <h2 id="perfTotal" style="margin:0; color:white; font-size:1.8rem;">0</h2>
-                                <small
-                                    style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Total
-                                    Handled</small>
+                    <div class="chart-card" style="height: auto; max-height: none;">
+                        <h3 style="margin-bottom: 1.5rem;"><i class="ri-bar-chart-grouped-line"
+                                style="color:#34d399;"></i> Performance Summary</h3>
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                            <div
+                                style="background: rgba(255,255,255,0.03); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                    <i class="ri-checkbox-circle-line"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div id="perfTotal" style="font-size: 1.5rem; font-weight: 800; color: white;">0
+                                    </div>
+                                    <small
+                                        style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing: 0.5px;">Total
+                                        Handled Requests</small>
+                                </div>
                             </div>
                             <div
-                                style="border-left:1px solid rgba(255,255,255,0.1); border-right:1px solid rgba(255,255,255,0.1);">
-                                <h2 id="perfAvg" style="margin:0; color:#3b82f6; font-size:1.8rem;">0</h2>
-                                <small style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Avg
-                                    Daily</small>
+                                style="background: rgba(255,255,255,0.03); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(16, 185, 129, 0.1); color: #10b981; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                    <i class="ri-line-chart-line"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div id="perfRate" style="font-size: 1.5rem; font-weight: 800; color: #10b981;">0%
+                                    </div>
+                                    <small
+                                        style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing: 0.5px;">Completion
+                                        Rate</small>
+                                </div>
                             </div>
-                            <div>
-                                <h2 id="perfRate" style="margin:0; color:#10b981; font-size:1.8rem;">0%</h2>
-                                <small
-                                    style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">Completion
-                                    Rate</small>
+                            <div id="avgResponsePanel"
+                                style="background: rgba(255,255,255,0.03); padding: 1.25rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 1rem;">
+                                <div
+                                    style="width: 45px; height: 45px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                                    <i class="ri-timer-line"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div id="perfAvgResponse"
+                                        style="font-size: 1.5rem; font-weight: 800; color: white;">--</div>
+                                    <small
+                                        style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase; letter-spacing: 0.5px;">Avg
+                                        Completion Time</small>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Time Slot Distribution -->
-                    <div class="chart-card">
-                        <h3><i class="ri-time-line"></i> Time Slot Distribution</h3>
-                        <div style="flex:1; position:relative; min-height:0;">
-                            <canvas id="timeSlotChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. Charts Row -->
-                <div class="charts-row">
-                    <div class="chart-card">
-                        <h3>Pickup Status Overview</h3>
-                        <div style="flex:1; position:relative; min-height:0;">
-                            <canvas id="statusChart"></canvas>
+                <!-- Row 4: Recent Activity & Admin Messages -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; margin-bottom:2rem;">
+                    <!-- Recent Activity -->
+                    <div class="chart-card" style="height: auto;">
+                        <h3 style="margin-bottom: 1.5rem;"><i class="ri-history-line" style="color:#94a3b8;"></i> Recent
+                            Activity</h3>
+                        <div id="recentActivityList" style="display: flex; flex-direction: column; gap: 0.1rem;">
+                            <!-- JS populated -->
                         </div>
                     </div>
-                    <div class="chart-card">
-                        <h3>Weekly Pickup Trend</h3>
-                        <div style="flex:1; position:relative; min-height:0;">
-                            <canvas id="trendChart"></canvas>
+
+                    <!-- Admin Messages (New) -->
+                    <div class="chart-card" style="height: auto;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 style="margin:0;"><i class="ri-message-3-line" style="color:#60a5fa;"></i> Messages from
+                                Admin</h3>
+                            <button onclick="switchView('messages')"
+                                style="background: none; border: none; color: #60a5fa; font-size: 0.85rem; cursor: pointer; font-weight: 600;">Open
+                                Inbox</button>
+                        </div>
+                        <div id="adminMessagesQuickPanel" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <!-- JS populated -->
+                            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                <i class="ri-loader-4-line ri-spin" style="font-size: 1.5rem;"></i>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- 3. Breakdown Row -->
-                <div class="breakdown-row">
-                    <h3>Waste Collection Breakdown</h3>
-                    <div class="waste-bars-grid" id="wasteBreakdownContainer" style="margin-top:1rem;">
-                        <!-- JS populated -->
-                        <p style="color:gray;">Loading breakdown...</p>
+            <!-- Tab: Special Waste (New) -->
+            <div id="specialWasteSection" style="display:none; animation: fadeIn 0.3s ease;">
+                <div
+                    style="background:rgba(30,41,59,0.4); padding:1.5rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05); margin-bottom:1.5rem;">
+                    <h2 style="margin:0;"><i class="ri-flask-line" style="color:#d1d5db;"></i> Assigned Special Waste
+                    </h2>
+                    <p style="color:var(--text-muted); font-size:0.9rem;">Management of hazardous, bulk, and regulated
+                        waste collection</p>
+                </div>
+
+                <div class="chart-card" style="min-height: 480px; padding: 0; overflow: hidden; max-height: none;">
+                    <table class="center-table">
+                        <thead>
+                            <tr>
+                                <th>Waste Type</th>
+                                <th>Quantity</th>
+                                <th>Location</th>
+                                <th>Assigned Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="specialWasteList">
+                            <!-- JS Populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Messages Full View (New) -->
+            <div id="messagesSection" style="display:none; animation: fadeIn 0.3s ease;">
+                <div style="display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; height: calc(100vh - 200px);">
+                    <!-- Conversations List -->
+                    <div
+                        style="background: rgba(30,41,59,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+                        <div style="padding: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <h3 style="margin:0; font-size: 1.1rem;">Conversations</h3>
+                        </div>
+                        <div style="flex: 1; overflow-y: auto; padding: 0.5rem;">
+                            <div
+                                style="padding: 1rem; background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 10px; display: flex; align-items: center; gap: 0.75rem; cursor: pointer;">
+                                <div
+                                    style="width: 40px; height: 40px; background: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                                    A</div>
+                                <div>
+                                    <div style="font-weight: 600; color: white;">System Administrator</div>
+                                    <small style="color: #60a5fa;">Official Support</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Box -->
+                    <div
+                        style="background: rgba(30,41,59,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;">
+                        <div
+                            style="padding: 1rem 1.5rem; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <div style="width: 10px; height: 10px; background: #10b981; border-radius: 50%;"></div>
+                                <h4 style="margin:0;">Administrator Conversation</h4>
+                            </div>
+                            <button onclick="loadMessages()"
+                                style="background: none; border: none; color: #64748b; cursor: pointer; font-size:1.1rem;"><i
+                                    class="ri-refresh-line"></i></button>
+                        </div>
+                        <div id="chatHistory"
+                            style="flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- Messages -->
+                        </div>
+                        <div
+                            style="padding: 1.25rem; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05); display: flex; gap: 0.75rem;">
+                            <input type="text" id="msgInput" placeholder="Type a message to admin..."
+                                style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 0.8rem 1.2rem; border-radius: 10px; color: white; outline: none;">
+                            <button onclick="sendMessage()"
+                                style="background: #3b82f6; color: white; border: none; padding: 0 1.5rem; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                <span>Send</span> <i class="ri-send-plane-2-line"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -580,44 +876,7 @@
                 <p style="color:var(--text-muted);">Loading history...</p>
             </div>
 
-            <!-- Centers Management Section (New) -->
-            <div id="centersSection" style="margin-top: 1.5rem; display: none;">
-                <div
-                    style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
-                    <h2 style="margin:0;">Manage Collection Centers</h2>
-                    <div style="display:flex; gap:1rem; align-items:center;">
-                        <div style="position:relative;">
-                            <i class="ri-search-line"
-                                style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
-                            <input type="text" id="centerSearchInput" placeholder="Search by name or address..."
-                                oninput="filterCenters()"
-                                style="padding:0.6rem 1rem 0.6rem 2.2rem; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:white; min-width:250px;">
-                        </div>
-                        <button onclick="openAddCenterForm()" class="action-btn"
-                            style="background:#3b82f6; color:white; border:none;">
-                            <i class="ri-add-line"></i> Add Center
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-container"
-                    style="background:rgba(30,41,59,0.6); border-radius:12px; padding:1rem; border:1px solid rgba(255,255,255,0.05); overflow-x:auto;">
-                    <table style="width:100%; border-collapse:collapse; color:white; min-width:600px;">
-                        <thead>
-                            <tr style="text-align:left; border-bottom:1px solid rgba(255,255,255,0.1);">
-                                <th style="padding:1rem; color:var(--text-muted);">Name</th>
-                                <th style="padding:1rem; color:var(--text-muted);">Address</th>
-                                <th style="padding:1rem; color:var(--text-muted);">Status</th>
-                                <th style="padding:1rem; color:var(--text-muted);">Slots (Avail/Max)</th>
-                                <th style="padding:1rem; color:var(--text-muted);">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="centersTableBody">
-                            <!-- JS Populated -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <!-- End of operational sections -->
 
             <!-- Add Center Modal -->
             <div id="addCenterModal" class="modal-overlay"
@@ -677,339 +936,164 @@
     <script>
         let allRequests = []; // Global store
 
+        function sText(str, fallback = '') {
+            if (!str || str === 'null' || str === 'undefined') return fallback;
+            return str;
+        }
+
+        // --- STABLE MODE: GLOBAL GUARDS (Item 9 & Patch) ---
+        const STABLE = {
+            isActive: () => document.hasFocus(),
+            isFetching: false,
+
+            // Stop Double Rendering (Item 1)
+            safeUpdate: (id, html) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                // Only update if content changed to prevent flicker (Item 1)
+                if (el.innerHTML !== html) el.innerHTML = html;
+            },
+
+            // Fix NULL/Undefined Rendering (Item 4)
+            s: (val, fallback = "—") => (val !== null && val !== undefined && val !== "" && val !== "null") ? val : fallback
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
             // 1. Auth Check (Center Context)
             let centerId = localStorage.getItem('center_sys_id');
             const centerEmail = localStorage.getItem('center_sys_email');
 
             // Fallback for immediate migration if needed
-            if (!centerId && localStorage.getItem('userId') && localStorage.getItem('userRole') === 'CENTER') {
-                centerId = localStorage.getItem('userId');
-                localStorage.setItem('center_sys_id', centerId);
-                localStorage.setItem('center_sys_email', localStorage.getItem('userEmail'));
-                localStorage.setItem('center_sys_role', 'CENTER');
-            }
-
             if (!centerId) {
-                window.location.href = 'login-user.html';
+                window.location.href = 'login.html?role=center';
                 return;
             }
 
+            loadCenterInfo();
             loadRequests();
+            initCenterNotifications();
 
             // Logout Logic
             document.getElementById('logoutBtn').addEventListener('click', () => {
-                window.showCustomConfirm("Logout", "Logout from Collection Center?", () => {
-                    localStorage.removeItem('center_sys_id');
-                    localStorage.removeItem('center_sys_email');
-                    localStorage.removeItem('center_sys_role');
-                    localStorage.removeItem('center_sys_name');
-                    localStorage.removeItem('centerName'); // from profile page
-                    // Legacy cleanup
-                    localStorage.removeItem('userId');
-                    localStorage.removeItem('userEmail');
-                    localStorage.removeItem('userRole');
-
-                    window.location.href = 'login-user.html';
+                showModal({
+                    type: 'danger',
+                    title: "Logout",
+                    text: "Logout from Collection Center?",
+                    confirmBtnText: "Yes, Logout"
+                }, () => {
+                    if (window.logoutSafely) {
+                        window.logoutSafely('manual', 'CENTER');
+                    } else {
+                        // Fallback: full clear and redirect to landing
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        window.location.replace('/');
+                    }
                 });
             });
 
             // Dynamic Header Info
-            if (centerEmail) {
-                document.querySelector('.logo-text').innerHTML = `Center Admin <br><span style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">${centerEmail}</span>`;
+            if (centerEmail && centerEmail !== 'null' && centerEmail !== 'undefined') {
+                const logoText = document.querySelector('.logo-text');
+                if (logoText) {
+                    logoText.innerHTML = `SortSense Center <br><span
+        style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">${centerEmail}</span>`;
+                }
             }
 
             // Modal Event Listeners
-            document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+            const cancelBtn = document.getElementById('modalCancelBtn');
+            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
             // Initialize View
             switchView('overview');
 
-            console.log("Center Dashboard JS v2 Loaded");
+            console.log("Center Dashboard JS Optimized & Stabilized");
 
             // Auto-Refresh Polling (Managed by Toggle)
             if (typeof toggleAutoRefresh === 'function') {
-                console.log("Initializing Auto-Refresh...");
                 toggleAutoRefresh(true);
             } else {
-                console.warn("toggleAutoRefresh function missing, falling back to interval.");
-                setInterval(() => loadRequests(true), 30000);
+                setInterval(() => {
+                    if (STABLE.isActive()) loadRequests(true); // Item 2 & Patch
+                }, 30000);
             }
         });
 
-        function loadRequests(silent = false) {
+        async function loadCenterInfo() {
+            const centerId = localStorage.getItem('center_sys_id');
+            const headerName = document.getElementById('headerCenterName');
+            const headerUser = document.getElementById('headerUsername');
+            const statusIndicator = document.getElementById('centerStatusIndicator');
+
+            if (!headerName || !headerUser || !statusIndicator) return;
+
+            try {
+                const res = await fetch(`/api/centers/${centerId}`);
+                if (!res.ok) throw new Error("Failed to fetch center info");
+                const data = await res.json();
+
+                if (data) {
+                    const name = STABLE.s(data.center_name, "Collection Center");
+                    const username = STABLE.s(data.username, "center_account");
+
+                    if (headerName.innerText !== name) headerName.innerText = name;
+                    if (headerUser.innerText !== `Center: ${username}`) headerUser.innerText = `Center: ${username}`;
+
+                    localStorage.setItem('center_sys_name', name);
+                    localStorage.setItem('center_sys_username', username);
+
+                    // Update Status Indicator
+                    const status = data.status || 'OPEN';
+                    const color = status === 'OPEN' ? '#10b981' : (status === 'IDLE' ? '#f59e0b' : '#ef4444');
+                    statusIndicator.style.color = color;
+                    if (statusIndicator.querySelector('span:last-child')) {
+                        statusIndicator.querySelector('span:last-child').innerText = status;
+                    }
+
+                    window.centerMaxSlots = data.max_slots || 50;
+                }
+            } catch (err) {
+                console.error("Error loading center info:", err);
+            }
+        }
+
+        async function loadRequests(silent = false) {
+            if (STABLE.isFetching) return; // Item 3: Stop concurrent requests
+            STABLE.isFetching = true;
+
             const activeList = document.getElementById('activeRequestsList');
             const historyList = document.getElementById('historyRequestsList');
 
+            if (!activeList || !historyList) {
+                STABLE.isFetching = false;
+                return;
+            }
+
             if (!silent) {
                 const loadingHtml = `
-                    <div style="display:flex; justify-content:center; padding:2rem; color:var(--text-muted);">
-                        <i class="ri-loader-4-line ri-spin" style="font-size:1.5rem; margin-right:0.5rem;"></i> Loading...
-                    </div>`;
+    <div style="display:flex; justify-content:center; padding:2rem; color:var(--text-muted);">
+        <i class="ri-loader-4-line ri-spin" style="font-size:1.5rem; margin-right:0.5rem;"></i> Loading...
+    </div>`;
                 activeList.innerHTML = loadingHtml;
                 historyList.innerHTML = loadingHtml;
             }
 
-            // Adding timestamp to prevent caching
-            fetch(`/api/pickup/center/all?t=${Date.now()}`)
-                .then(res => {
-                    if (!res.ok) {
-                        return res.json().then(err => { throw new Error(err.message || 'Server Error'); });
-                    }
-                    return res.json();
-                })
-                .then(data => {
-                    if (Array.isArray(data)) {
-                        allRequests = data;
-                        applyFilters(); // Render
-                    } else {
-                        throw new Error("Invalid data format received.");
-                    }
-                })
-                .catch(err => {
-                    console.error("Load Requests Error:", err);
-                    if (!silent) {
-                        const errorHtml = `
-                            <div style="text-align:center; padding:2rem; border:1px dashed #ef4444; border-radius:12px; background:rgba(239, 68, 68, 0.05);">
-                                <i class="ri-error-warning-line" style="font-size:2rem; color:#ef4444; margin-bottom:0.5rem;"></i>
-                                <p style="color:#ef4444; margin:0;">${err.message || "Failed to load requests"}</p>
-                                <button onclick="loadRequests()" style="margin-top:1rem; padding:0.5rem 1rem; background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.2); color:#ef4444; border-radius:6px; cursor:pointer;">Try Again</button>
-                            </div>`;
-                        activeList.innerHTML = errorHtml;
-                        historyList.innerHTML = errorHtml;
-                    }
-                });
-        }
+            const centerId = localStorage.getItem('center_sys_id');
+            try {
+                const res = await fetch(`/api/pickup/center/all?centerId=${centerId}&t=${Date.now()}`);
+                if (!res.ok) throw new Error('Server Error');
+                const data = await res.json();
 
-        function applyFilters() {
-            const activeList = document.getElementById('activeRequestsList');
-            const historyList = document.getElementById('historyRequestsList');
-
-            // Get Filter Values
-            const statusFilter = document.getElementById('statusFilter').value;
-            const priorityFilter = document.getElementById('priorityFilter').value;
-            const sortValue = document.getElementById('sortBy').value;
-            const searchTerm = '';
-
-            // 1. Filter
-            let filtered = allRequests.filter(req => {
-                const p = getPriority(req.waste_type, req.quantity);
-                const query = searchTerm.trim();
-
-                // Standard Filters
-                if (statusFilter !== 'All' && req.status !== statusFilter) return false;
-                if (priorityFilter !== 'All' && p !== priorityFilter) return false;
-
-                // Search Logic
-                if (query) {
-                    const createdDate = new Date(req.created_at);
-                    const isToday = createdDate.toDateString() === new Date().toDateString();
-
-                    // Smart Keywords
-                    if (query === 'today' && !isToday) return false;
-
-                    // Specific Status Keywords (if user types 'pending' but filter is 'All', usually we just match text, 
-                    // but let's be strict if it matches a status exactly to avoid false positives in addresses?)
-                    // Actually, flexible text matching is usually better for 'context-aware' unless explicitly asked for strict parsing.
-                    // User said: "Match against: Request status, Waste category, Special waste flag, User name, Request ID, Date"
-
-                    const searchable = [
-                        req.request_id,
-                        req.user_name,
-                        req.waste_type,
-                        req.status,
-                        req.address || '',
-                        p, // Priority (High/Medium/Low)
-                        createdDate.toLocaleDateString(),
-                        'pickup', // implicit context
-                        (req.is_special || req.waste_category) ? 'special' : '' // Special flag context
-                    ].join(' ').toLowerCase();
-
-                    // Check if all parts of query (if space separated) are in searchable? 
-                    // Or just simple includes. Simple includes is safer for now.
-                    // But "user name" might be two words.
-                    // Let's stick to simple includes of the full query or split?
-                    // "user name" -> "user" AND "name". 
-                    // Let's do simple includes for now to match exact phrases or words.
-                    if (!searchable.includes(query)) return false;
+                if (Array.isArray(data)) {
+                    allRequests = data;
+                    applyFilters(); // Render
                 }
-
-                return true;
-            });
-
-            // 2. Sort
-            filtered.sort((a, b) => {
-                // Newest First default
-                const dateA = new Date(a.created_at);
-                const dateB = new Date(b.created_at);
-
-                if (sortValue === 'Newest') return dateB - dateA;
-                if (sortValue === 'Oldest') return dateA - dateB;
-                if (sortValue === 'QtyHigh') return parseFloat(b.quantity) - parseFloat(a.quantity);
-                if (sortValue === 'QtyLow') return parseFloat(a.quantity) - parseFloat(b.quantity);
-                return 0;
-            });
-
-            // 3. Render
-            activeList.innerHTML = '';
-            historyList.innerHTML = '';
-
-            let activeCount = 0;
-            let historyCount = 0;
-
-            filtered.forEach(req => {
-                const card = createCard(req);
-                if (['Completed', 'Cancelled', 'Rejected'].includes(req.status)) {
-                    historyList.appendChild(card);
-                    historyCount++;
-                } else {
-                    activeList.appendChild(card);
-                    activeCount++;
-                }
-            });
-
-            if (activeCount === 0) activeList.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted);">No matching active requests.</div>`;
-            if (historyCount === 0) historyList.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted);">No matching history.</div>`;
-
-            updateDashboardStats();
-        }
-
-        // Chart instances
-        let statusChartInstance = null;
-        let trendChartInstance = null;
-        let timeSlotChartInstance = null; // New chart instance
-
-        function updateDashboardStats() {
-            // New Dashboard Logic
-            // 1. Top Stats
-            const today = new Date().toDateString();
-            const todaysPickups = allRequests.filter(r => new Date(r.created_at).toDateString() === today).length;
-            const pending = allRequests.filter(r => r.status === 'Pending').length;
-            const approved = allRequests.filter(r => r.status === 'Approved').length;
-            const rejected = allRequests.filter(r => r.status === 'Rejected').length;
-            const completed = allRequests.filter(r => r.status === 'Completed').length;
-
-            if (document.getElementById('statTotalToday')) document.getElementById('statTotalToday').textContent = todaysPickups;
-            if (document.getElementById('statPending')) document.getElementById('statPending').textContent = pending;
-            if (document.getElementById('statApproved')) document.getElementById('statApproved').textContent = approved;
-            if (document.getElementById('statRejected')) document.getElementById('statRejected').textContent = rejected;
-
-            // --- 1.1 Live Slot Usage (New) ---
-            // Logic: Count 'Approved' + 'Scheduled' as Active/Used Slots
-            const usedSlots = allRequests.filter(r => ['Approved', 'Scheduled', 'In Transit'].includes(r.status)).length;
-            const totalSlots = 50; // Mock Max Capacity (or retrieve from API if available later)
-            const usagePct = Math.min((usedSlots / totalSlots) * 100, 100).toFixed(1);
-
-            const slotCountDisplay = document.getElementById('slotCountDisplay');
-            const slotProgressBar = document.getElementById('slotProgressBar');
-            const slotStatusText = document.getElementById('slotStatusText');
-
-            if (slotCountDisplay && slotProgressBar && slotStatusText) {
-                slotCountDisplay.textContent = `${usedSlots} / ${totalSlots}`;
-                slotProgressBar.style.width = `${usagePct}%`;
-
-                // Color Logic
-                if (usagePct < 50) {
-                    slotProgressBar.style.background = '#10b981'; // Green
-                    slotStatusText.textContent = "Low Load";
-                    slotStatusText.style.color = '#10b981';
-                } else if (usagePct < 80) {
-                    slotProgressBar.style.background = '#f59e0b'; // Orange
-                    slotStatusText.textContent = "High Load";
-                    slotStatusText.style.color = '#f59e0b';
-                } else {
-                    slotProgressBar.style.background = '#ef4444'; // Red
-                    slotStatusText.textContent = "Near Capacity";
-                    slotStatusText.style.color = '#ef4444';
-                }
+            } catch (err) {
+                console.error("Load Requests Error:", err);
+            } finally {
+                STABLE.isFetching = false;
             }
-
-            // --- 1.2 Performance Summary (New) ---
-            const totalHandled = completed;
-            // Calculate Avg Daily (Unique days in history)
-            const uniqueDays = new Set(allRequests.filter(r => r.status === 'Completed').map(r => new Date(r.created_at).toDateString())).size || 1;
-            const avgDaily = (totalHandled / uniqueDays).toFixed(1);
-            // Completion Rate (Completed vs (Completed + Rejected))
-            const denomenator = (completed + rejected) || 1;
-            const compRate = ((completed / denomenator) * 100).toFixed(0);
-
-            if (document.getElementById('perfTotal')) document.getElementById('perfTotal').textContent = totalHandled;
-            if (document.getElementById('perfAvg')) document.getElementById('perfAvg').textContent = avgDaily;
-            if (document.getElementById('perfRate')) document.getElementById('perfRate').textContent = `${compRate}%`;
-
-
-            // 2. Breakdown (Waste Types)
-            const typeMap = {};
-            let totalKg = 0;
-            allRequests.forEach(r => {
-                const wType = r.waste_type ? r.waste_type.split(',')[0].trim() : 'Mixed';
-                const qty = parseFloat(r.quantity) || 0;
-                typeMap[wType] = (typeMap[wType] || 0) + qty;
-                totalKg += qty;
-            });
-
-            const breakdownContainer = document.getElementById('wasteBreakdownContainer');
-            if (breakdownContainer) {
-                breakdownContainer.innerHTML = '';
-                Object.keys(typeMap).forEach(type => {
-                    const qty = typeMap[type];
-                    const pct = totalKg > 0 ? ((qty / totalKg) * 100).toFixed(1) : 0;
-
-                    // Icon logic simple
-                    let icon = 'ri-recycle-line';
-                    if (type.includes('Organic')) icon = 'ri-leaf-line';
-                    if (type.includes('E-Waste')) icon = 'ri-computer-line';
-                    if (type.includes('Plastic')) icon = 'ri-cup-line';
-                    if (type.includes('Glass')) icon = 'ri-goblet-line';
-
-                    const barHtml = `
-                        <div class="waste-bar-item">
-                            <label><i class="${icon}"></i> ${type} <span style="margin-left:auto; font-weight:700;">${qty.toFixed(1)} kg</span></label>
-                            <div class="progress-track">
-                                <div class="progress-fill" style="width: ${pct}%; background:${getColorForType(type)};"></div>
-                            </div>
-                            <small style="display:block; text-align:right; margin-top:2px; color:gray;">${pct}%</small>
-                        </div>
-                    `;
-                    breakdownContainer.innerHTML += barHtml;
-                });
-            }
-
-            // 3. Render Charts
-            renderCharts(pending, approved, rejected, completed);
-
-            // --- Legacy Analytics (Keep for History Tab Analytics View if needed) ---
-            const completedList = allRequests.filter(r => r.status === 'Completed');
-            const pickups = completedList.length;
-            const recycledKg = completedList.reduce((sum, r) => sum + (parseFloat(r.quantity) || 0), 0).toFixed(1);
-            const topType = Object.keys(typeMap).length > 0 ? Object.keys(typeMap).sort((a, b) => typeMap[b] - typeMap[a])[0] : 'None';
-
-            const legacySection = document.getElementById('analyticsSection');
-            if (legacySection) {
-                legacySection.innerHTML = `
-                    <div style="background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.2); padding:1rem; border-radius:12px; min-width:150px;">
-                        <small style="color:#a7f3d0; text-transform:uppercase;">Completed</small>
-                        <h3 style="color:#d1fae5; margin:0;">${pickups}</h3>
-                    </div>
-                    <div style="background:rgba(59, 130, 246, 0.1); border:1px solid rgba(59, 130, 246, 0.2); padding:1rem; border-radius:12px; min-width:150px;">
-                        <small style="color:#bfdbfe; text-transform:uppercase;">Recycled (kg)</small>
-                        <h3 style="color:#dbeafe; margin:0;">${recycledKg}</h3>
-                    </div>
-                     <div style="background:rgba(245, 158, 11, 0.1); border:1px solid rgba(245, 158, 11, 0.2); padding:1rem; border-radius:12px; min-width:150px;">
-                        <small style="color:#fde68a; text-transform:uppercase;">Top Waste</small>
-                        <h3 style="color:#fef3c7; margin:0;">${topType}</h3>
-                    </div>
-                `;
-            }
-        }
-
-        function getColorForType(type) {
-            if (type.includes('Organic')) return '#10b981';
-            if (type.includes('Plastic')) return '#3b82f6';
-            if (type.includes('Glass')) return '#8b5cf6';
-            if (type.includes('Metal')) return '#64748b';
-            if (type.includes('E-Waste')) return '#ef4444';
-            return '#f59e0b';
         }
 
         // Global Auto Refresh
@@ -1018,165 +1102,51 @@
         function toggleAutoRefresh(skipImmediate = false) {
             const toggle = document.getElementById('autoRefreshToggle');
             if (toggle && toggle.checked) {
-                // Enable
-                if (!skipImmediate) loadRequests(true); // Immediate update only if manual toggle
+                if (!skipImmediate) loadRequests(true);
 
                 if (!autoRefreshInterval) {
-                    autoRefreshInterval = setInterval(() => loadRequests(true), 30000); // 30 seconds
+                    autoRefreshInterval = setInterval(() => {
+                        if (STABLE.isActive()) { // Item 2 & Patch
+                            loadRequests(true);
+                            loadMessages(true);
+                            loadSpecialWaste();
+                        }
+                    }, 30000);
                 }
             } else {
-                // Disable
                 if (autoRefreshInterval) clearInterval(autoRefreshInterval);
                 autoRefreshInterval = null;
             }
         }
 
+
         function renderCharts(p, a, r, c) {
-            // Check if Chart is defined
-            if (typeof Chart === 'undefined') return;
-
-            // 1. Status Chart (Bar -> Doughnut for variety)
-            const ctxStatus = document.getElementById('statusChart').getContext('2d');
-            if (statusChartInstance) statusChartInstance.destroy();
-
-            statusChartInstance = new Chart(ctxStatus, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pending', 'Approved', 'Completed', 'Rejected'],
-                    datasets: [{
-                        label: 'Requests',
-                        data: [p, a, c, r],
-                        backgroundColor: ['#f59e0b', '#10b981', '#3b82f6', '#ef4444'],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { color: 'white', boxWidth: 12, font: { size: 10 } } }
-                    }
-                }
-            });
-
-            // 2. Trend Chart (Line)
-            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const trendData = [0, 0, 0, 0, 0, 0, 0];
-            allRequests.forEach(req => {
-                const d = new Date(req.created_at).getDay();
-                trendData[d]++;
-            });
-
-            const ctxTrend = document.getElementById('trendChart').getContext('2d');
-            if (trendChartInstance) trendChartInstance.destroy();
-
-            trendChartInstance = new Chart(ctxTrend, {
-                type: 'line',
-                data: {
-                    labels: days, // Static days implies weekly trend
-                    datasets: [{
-                        label: 'Pickups',
-                        data: trendData,
-                        borderColor: '#22c55e',
-                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                        pointBackgroundColor: '#22c55e'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } },
-                    plugins: { legend: { display: false } }
-                }
-            });
-
-            // 3. Time Slot Distribution (New Mini Chart)
-            const slotLabels = ['Morning', 'Afternoon', 'Evening'];
-            const slotData = [0, 0, 0]; // M, A, E
-
-            allRequests.forEach(req => {
-                let hour = new Date(req.created_at).getHours();
-
-                // Try to infer from estimated time if approved
-                if (req.estimated_pickup_time) {
-                    const timeStr = req.estimated_pickup_time.toLowerCase();
-                    if (timeStr.includes('am')) hour = 9;
-                    else if (timeStr.includes('pm')) {
-                        const h = parseInt(timeStr);
-                        hour = (h === 12 ? 12 : h + 12);
-                    }
-                }
-
-                // Categorize
-                if (hour >= 5 && hour < 12) slotData[0]++;       // Morning
-                else if (hour >= 12 && hour < 17) slotData[1]++; // Afternoon
-                else slotData[2]++;                              // Evening
-            });
-
-            const ctxSlot = document.getElementById('timeSlotChart');
-            if (ctxSlot) {
-                const ctx = ctxSlot.getContext('2d');
-                if (timeSlotChartInstance) timeSlotChartInstance.destroy();
-
-                timeSlotChartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: slotLabels,
-                        datasets: [{
-                            label: 'Pickups',
-                            data: slotData,
-                            backgroundColor: ['#fcd34d', '#f97316', '#6366f1'],
-                            borderRadius: 4,
-                            barThickness: 20
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y', // Horizontal bars
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            x: { display: false },
-                            y: { grid: { display: false }, ticks: { color: '#e2e8f0', font: { size: 11 } } }
-                        }
-                    }
-                });
-            }
+            // Simplified rendering or removal of unused charts as per requirements
+            console.log("Charts hidden in this view to prioritize operational data.");
         }
 
         function switchView(view) {
             const overview = document.getElementById('dashboardOverview');
             const activeList = document.getElementById('activeRequestsList');
             const historyList = document.getElementById('historyRequestsList');
-            const centersSection = document.getElementById('centersSection');
+            const specialSect = document.getElementById('specialWasteSection');
+            const messagesSect = document.getElementById('messagesSection');
 
-            const navOverview = document.getElementById('nav-overview');
-            const navActive = document.getElementById('nav-active');
-            const navHistory = document.getElementById('nav-history');
-            const navCenters = document.getElementById('nav-centers');
+            // Resetting visibility
+            [overview, activeList, historyList, specialSect, messagesSect].forEach(s => { if (s) s.style.display = 'none'; });
 
-            const analyticsSection = document.getElementById('analyticsSection');
-            const clearBtn = document.getElementById('clearHistoryBtn');
+            // Resetting nav states
+            document.querySelectorAll('.sidebar-nav li').forEach(li => li.classList.remove('active'));
+
+            // Common filter controls
             const refreshBtn = document.getElementById('refreshDataBtn');
             const priorityFilter = document.getElementById('priorityFilter');
             const statusFilter = document.getElementById('statusFilter');
             const sortBy = document.getElementById('sortBy');
+            const clearBtn = document.getElementById('clearHistoryBtn');
+            const analyticsSection = document.getElementById('analyticsSection');
 
-            // Reset Layout Defaults
-            if (overview) overview.style.display = 'none';
-            if (activeList) activeList.style.display = 'none';
-            if (historyList) historyList.style.display = 'none';
-            if (centersSection) centersSection.style.display = 'none';
-
-            if (navOverview) navOverview.classList.remove('active');
-            if (navActive) navActive.classList.remove('active');
-            if (navHistory) navHistory.classList.remove('active');
-            if (navCenters) navCenters.classList.remove('active');
-
-            // Hide common filters by default (re-enabled below if needed)
+            // Set default view visibility for filters
             if (refreshBtn) refreshBtn.style.display = 'none';
             if (priorityFilter) priorityFilter.style.display = 'none';
             if (statusFilter) statusFilter.style.display = 'none';
@@ -1186,18 +1156,23 @@
 
             if (view === 'overview') {
                 if (overview) overview.style.display = 'block';
-                if (navOverview) navOverview.classList.add('active');
-                document.querySelector('h1').innerText = "Collection Center Dashboard";
+                document.getElementById('nav-overview').classList.add('active');
+                document.getElementById('headerCenterName').parentElement.style.display = 'block';
                 updateDashboardStats();
+                loadMessages();
             }
-            else if (view === 'centers') {
-                if (centersSection) centersSection.style.display = 'block';
-                if (navCenters) navCenters.classList.add('active');
-                document.querySelector('h1').innerText = "Manage Centers";
-                loadCenters();
+            else if (view === 'special-waste') {
+                if (specialSect) specialSect.style.display = 'block';
+                document.getElementById('nav-special').classList.add('active');
+                loadSpecialWaste();
+            }
+            else if (view === 'messages') {
+                if (messagesSect) messagesSect.style.display = 'block';
+                document.getElementById('nav-messages').classList.add('active');
+                markAsRead();
             }
             else {
-                // Show Refresh & Filters in Requests Views
+                // Pickup Views (Active/History)
                 if (refreshBtn) refreshBtn.style.display = 'flex';
                 if (priorityFilter) priorityFilter.style.display = 'inline-block';
                 if (statusFilter) statusFilter.style.display = 'inline-block';
@@ -1205,15 +1180,14 @@
 
                 if (view === 'active') {
                     if (activeList) activeList.style.display = 'block';
-                    if (navActive) navActive.classList.add('active');
-                    document.querySelector('h1').innerText = "Incoming Pickup Requests";
-                }
-                else if (view === 'history') {
+                    document.getElementById('nav-active').classList.add('active');
+                    applyFilters();
+                } else if (view === 'history') {
                     if (historyList) historyList.style.display = 'block';
-                    if (navHistory) navHistory.classList.add('active');
-                    document.querySelector('h1').innerText = "Pickup History";
-                    if (analyticsSection) analyticsSection.style.display = 'flex';
+                    document.getElementById('nav-history').classList.add('active');
                     if (clearBtn) clearBtn.style.display = 'block';
+                    if (analyticsSection) analyticsSection.style.display = 'flex';
+                    applyFilters();
                 }
             }
         }
@@ -1234,34 +1208,32 @@
                 tbody.innerHTML = "";
 
                 if (centers.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:2rem; color:gray;">No centers found</td></tr>`;
+                    tbody.innerHTML = `<tr>
+        <td colspan="5" style="text-align:center; padding:2rem; color:gray;">No centers found</td>
+    </tr>`;
                     return;
                 }
 
                 centers.forEach(center => {
-                    const row = `
-                        <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                            <td style="padding:1rem;">${center.center_name || center.name}</td>
-                            <td style="padding:1rem;">${center.address || 'N/A'}</td>
-                            <td style="padding:1rem;">
-                                <span class="status-badge ${center.status === 'CLOSED' ? 'rejected' : 'approved'}">
-                                    ${center.status || 'OPEN'}
-                                </span>
-                            </td>
-                            <td style="padding:1rem;">${center.available_slots || 0} / ${center.max_slots || 10}</td>
-                            <td style="padding:1rem;">
-                                ${center.is_primary ?
-                            '<span title="Primary Center" style="color:#f59e0b; font-size:1.2rem; margin-right:1rem;"><i class="ri-star-fill"></i></span>' :
-                            `<button onclick="setPrimaryCenter(${center.center_id || center.id})" class="action-btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:rgba(255,255,255,0.1); color:white; border:none; margin-right:0.5rem;">
-                                <i class="ri-star-line"></i> Set Primary
-                            </button>`
-                        }
-                                <button onclick="deleteCenter(${center.center_id || center.id})" class="action-btn btn-delete" style="padding:0.4rem 0.8rem; font-size:0.8rem;">
-                                    <i class="ri-delete-bin-line"></i> Delete
-                                </button>
-                            </td>
-                        </tr>
-                    `;
+                    const cName = (center.center_name || center.name || '—');
+                    const cAddr = (center.address || '—');
+                    const cStatus = center.status || 'OPEN';
+                    const cSlots = (center.available_slots || 0) + ' / ' + (center.max_slots || 10);
+                    const cId = center.center_id || center.id;
+                    const primaryHtml = center.is_primary
+                        ? '<span title="Primary Center" style="color:#f59e0b; font-size:1.2rem; margin-right:1rem;"><i class="ri-star-fill"></i></span>'
+                        : '<button onclick="setPrimaryCenter(' + cId + ')" class="action-btn" style="padding:0.4rem 0.8rem; font-size:0.8rem; background:rgba(255,255,255,0.1); color:white; border:none; margin-right:0.5rem;"><i class="ri-star-line"></i> Set Primary</button>';
+                    const statusClass = (cStatus === 'CLOSED') ? 'rejected' : 'approved';
+                    const row = `<tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:1rem;">${cName}</td>
+                        <td style="padding:1rem;">${cAddr}</td>
+                        <td style="padding:1rem;"><span class="status-badge ${statusClass}">${cStatus}</span></td>
+                        <td style="padding:1rem;">${cSlots}</td>
+                        <td style="padding:1rem;">
+                            ${primaryHtml}
+                            <button onclick="deleteCenter(${cId})" class="action-btn btn-delete" style="padding:0.4rem 0.8rem; font-size:0.8rem;"><i class="ri-delete-bin-line"></i> Delete</button>
+                        </td>
+                    </tr>`;
                     tbody.innerHTML += row;
                 });
 
@@ -1269,7 +1241,9 @@
                 filterCenters();
             } catch (error) {
                 console.error("Error loading centers:", error);
-                document.getElementById("centersTableBody").innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">Error loading centers</td></tr>`;
+                document.getElementById("centersTableBody").innerHTML = `<tr>
+        <td colspan="5" style="text-align:center; color:red;">Error loading centers</td>
+    </tr>`;
             }
         }
 
@@ -1354,17 +1328,16 @@
             const tr = tbody.getElementsByTagName('tr');
 
             for (let i = 0; i < tr.length; i++) {
-                const nameTd = tr[i].getElementsByTagName("td")[0];
-                const addressTd = tr[i].getElementsByTagName("td")[1];
-                if (nameTd && addressTd) {
-                    const nameValue = nameTd.textContent || nameTd.innerText;
-                    const addressValue = addressTd.textContent || addressTd.innerText;
-                    if (nameValue.toLowerCase().indexOf(filter) > -1 || addressValue.toLowerCase().indexOf(filter) > -1) {
-                        tr[i].style.display = "";
-                    } else {
-                        tr[i].style.display = "none";
+                const nameTd = tr[i].getElementsByTagName("td")[0]; const
+                    addressTd = tr[i].getElementsByTagName("td")[1]; if (nameTd && addressTd) {
+                        const nameValue = nameTd.textContent ||
+                            nameTd.innerText; const addressValue = addressTd.textContent || addressTd.innerText; if
+                            (nameValue.toLowerCase().indexOf(filter) > -1 || addressValue.toLowerCase().indexOf(filter) > -1) {
+                            tr[i].style.display = "";
+                        } else {
+                            tr[i].style.display = "none";
+                        }
                     }
-                }
             }
         }
 
@@ -1393,58 +1366,58 @@
 
         function getPriority(type, qty) {
             if (!type) return 'Normal';
-            if (type.toLowerCase().includes('organic')) return 'High';
+            const t = type.toLowerCase();
+            if (t.includes('organic')) return 'High';
             if ((parseFloat(qty) || 0) < 5) return 'Low';
-            if (type.includes('Hazardous') || type.includes('E-Waste')) return 'Medium';
+            if (t.includes('hazardous') || t.includes('e-waste')) return 'Medium';
             return 'Normal';
         }
 
         function createCard(req) {
             const card = document.createElement('div');
             card.className = 'request-card';
-
             const statusClass = req.status.toLowerCase();
             let actions = '';
-
-            const rejectBtn = `
-                <button class="action-btn btn-delete" onclick="updateStatus(${req.request_id}, 'Rejected')">
-                    <i class="ri-close-circle-line"></i> Reject
-                </button>
+            const rejectBtn = `<button class="action-btn btn-delete" onclick="updateStatus(${req.request_id}, 'Rejected')">
+            <i class="ri-close-circle-line"></i> Reject
+            </button>
             `;
             const deleteBtn = `
-                <button class="action-btn btn-delete" onclick="deleteRequest(${req.request_id})">
-                    <i class="ri-delete-bin-line"></i> Delete
-                </button>
+            <button class="action-btn btn-delete" onclick="deleteRequest(${req.request_id})">
+                <i class="ri-delete-bin-line"></i> Delete
+            </button>
             `;
 
             const s = req.status.toLowerCase();
 
             if (s === 'pending' || s === 'aggregation_pending') {
                 actions = `
-                    ${rejectBtn}
-                    <button class="action-btn btn-approve" onclick="updateStatus(${req.request_id}, 'Approved')">
-                        <i class="ri-check-line"></i> Approve
-                    </button>
-                `;
+            ${rejectBtn}
+            <button class="action-btn btn-approve" onclick="updateStatus(${req.request_id}, 'Approved')">
+                <i class="ri-check-line"></i> Approve
+            </button>
+            `;
             } else if (['approved', 'scheduled', 'in_transit', 'auto_rescheduled'].includes(s)) {
                 actions = `
-                    <button class="action-btn btn-complete" onclick="updateStatus(${req.request_id}, 'Completed')">
-                        <i class="ri-flag-line"></i> Complete
-                    </button>
-                `;
+            <button class="action-btn btn-complete" onclick="updateStatus(${req.request_id}, 'Completed')">
+                <i class="ri-flag-line"></i> Complete
+            </button>
+            `;
             } else if (s === 'rejected' || s === 'cancelled') {
                 actions = `
-                    <span style="color:var(--text-muted); font-size:0.9rem; margin-right:auto;"><i class="ri-close-circle-fill" style="color:#ef4444;"></i> Rejected</span>
-                    ${deleteBtn}
-                `;
+            <span style="color:var(--text-muted); font-size:0.9rem; margin-right:auto;"><i class="ri-close-circle-fill"
+                    style="color:#ef4444;"></i> Rejected</span>
+            ${deleteBtn}
+            `;
             } else if (s === 'completed') {
                 actions = `
-                    <span style="color:var(--text-muted); font-size:0.9rem; margin-right:auto;"><i class="ri-checkbox-circle-fill" style="color:#34d399;"></i> Done</span>
-                `;
+            <span style="color:var(--text-muted); font-size:0.9rem; margin-right:auto;"><i
+                    class="ri-checkbox-circle-fill" style="color:#34d399;"></i> Done</span>
+            `;
             } else {
                 actions = `
-                    <span style="color:orange; font-size:0.9rem; margin-right:auto;">Unknown: ${req.status}</span>
-                `;
+            <span style="color:orange; font-size:0.9rem; margin-right:auto;">Unknown: ${req.status}</span>
+            `;
             }
 
             // Priority Badge
@@ -1457,23 +1430,21 @@
                 priText = 'URGENT <i class="ri-alarm-warning-fill"></i>';
                 card.style.borderLeft = '4px solid #dc2626';
                 card.style.background = 'rgba(220, 38, 38, 0.05)';
-            }
-            else if (priority === 'High') {
+            } else if (priority === 'High') {
                 priColor = '#ef4444';
                 priText = 'HIGH <i class="ri-fire-fill"></i>';
                 card.style.borderLeft = '4px solid #ef4444';
-            }
-            else if (priority === 'Medium') {
+            } else if (priority === 'Medium') {
                 priColor = '#f59e0b';
                 priText = 'MEDIUM';
-            }
-            else if (priority === 'Low') {
+            } else if (priority === 'Low') {
                 priColor = '#64748b';
                 priText = 'HELD (AGGREGATING)';
                 card.style.opacity = '0.75';
             }
 
-            const priBadge = `<span style="font-size:0.7rem; font-weight:800; color:${priColor}; border:1px solid ${priColor}; padding:2px 6px; border-radius:4px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:2px;">${priText}</span>`;
+            const priBadge = `<span
+                style="font-size:0.7rem; font-weight:800; color:${priColor}; border:1px solid ${priColor}; padding:2px 6px; border-radius:4px; margin-left:0.5rem; display:inline-flex; align-items:center; gap:2px;">${priText}</span>`;
 
             // Date
             const dateObj = new Date(req.created_at);
@@ -1483,10 +1454,12 @@
             // Extra Info (ETA / Reason)
             let extraInfo = '';
             if (req.rejection_reason && s === 'rejected') {
-                extraInfo = `<div style="font-size:0.8rem; color:#ef4444; margin-top:0.4rem; font-style:italic;">"${req.rejection_reason}"</div>`;
+                extraInfo = `<div style="font-size:0.8rem; color:#ef4444; margin-top:0.4rem; font-style:italic;">
+                "${req.rejection_reason}"</div>`;
             }
             if (req.estimated_pickup_time && s === 'approved') {
-                extraInfo = `<div style="font-size:0.8rem; color:#60a5fa; margin-top:0.4rem;">ETA: ${req.estimated_pickup_time}</div>`;
+                extraInfo = `<div style="font-size:0.8rem; color:#60a5fa; margin-top:0.4rem;">ETA:
+                ${req.estimated_pickup_time}</div>`;
             }
 
             // Map Link (Prioritize Coords)
@@ -1496,44 +1469,47 @@
             } else if (req.address) {
                 mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(req.address)}`;
             }
-            const mapLink = `<a href="${mapUrl}" target="_blank" title="View Map" style="color:#3b82f6; text-decoration:none; margin-left:0.5rem;"><i class="ri-map-pin-line"></i></a>`;
+            const mapLink = `<a href="${mapUrl}" target="_blank" title="View Map"
+                style="color:#3b82f6; text-decoration:none; margin-left:0.5rem;"><i class="ri-map-pin-line"></i></a>`;
 
             card.innerHTML = `
-                <div class="req-info">
-                    <div class="req-detail" style="flex:1.8;">
-                        <label>User & Location</label>
-                        <span style="display:flex; align-items:center; gap:0.25rem; font-weight:600;">
-                            ${req.user_name || 'Unknown'} ${mapLink}
+            <div class="req-info">
+                <div class="req-detail" style="flex:1.8;">
+                    <label>User & Location</label>
+                    <span style="display:flex; align-items:center; gap:0.25rem; font-weight:600;">
+                        ${sText(req.user_name, 'Unknown')} ${mapLink}
+                    </span>
+                    <small
+                        style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:2px; line-height:1.2;">
+                        ${req.user_phone ? `<i class="ri-phone-line" style="font-size:0.7rem;"></i>
+                        ${req.user_phone}<br>` : ''}
+                        <i class="ri-map-pin-user-line" style="font-size:0.7rem;"></i>
+                        <span title="${sText(req.address, 'No location data available')}">
+                            ${sText(req.address, 'Location Not Provided')}
                         </span>
-                        <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:2px; line-height:1.2;">
-                             ${req.user_phone ? `<i class="ri-phone-line" style="font-size:0.7rem;"></i> ${req.user_phone}<br>` : ''}
-                             <i class="ri-map-pin-user-line" style="font-size:0.7rem;"></i> 
-                             <span title="${req.address || (req.latitude && (parseFloat(req.latitude) !== 0 || parseFloat(req.longitude) !== 0) ? `Coords: ${req.latitude}, ${req.longitude}` : 'No location data available')}">
-                                ${req.address ? (req.address.length > 30 ? req.address.substring(0, 27) + '...' : req.address) : (req.latitude && (parseFloat(req.latitude) !== 0 || parseFloat(req.longitude) !== 0) ? `${parseFloat(req.latitude).toFixed(4)}, ${parseFloat(req.longitude).toFixed(4)}` : 'Location Not Provided')}
-                             </span>
-                        </small>
-                    </div>
-                    <div class="req-detail" style="flex:1.5;">
-                        <label>Waste ${priBadge}</label>
-                        <span>${req.waste_type}</span>
-                    </div>
-                    <div class="req-detail">
-                        <label>Quantity</label>
-                        <span>${req.quantity} kg</span>
-                    </div>
-                    <div class="req-detail">
-                        <label>Date</label>
-                        <span>${dateStr} <small style="color:var(--text-muted);">${timeStr}</small></span>
-                    </div>
-                    <div class="req-detail">
-                        <label>Status</label>
-                        <span class="status-badge ${statusClass}">${req.status}</span>
-                        ${extraInfo}
-                    </div>
+                    </small>
                 </div>
-                <div class="req-actions">
-                    ${actions}
+                <div class="req-detail" style="flex:1.5;">
+                    <label>Waste ${priBadge}</label>
+                    <span>${sText(req.waste_type, 'General')}</span>
                 </div>
+                <div class="req-detail">
+                    <label>Quantity</label>
+                    <span>${req.quantity} kg</span>
+                </div>
+                <div class="req-detail">
+                    <label>Date</label>
+                    <span>${dateStr} <small style="color:var(--text-muted);">${timeStr}</small></span>
+                </div>
+                <div class="req-detail">
+                    <label>Status</label>
+                    <span class="status-badge ${statusClass}">${req.status}</span>
+                    ${extraInfo}
+                </div>
+            </div>
+            <div class="req-actions">
+                ${actions}
+            </div>
             `;
             return card;
         }
@@ -1597,7 +1573,8 @@
                     originalReq = { ...allRequests[reqIndex] }; // Backup in case of error
                     allRequests[reqIndex].status = newStatus;
                     if (extraData.rejectionReason) allRequests[reqIndex].rejection_reason = extraData.rejectionReason;
-                    if (extraData.estimatedPickupTime) allRequests[reqIndex].estimated_pickup_time = extraData.estimatedPickupTime;
+                    if (extraData.estimatedPickupTime) allRequests[reqIndex].estimated_pickup_time =
+                        extraData.estimatedPickupTime;
 
                     applyFilters(); // Re-render UI Instantly
                 }
@@ -1611,7 +1588,7 @@
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.message || "Failed");
                         console.log("Success (Background):", data);
-                        // No need to loadRequests() unless we want to sync other changes. 
+                        // No need to loadRequests() unless we want to sync other changes.
                         // Let's do a silent sync to be safe.
                         loadRequests(true);
                     })
@@ -1661,7 +1638,8 @@
             );
         }
 
-        function showModal({ type, title, text, confirmBtnText, showInput = false, inputPlaceholder = "" }, onConfirm) {
+        function showModal({ type, title, text, confirmBtnText, showInput = false, inputPlaceholder = "" },
+            onConfirm) {
             const modal = document.getElementById('confirmModal');
             const modalContent = modal.querySelector('.modal-content');
             const modalInput = document.getElementById('modalInput');
@@ -1747,7 +1725,145 @@
                 modal.style.display = 'none';
             }, 200);
         }
+
+        // --- Center Notifications Logic ---
+        function initCenterNotifications() {
+            const centerId = localStorage.getItem('center_sys_id');
+            if (!centerId) return;
+
+            const bell = document.getElementById('centerNotifBell');
+            if (!bell) return;
+
+            // Create dropdown if not exists
+            let dropdown = document.getElementById('centerNotifDropdown');
+            if (!dropdown) {
+                dropdown = document.createElement('div');
+                dropdown.id = 'centerNotifDropdown';
+                dropdown.className = 'notification-dropdown';
+                dropdown.innerHTML = `
+            <div class="dropdown-header">
+                <span>Notifications</span>
+                <div style="display:flex; gap:10px;">
+                    <button class="mark-read-btn" onclick="markCenterNotifRead('all')">Mark all read</button>
+                    <button class="mark-read-btn" onclick="clearCenterNotifs()" style="color:#ef4444;">Clear
+                        all</button>
+                </div>
+            </div>
+            <div class="dropdown-content" id="centerNotifList">
+                <div style="padding:20px; text-align:center; color:gray;">Loading...</div>
+            </div>`;
+                bell.parentElement.appendChild(dropdown);
+            }
+
+            bell.onclick = (e) => {
+                e.stopPropagation();
+                dropdown.classList.toggle('active');
+                if (dropdown.classList.contains('active')) fetchCenterNotifications();
+            };
+
+            document.addEventListener('click', (e) => {
+                if (!bell.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('active');
+                }
+            });
+
+            // Initial fetch
+            fetchCenterNotifications();
+
+            // Interval fetch (Managed by STABLE mode if needed, but here simple isActive check)
+            setInterval(() => {
+                if (STABLE.isActive()) fetchCenterNotifications();
+            }, 30000);
+        }
+
+        async function fetchCenterNotifications() {
+            const centerId = localStorage.getItem('center_sys_id');
+            if (!centerId) return;
+
+            try {
+                const res = await fetch(`/api/centers/${centerId}/notifications`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.success) {
+                    renderCenterNotifs(data.notifications || []);
+                    const dot = document.getElementById('centerNotifDot');
+                    if (dot) dot.style.display = (data.unreadCount > 0) ? 'block' : 'none';
+                }
+            } catch (e) {
+                console.error("Fetch Notifs Fail:", e);
+            }
+        }
+
+        function renderCenterNotifs(notifs) {
+            const list = document.getElementById('centerNotifList');
+            if (!list) return;
+
+            if (!notifs || notifs.length === 0) {
+                STABLE.safeUpdate('centerNotifList', `<div style="padding:30px; text-align:center; color:gray;">No
+                notifications</div>`);
+                return;
+            }
+
+            const html = notifs.map(n => `
+            <div class="notification-item ${n.is_read ? '' : 'unread'}"
+                onclick="handleCenterNotifClick(${n.id}, '${n.type}')">
+                <div class="notif-icon ${n.type}">
+                    <i
+                        class="${n.type === 'PICKUP' ? 'ri-truck-line' : n.type === 'ALERT' ? 'ri-error-warning-line' : 'ri-notification-3-line'}"></i>
+                </div>
+                <div class="notif-content">
+                    <div class="notif-title">${n.title || 'Notification'}</div>
+                    <div class="notif-message"
+                        style="font-size:0.8rem; color:#94a3b8; line-height:1.2; margin-top:2px;">${n.message}</div>
+                    <div class="notif-time" style="font-size:0.7rem; color:gray; margin-top:4px;">${timeAgoCenter(new Date(n.created_at))}</div>
+                </div>
+                ${!n.is_read ? `<div class="notif-dot"></div>` : ''}
+            </div>
+            `).join('');
+
+            STABLE.safeUpdate('centerNotifList', html);
+        }
+
+        function timeAgoCenter(date) {
+            if (!date) return "N/A";
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return "Just now";
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return minutes + "m ago";
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return hours + "h ago";
+            return date.toLocaleDateString();
+        }
+
+        window.markCenterNotifRead = async (id) => {
+            const centerId = localStorage.getItem('center_sys_id');
+            try {
+                await fetch(`/api/centers/${centerId}/notifications/read`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notificationId: id })
+                });
+                fetchCenterNotifications();
+            } catch (e) { console.error(e); }
+        };
+
+        window.clearCenterNotifs = async () => {
+            const centerId = localStorage.getItem('center_sys_id');
+            if (!confirm("Clear all notifications?")) return;
+            try {
+                await fetch(`/api/centers/${centerId}/notifications/clear`, { method: 'DELETE' });
+                fetchCenterNotifications();
+            } catch (e) { console.error(e); }
+        };
+
+        window.handleCenterNotifClick = (id, type) => {
+            markCenterNotifRead(id);
+            if (type === 'PICKUP') switchView('active');
+        };
     </script>
+    <script src="../js/config.js"></script>
+    <script src="../js/script.js"></script>
+    <script src="../js/auth.js"></script>
 </body>
 
 </html>

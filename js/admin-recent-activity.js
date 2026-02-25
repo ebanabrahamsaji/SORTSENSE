@@ -1,6 +1,19 @@
 document.addEventListener('DOMContentLoaded', () => {
     loadActivities();
     setupFilters();
+
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.onclick = () => {
+            if (window.AdminAuth) {
+                AdminAuth.logout('manual');
+            } else {
+                localStorage.clear();
+                window.location.href = 'login.html?role=admin';
+            }
+        };
+    }
 });
 
 let allActivities = [];

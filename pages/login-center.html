@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Login - SortSense</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="../js/auth.js"></script>
+    <style>
+        body {
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 450px;
+            padding: 3rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-box {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .logo-box i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+
+        .logo-box h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: white;
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-box p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: none;
+            color: var(--text-secondary);
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.6rem;
+            margin-left: 4px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+
+        .form-input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 14px 12px 42px;
+            color: white;
+            font-family: inherit;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+            background: #059669;
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            text-align: center;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-card">
+        <div class="logo-box">
+            <i class="ri-community-line"></i>
+            <h2>Center Access</h2>
+            <p>Collection Center Operations Management</p>
+        </div>
+
+        <!-- Error/Success Message Area -->
+        <div id="errorMessage" class="error-msg"></div>
+
+        <div id="errorMessage" class="error-msg"></div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <div class="input-wrapper">
+                    <i class="ri-user-line input-icon"></i>
+                    <input type="text" id="loginUsername" class="form-input" placeholder="Enter center username"
+                        required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <div class="input-wrapper">
+                    <i class="ri-lock-line input-icon"></i>
+                    <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-submit">
+                <span>Login Securely</span>
+                <i class="ri-arrow-right-line"></i>
+            </button>
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">
+                    New Center? <a href="#" id="showRegisterForm"
+                        style="color: var(--primary-color); font-weight: 600; text-decoration: none;">Register</a>
+                    <span style="color: #64748b; font-size: 0.7rem; margin-left: 5px;">TEST REGISTER</span>
+                </p>
+            </div>
+        </form>
+
+        <!-- Separate Register Form -->
+        <form id="registerForm" style="display: none;">
+            <div class="form-group">
+                <label class="form-label">Center Name</label>
+                <div class="input-wrapper">
+                    <i class="ri-building-2-line input-icon"></i>
+                    <input type="text" id="regName" class="form-input" placeholder="e.g. Green Earth Center" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <div class="input-wrapper">
+                    <i class="ri-user-star-line input-icon"></i>
+                    <input type="text" id="regUsername" class="form-input" placeholder="Choose a unique username"
+                        required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <div class="input-wrapper">
+                    <i class="ri-mail-line input-icon"></i>
+                    <input type="email" id="regEmail" class="form-input" placeholder="official@center.com" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <div class="input-wrapper">
+                    <i class="ri-phone-line input-icon"></i>
+                    <input type="tel" id="regPhone" class="form-input" placeholder="+91 XXXXX XXXXX" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address</label>
+                <div class="input-wrapper">
+                    <i class="ri-map-pin-line input-icon"></i>
+                    <input type="text" id="regAddress" class="form-input" placeholder="Full location address" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <div class="input-wrapper">
+                    <i class="ri-lock-line input-icon"></i>
+                    <input type="password" id="regPassword" class="form-input" placeholder="••••••••" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Confirm Password</label>
+                <div class="input-wrapper">
+                    <i class="ri-lock-check-line input-icon"></i>
+                    <input type="password" id="regConfirmPassword" class="form-input" placeholder="••••••••" required>
+                </div>
+            </div>
+            <button type="submit" class="btn-submit">
+                <span>Register Center</span>
+                <i class="ri-check-line"></i>
+            </button>
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <a href="#" id="backToLogin"
+                    style="color: var(--text-secondary); font-size: 0.9rem; text-decoration: underline;">Back to
+                    Login</a>
+            </div>
+        </form>
+
+        <a href="../index.html" class="back-link"><i class="ri-arrow-left-s-line"></i> Back to Home</a>
+    </div>
+
+    <script>
+        // Toggle Logic
+        document.getElementById('showRegisterForm').onclick = (e) => {
+            e.preventDefault();
+            showTab('register');
+        };
+
+        document.getElementById('backToLogin').onclick = (e) => {
+            e.preventDefault();
+            showTab('login');
+        };
+
+        function showTab(tab) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const errorDiv = document.getElementById('errorMessage');
+            const title = document.querySelector('.logo-box h2');
+            const desc = document.querySelector('.logo-box p');
+
+            errorDiv.style.display = 'none';
+
+            if (tab === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                title.textContent = "Center Access";
+                desc.textContent = "Collection Center Operations Management";
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                title.textContent = "Register Center";
+                desc.textContent = "Create a new collection center account";
+            }
+        }
+
+        function showError(msg, isSuccess = false) {
+            const div = document.getElementById('errorMessage');
+            div.textContent = msg;
+            div.style.display = 'block';
+            if (isSuccess) {
+                div.style.background = 'rgba(16, 185, 129, 0.1)';
+                div.style.color = '#10b981';
+                div.style.borderColor = 'rgba(16, 185, 129, 0.2)';
+            } else {
+                div.style.background = 'rgba(239, 68, 68, 0.1)';
+                div.style.color = '#ef4444';
+                div.style.borderColor = 'rgba(239, 68, 68, 0.2)';
+            }
+        }
+
+        // Login Handler
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const res = await fetch('/api/centers/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    // Success - Store according to REQUIRED FIX
+                    localStorage.setItem("centerToken", data.token);
+                    localStorage.setItem("centerLoggedIn", "true");
+                    localStorage.setItem("centerId", data.center.center_id);
+                    localStorage.setItem("role", "center");
+
+                    // Legacy/Sync Support
+                    localStorage.setItem('center_sys_token', data.token);
+                    localStorage.setItem('center_sys_id', data.center.center_id);
+                    localStorage.setItem('center_sys_name', data.center.center_name);
+                    localStorage.setItem('center_sys_user', data.center.username);
+                    localStorage.setItem('center_sys_role', 'CENTER');
+
+                    window.location.replace('center-dashboard.html');
+                } else {
+                    showError(data.message || 'Login failed');
+                }
+            } catch (err) {
+                showError('Network error. Please check your connection.');
+            }
+        };
+
+        // Register Handler
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('regName').value;
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const phone = document.getElementById('regPhone').value;
+            const address = document.getElementById('regAddress').value;
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+            if (password !== confirmPassword) {
+                return showError("Passwords do not match.");
+            }
+
+            try {
+                const res = await fetch('/api/centers/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, username, email, phone, address, password })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    showError(data.message || "Registration Successful — Please Login", true);
+                    // Switch back to login
+                    setTimeout(() => {
+                        showTab('login');
+                        document.getElementById('loginUsername').value = username;
+                    }, 2000);
+                } else {
+                    showError(data.message || 'Registration failed');
+                }
+            } catch (err) {
+                showError('Network error during registration.');
+            }
+        };
+    </script>
+</body>
+
+</html>

@@ -299,11 +299,26 @@
     <script src="../js/config.js"></script>
     <script src="../js/history.js"></script>
     <script>
-        // Simple script to handle logout to match dashboard behavior
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '../index.html';
+            if (window.showCustomConfirm) {
+                window.showCustomConfirm('Logout', 'Are you sure you want to logout?', () => {
+                    if (window.logoutSafely) {
+                        window.logoutSafely('manual', 'USER');
+                    } else {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        window.location.replace('/');
+                    }
+                });
+            } else {
+                if (window.logoutSafely) {
+                    window.logoutSafely('manual', 'USER');
+                } else {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('/');
+                }
+            }
         });
     </script>
 </body>

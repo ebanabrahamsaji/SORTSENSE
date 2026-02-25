@@ -126,6 +126,15 @@ export const chatWithBot = async (req, res) => {
 
         // Method 2: Fallback Logic
         const reply = getFallbackResponse(message);
+
+        // Record History if userId present
+        const { userId } = req.body;
+        if (userId) {
+            import('./wasteController.js').then(m => {
+                m.recordHistory(userId, 'BOT_CHAT', { message, reply });
+            }).catch(e => console.error("Chat History Error:", e));
+        }
+
         res.json({ reply });
 
     } catch (error) {

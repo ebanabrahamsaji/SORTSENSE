@@ -1,6 +1,14 @@
 import db from '../db.js';
 import { syncWasteRecord } from './adminController.js';
+import { exec } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import axios from 'axios';
+import FormData from 'form-data';
+import fs from 'fs';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Get Waste Categories
 export const getCategories = async (req, res) => {
@@ -13,23 +21,7 @@ export const getCategories = async (req, res) => {
     }
 };
 
-// Identify Waste Item (Simulated AI or retrieval)
-// In a real scenario, this might accept an image, process it, and return the item details.
-// Here we fetch based on item name matching.
-import { exec } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Identify Waste Item (AI Integration)
-// Identify Waste Item (AI Integration)
 // Identify Waste Item (Forward to Python Flask API)
-import axios from 'axios';
-import FormData from 'form-data';
-import fs from 'fs';
-
 export const identifyWaste = async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ message: 'Image file is required.' });
@@ -58,53 +50,30 @@ export const identifyWaste = async (req, res) => {
 
         // 2. Normalization Mapping
         const NORMALIZE_MAP = {
-            'plastic': 'Plastic', 'plastic bottle': 'Plastic', 'plastic bag': 'Plastic', 'poly': 'Plastic',
-            'glass': 'Glass', 'glass bottle': 'Glass', 'bottle': 'Plastic',
-            'paper': 'Paper', 'cardboard': 'Paper', 'newspaper': 'Paper',
-            'metal': 'Metal', 'can': 'Metal', 'aluminum': 'Metal', 'tin': 'Metal',
-            'organic': 'Organic', 'food': 'Organic', 'vegetable': 'Organic', 'fruit': 'Organic',
-            'ewaste': 'E-Waste', 'electronic': 'E-Waste', 'mouse': 'E-Waste', 'keyboard': 'E-Waste', 'laptop': 'E-Waste',
-            'hazardous': 'Hazardous', 'battery': 'Hazardous', 'medical': 'Hazardous'
+            'plastic': 'Plastic',
+            'paper': 'Paper',
+            'cardboard': 'Paper',
+            'glass': 'Glass',
+            'metal': 'Metal',
+            'organic': 'Organic',
+            'food': 'Organic',
+            'hazardous': 'Hazardous',
+            'ewaste': 'E-Waste',
+            'electronics': 'E-Waste'
         };
 
-        // Try exact match, then partial match
-        let categoryDisplay = "Uncertain";
-        const lowerRaw = String(rawLabel).toLowerCase().trim();
-
-        if (NORMALIZE_MAP[lowerRaw]) {
-            categoryDisplay = NORMALIZE_MAP[lowerRaw];
-        } else {
-            // Fuzzy search keys
-            const foundKey = Object.keys(NORMALIZE_MAP).find(k => lowerRaw.includes(k));
-            if (foundKey) {
-                categoryDisplay = NORMALIZE_MAP[foundKey];
-            } else {
-                // Formatting Fallback: "plastic_bottle" -> "Plastic Bottle"
-                categoryDisplay = String(rawLabel).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        let categoryDisplay = "Other/Mixed";
+        const lowerRaw = rawLabel.toLowerCase();
+        for (const [key, val] of Object.entries(NORMALIZE_MAP)) {
+            if (lowerRaw.includes(key)) {
+                categoryDisplay = val;
+                break;
             }
         }
 
-        // 3. Fallback Details
-        // If Python didn't return guidance, generate it locally based on the resolved category
-        let details = aiResult.details || {};
-        if (!details.disposal_guideline) {
-            details = getDisposalInfo(categoryDisplay);
-        }
+        const details = getDisposalInfo(categoryDisplay);
 
-        // Send response if no userId present (otherwise gamification block below handles it)
-        if (!req.body.userId) {
-            return res.json({
-                category: categoryDisplay,
-                confidence: aiResult.confidence || 0,
-                status: "Likely Identified",
-                message: `Identified as ${categoryDisplay}`,
-                details: details,
-                is_hazardous: ['Hazardous', 'E-Waste', 'Biomedical'].includes(categoryDisplay),
-                imageUrl: `/${imagePath.replace(/\\/g, '/')}`
-            });
-        }
-
-        // Sync to Transactional Records
+        // Sync to Transactional Records and Gamification if userId is present
         if (req.body.userId) {
             syncWasteRecord({
                 userId: req.body.userId,
@@ -146,12 +115,13 @@ export const identifyWaste = async (req, res) => {
                     motivationalMsg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
                 }
 
+                // Unified History Recording
                 const historyPayload = {
                     category: categoryDisplay,
                     confidence: aiResult.confidence || 0,
                     points: pointsAwarded
                 };
-                db.query("INSERT INTO tbl_user_history (user_id, activity_type, details) VALUES (?, 'SCAN', ?)", [req.body.userId, JSON.stringify(historyPayload)]);
+                recordHistory(req.body.userId, 'SCAN', historyPayload);
 
                 // Final Response with everything
                 return res.json({
@@ -167,130 +137,26 @@ export const identifyWaste = async (req, res) => {
                     user_level: currentLevelName,
                     motivational_message: motivationalMsg
                 });
-            } catch (gameErr) { console.error("Game Error:", gameErr); }
+            } catch (gameErr) {
+                console.error("Game Error:", gameErr);
+            }
+        } else {
+            // No userId, just return basic result
+            return res.json({
+                category: categoryDisplay,
+                confidence: aiResult.confidence || 0,
+                status: "Likely Identified",
+                message: `Identified as ${categoryDisplay}`,
+                details: details,
+                is_hazardous: ['Hazardous', 'E-Waste', 'Biomedical'].includes(categoryDisplay),
+                imageUrl: `/${imagePath.replace(/\\/g, '/')}`
+            });
         }
     } catch (error) {
         console.error("AI Service Error:", error.message);
         if (!res.headersSent) {
             res.status(500).json({ message: 'Failed to process image.' });
         }
-    }
-};
-
-// Helper: Smart Fallback Rules (Ported from temp backend)
-function getFallbackRules(item) {
-    if (!item) return {
-        disposal_guideline: "General waste – follow local segregation rules.",
-        safety_instructions: "Handle with care."
-    };
-
-    const lowerItem = item.toLowerCase();
-
-    if (lowerItem.includes("battery")) {
-        return {
-            disposal_guideline: "Hazardous waste – take to authorized collection center.",
-            safety_instructions: "Wear gloves & mask. Do not pierce or crush."
-        };
-    }
-
-    if (lowerItem.includes("bottle") || lowerItem.includes("plastic")) {
-        return {
-            disposal_guideline: "Plastic waste – clean and give to plastic collection unit.",
-            safety_instructions: "Ensure container is empty and rinsed."
-        };
-    }
-
-    if (lowerItem.includes("glass")) {
-        return {
-            disposal_guideline: "Glass waste – Rinse and hand over separately.",
-            safety_instructions: "Wrap broken glass in paper to prevent injury."
-        };
-    }
-
-    return {
-        description: "No specific details found in database.",
-        disposal_guideline: "General waste – follow local segregation rules.",
-        safety_instructions: "Dispose of responsibly."
-    };
-}
-
-// Upload Waste Image (Record in DB)
-export const saveWasteImage = async (req, res) => {
-    const { user_id, item_id, image_url } = req.body;
-
-    try {
-        await db.query(
-            'INSERT INTO tbl_item_images (uploaded_by, item_id, image_url) VALUES (?, ?, ?)',
-            [user_id, item_id, image_url]
-        );
-        res.status(201).json({ message: 'Image recorded successfully.' });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error saving image record.' });
-    }
-};
-
-
-// --- Text Search Controller ---
-const KEYWORD_MAP = {
-    plastic: ['plastic', 'bottle', 'container', 'cover', 'bag', 'wrapper', 'packet', 'milk', 'straw', 'cup', 'toy', 'bucket', 'pvc', 'tupperware', 'poly'],
-    organic: ['food', 'vegetable', 'fruit', 'peel', 'leaf', 'flower', 'meat', 'bone', 'garden', 'tea', 'coffee', 'egg', 'leftover', 'banana', 'orange', 'apple', 'fish', 'chicken', 'rice', 'bread'],
-    paper: ['paper', 'newspaper', 'book', 'magazine', 'cardboard', 'carton', 'box', 'envelope', 'ticket', 'receipt', 'card', 'tissue'],
-    glass: ['glass', 'bottle', 'jar', 'mirror', 'window', 'pane', 'crystal', 'bulb'],
-    metal: ['metal', 'can', 'tin', 'aluminum', 'foil', 'steel', 'iron', 'copper', 'screw', 'nail', 'utensil', 'pot', 'pan', 'knife', 'fork', 'spoon', 'wire'],
-    ewaste: ['computer', 'laptop', 'keyboard', 'mouse', 'monitor', 'screen', 'phone', 'mobile', 'charger', 'cable', 'printer', 'television', 'tv', 'remote', 'battery', 'cell', 'electronic', 'circuit', 'gadget'],
-    hazardous: ['mechanical', 'chemical', 'pesticide', 'insecticide', 'paint', 'varnish', 'solvent', 'cleaner', 'poison', 'acid', 'oil', 'thermometer', 'syringe', 'medical', 'medicine', 'tablet', 'pill', 'bulb', 'cfl', 'tube', 'light'],
-    textile: ['cloth', 'fabric', 'textile', 'cotton', 'shirt', 'brand', 'dress', 'jeans', 'towel', 'bedsheet', 'rag', 'garment']
-};
-
-export const searchWaste = async (req, res) => {
-    try {
-        const { query } = req.body;
-        if (!query) return res.status(400).json({ message: 'Query is required' });
-
-        const lowerQuery = query.toLowerCase().trim();
-        let detectedCategory = 'Uncertain';
-        let maxConfidence = 0;
-
-        // Keyword Matching
-        for (const [cat, keywords] of Object.entries(KEYWORD_MAP)) {
-            // Check exact word match or substring if length > 4 to avoid false positives
-            if (keywords.some(k => lowerQuery.includes(k))) {
-                detectedCategory = cat;
-                maxConfidence = 95;
-                break;
-            }
-        }
-
-        // Map to Display Names
-        const categoryMap = {
-            'ewaste': 'E-waste',
-            'hazardous': 'Hazardous'
-        };
-        const displayCategory = categoryMap[detectedCategory] || detectedCategory.charAt(0).toUpperCase() + detectedCategory.slice(1);
-
-        const details = getDisposalInfo(detectedCategory);
-
-        res.json({
-            category: displayCategory,
-            confidence: maxConfidence,
-            message: `Identified as ${displayCategory}`,
-            details: details, // Frontend expects: disposal_guideline, kerala_mandate
-            is_hazardous: detectedCategory === 'hazardous',
-            // Add extra fields for the UI to be rich
-            disposal_method: details.disposal_guideline,
-            kerala_rule: details.kerala_mandate,
-            rules: details.kerala_mandate
-        });
-
-        // Record History (Async)
-        if (req.body.userId) {
-            recordHistory(req.body.userId, 'SEARCH', { query: query, result: displayCategory });
-        }
-
-    } catch (error) {
-        console.error("Search Error:", error);
-        res.status(500).json({ message: 'Search failed' });
     }
 };
 
@@ -309,7 +175,6 @@ export const recordHistory = async (userId, type, details) => {
 function getDisposalInfo(category) {
     const cat = category.toLowerCase();
 
-    // Richer Responses with HTML formatting for the frontend to render directly
     if (cat.includes('plastic')) return {
         disposal_guideline: "<strong>1. Clean & Dry:</strong> Wash the plastic item and dry it.<br><strong>2. Store:</strong> Keep it in a separate dry bag.<br><strong>3. Handover:</strong> Give to <strong>Haritha Karma Sena</strong> during their monthly collection drives.",
         kerala_mandate: "Burning plastic is a punishable offense in Kerala. Single-use plastics are banned. Always segregate clean plastics for recycling.",
@@ -364,3 +229,71 @@ function getDisposalInfo(category) {
         safety_instructions: "Dispose responsibly."
     };
 }
+
+export const saveWasteImage = async (req, res) => {
+    try {
+        const { userId, category, imageUrl, location } = req.body;
+        if (!userId || !category) {
+            return res.status(400).json({ message: 'userId and category are required.' });
+        }
+
+        // Record the waste image entry in history
+        await recordHistory(userId, 'IMAGE_SAVE', {
+            category: category,
+            imageUrl: imageUrl || null,
+            location: location || 'Unknown'
+        });
+
+        // Sync waste record for gamification
+        syncWasteRecord({
+            userId,
+            wasteType: category,
+            category,
+            scanMethod: 'MANUAL',
+            location: location || 'Unknown',
+            status: 'Saved'
+        });
+
+        res.json({ success: true, message: 'Waste image record saved successfully.' });
+    } catch (error) {
+        console.error('Save Waste Image Error:', error);
+        res.status(500).json({ message: 'Failed to save waste image record.' });
+    }
+};
+
+export const searchWaste = async (req, res) => {
+    const { query } = req.body;
+    if (!query) return res.status(400).json({ message: 'Query required' });
+
+    try {
+        const NORMALIZE_MAP = {
+            'plastic': 'Plastic', 'paper': 'Paper', 'glass': 'Glass', 'metal': 'Metal',
+            'organic': 'Organic', 'hazardous': 'Hazardous', 'ewaste': 'E-Waste'
+        };
+
+        const lowerQuery = query.toLowerCase();
+        let displayCategory = "Uncertain";
+        for (const [key, val] of Object.entries(NORMALIZE_MAP)) {
+            if (lowerQuery.includes(key)) {
+                displayCategory = val;
+                break;
+            }
+        }
+
+        const details = getDisposalInfo(displayCategory);
+
+        res.json({
+            category: displayCategory,
+            disposal_method: details.disposal_guideline,
+            kerala_rule: details.kerala_mandate,
+            rules: details.kerala_mandate
+        });
+
+        if (req.body.userId) {
+            recordHistory(req.body.userId, 'SEARCH', { query: query, result: displayCategory });
+        }
+    } catch (error) {
+        console.error("Search Error:", error);
+        res.status(500).json({ message: 'Search failed' });
+    }
+};

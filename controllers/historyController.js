@@ -32,7 +32,7 @@ export const getUserScanHistory = async (req, res) => {
         // 2. Fetch History Log
         // We use tbl_user_history as the source of truth
         const [logs] = await db.query(
-            "SELECT * FROM tbl_user_history WHERE user_id = ? AND activity_type IN ('SCAN', 'SEARCH') ORDER BY created_at DESC LIMIT 20",
+            "SELECT * FROM tbl_user_history WHERE user_id = ? AND activity_type IN ('SCAN', 'SEARCH', 'BOT_CHAT') ORDER BY created_at DESC LIMIT 20",
             [userId]
         );
 
@@ -53,14 +53,21 @@ export const getUserScanHistory = async (req, res) => {
                 details = { category: "Unknown" };
             }
 
-            const category = details.category || details.result || "Unknown";
-            const confidence = details.confidence || 0;
+            const type = log.activity_type;
+            let category = details.category || details.result || "Unknown";
+            let confidence = details.confidence || 0;
+
+            if (type === 'BOT_CHAT') {
+                category = details.message || "Bot Query";
+                confidence = 100;
+            }
 
             return {
-                id: log.history_id || log.id, // Handle auto-inc name variance
+                id: log.history_id || log.id,
+                type: type, // Explicitly pass type
                 waste_category: category,
                 confidence: typeof confidence === 'number' ? `${Math.round(confidence)}%` : confidence,
-                disposal_method: getDisposalMethod(category),
+                disposal_method: type === 'BOT_CHAT' ? "Chatbot Interaction" : getDisposalMethod(category),
                 timestamp: log.created_at
             };
         });

@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Auth Check
     const userId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
     if (!userId) {
-        window.location.href = '../index.html';
+        window.location.href = 'login.html?role=user';
         return;
     }
 
@@ -133,11 +133,17 @@ function renderHistory(historyItems) {
         const dateObj = new Date(item.timestamp);
         const dateStr = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+        // Format Type Icon & Text
+        let typeHtml = item.waste_category;
+        if (item.type === 'BOT_CHAT') {
+            typeHtml = `<i class="ri-chat-smile-2-line" style="color:#3b82f6;"></i> Bot Query`;
+        }
+
         tr.innerHTML = `
             <td>${dateStr}</td>
-            <td style="font-weight: 500;">${item.waste_category}</td>
-            <td><span class="${badgeClass}">${item.waste_category}</span></td>
-            <td><span class="badge-confidence">${Math.round(item.confidence || 0)}%</span></td>
+            <td style="font-weight: 500;">${typeHtml}</td>
+            <td><span class="${badgeClass}">${item.type === 'BOT_CHAT' ? 'Chat' : item.waste_category}</span></td>
+            <td><span class="badge-confidence">${item.type === 'BOT_CHAT' ? '--' : item.confidence}</span></td>
             <td>${item.disposal_method}</td>
         `;
         tbody.appendChild(tr);

@@ -11,6 +11,7 @@
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <script src="../js/script.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* ── Sidebar ── */
@@ -473,6 +474,24 @@
         document.getElementById('adminAvatar').src =
             `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff&size=80`;
 
+        // Logout
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.onclick = () => {
+                window.showCustomConfirm('Logout', 'Logout from Admin Panel?', () => {
+                    if (window.AdminAuth) {
+                        window.AdminAuth.logout('manual');
+                    } else if (window.logoutSafely) {
+                        window.logoutSafely('manual', 'ADMIN');
+                    } else {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        window.location.replace('/');
+                    }
+                });
+            };
+        }
+
         // Load KPI stats
         async function loadKPIs() {
             try {
@@ -506,6 +525,10 @@
         }
         loadKPIs();
     </script>
+    <script src="../js/config.js"></script>
+    <script src="../js/script.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/admin-auth.js"></script>
 </body>
 
 </html>

@@ -136,8 +136,8 @@ export const createPickupRequest = async (req, res) => {
 
         // B. Insert Request
         const insertQuery = `
-            INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address, assigned_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
 
         const [result] = await db.query(insertQuery, [userId, nearestCenter.center_id, wasteType, quantity, status, lat, lng, address || null]);
@@ -173,6 +173,21 @@ export const createPickupRequest = async (req, res) => {
             pickupId: requestId,
             status: 'Pending'
         });
+
+        // --- Notifications ---
+        try {
+            // 1. Notify Admin
+            await db.query(
+                "INSERT INTO tbl_admin_notifications (type, title, message, reference_id) VALUES (?, ?, ?, ?)",
+                ['WASTE', 'New Pickup Request', `User ${userId} requested a pickup for ${wasteType} (${quantity}kg).`, requestId]
+            );
+
+            // 2. Notify Center
+            await db.query(
+                "INSERT INTO tbl_center_notifications (center_id, type, title, message) VALUES (?, ?, ?, ?)",
+                [nearestCenter.center_id, 'PICKUP', 'New Pickup assigned', `New request #${requestId} for ${wasteType} assigned to your center.`]
+            );
+        } catch (e) { console.error("Notif Error:", e); }
 
         res.status(201).json({
             message: priority === 'Held'
@@ -309,6 +324,14 @@ export const updatePickupStatus = async (req, res) => {
         let updateQuery = "UPDATE tbl_pickup_requests SET status = ?";
         const params = [status];
 
+        // --- Tracking Automation (Step 6) ---
+        if (status === 'Approved') {
+            updateQuery += ", accepted_time = NOW()";
+        } else if (status === 'Completed') {
+            updateQuery += ", completed_time = NOW()";
+        }
+        // ------------------------------------
+
         // 4. Handle Optional Fields
         if (status === 'Rejected' && rejectionReason) {
             updateQuery += ", rejection_reason = ?";
@@ -341,9 +364,12 @@ export const updatePickupStatus = async (req, res) => {
 
         // --- Notification Logic ---
         // Need user_id to notify
-        const [uRows] = await db.query("SELECT user_id, center_id FROM tbl_pickup_requests WHERE request_id = ?", [requestId]);
+        const [uRows] = await db.query("SELECT user_id, center_id, waste_type FROM tbl_pickup_requests WHERE request_id = ?", [requestId]);
         if (uRows.length > 0) {
             const userId = uRows[0].user_id;
+            const centerId = uRows[0].center_id;
+            const wasteType = uRows[0].waste_type;
+
             let notifTitle = "Pickup Update";
             let notifMsg = `Your pickup request #${requestId} status has changed to ${status}.`;
             let notifType = "INFO";
@@ -368,10 +394,20 @@ export const updatePickupStatus = async (req, res) => {
                 notifType = "SUCCESS";
             }
 
+            // User Notif
             await db.query(
                 "INSERT INTO tbl_notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
                 [userId, notifTitle, notifMsg, notifType]
             );
+
+            // Center Notif (Optional: Inform center of their own action or admin action if applicable)
+            // If it's Completed, let's log it for center too
+            if (status === 'Completed' || status === 'Rejected') {
+                await db.query(
+                    "INSERT INTO tbl_center_notifications (center_id, type, title, message) VALUES (?, ?, ?, ?)",
+                    [centerId, 'PICKUP', `Request ${status}`, `Request #${requestId} for ${wasteType} marked as ${status}.`]
+                );
+            }
         }
         // --- End Notification Logic ---
         res.json({ message: `Request ${requestId} updated to ${status}` });

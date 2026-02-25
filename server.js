@@ -18,6 +18,9 @@ import wasteRoutes from './routes/wasteRoutes.js';
 import centerRoutes from './routes/centerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import specialWasteRoutes from './routes/specialWasteRoutes.js';
+import messageRoutes from './routes/messageRoutes.js';
+import { runCenterAutomation } from './services/centerAutomationService.js';
+import { trackCenterActivity } from './middleware/activityMiddleware.js';
 
 // Configuration
 dotenv.config();
@@ -92,12 +95,16 @@ app.post('/api/marketplace/upload', mpUpload.single('image'), (req, res) => {
     res.json({ success: true, url });
 });
 
+// ── Activity Tracking Middleware (Step 2) ────────────────
+app.use(['/api/pickup', '/api/waste', '/api/special-waste', '/api/messages'], trackCenterActivity);
+
 // ── API Routes ────────────────────────────────────────
 app.use('/api/auth', authLimiter, authRoutes);   // Strict rate limit on auth
 app.use('/api/waste', wasteRoutes);
 app.use('/api/centers', centerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/special-waste', specialWasteRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Feature 1: Chatbot Route
 import chatbotRoutes from './routes/chatbotRoutes.js';
@@ -420,5 +427,10 @@ setInterval(() => {
         resetMonthlyLeaderboard();
     }
 }, 60000); // Check every minute
+
+// Center Status Automation (Step 2 & 5)
+setInterval(() => {
+    runCenterAutomation();
+}, 60 * 1000); // Run every minute
 
 startServer();

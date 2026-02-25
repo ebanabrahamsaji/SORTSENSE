@@ -1,5 +1,6 @@
 import db from '../db.js';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { transporter } from '../email.js';
 
 // Get Nearby Collection Centers
@@ -74,8 +75,10 @@ export const getCollectionCenters = async (req, res) => {
             // Ensure numeric for map plotting
             latitude: parseFloat(c.latitude),
             longitude: parseFloat(c.longitude),
-            // Availability Logic
+            // Availability & Real-time Status Logic
             status: c.status || 'OPEN',
+            center_status: c.center_status || 'offline',
+            performance_score: c.center_performance_score || 100,
             available_slots: c.available_slots !== undefined ? c.available_slots : 10,
             max_slots: c.max_slots !== undefined ? c.max_slots : 10,
             busyLevel: (c.available_slots === 0 || c.status === 'CLOSED') ? 'Full'
@@ -259,3 +262,156 @@ export const addCenterUser = async (req, res) => {
     }
 };
 
+// --- Center Notifications ---
+export const getCenterNotifications = async (req, res) => {
+    const { id: centerId } = req.params;
+    try {
+        const [rows] = await db.query(
+            "SELECT * FROM tbl_center_notifications WHERE center_id = ? ORDER BY created_at DESC LIMIT 50",
+            [centerId]
+        );
+        const [unread] = await db.query(
+            "SELECT COUNT(*) as c FROM tbl_center_notifications WHERE center_id = ? AND is_read = 0",
+            [centerId]
+        );
+        res.json({ success: true, notifications: rows, unreadCount: unread[0].c });
+    } catch (error) {
+        console.error("Get Center Notifications Error:", error);
+        res.status(500).json({ success: false, message: "Error fetching notifications" });
+    }
+};
+
+export const markCenterNotificationRead = async (req, res) => {
+    const { id: centerId } = req.params;
+    const { notificationId } = req.body;
+    try {
+        if (notificationId === 'all') {
+            await db.query("UPDATE tbl_center_notifications SET is_read = 1 WHERE center_id = ? AND is_read = 0", [centerId]);
+        } else {
+            await db.query("UPDATE tbl_center_notifications SET is_read = 1 WHERE id = ? AND center_id = ?", [notificationId, centerId]);
+        }
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error updating notification" });
+    }
+};
+
+export const clearCenterNotifications = async (req, res) => {
+    const { id: centerId } = req.params;
+    try {
+        await db.query("DELETE FROM tbl_center_notifications WHERE center_id = ?", [centerId]);
+        res.json({ success: true, message: "Notifications cleared" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Error clearing notifications" });
+    }
+};
+
+// --- Center Auth (Login/Register) ---
+
+// Register Center
+export const registerCenter = async (req, res) => {
+    const { name, username, email, phone, address, password } = req.body;
+
+    // Validation
+    if (!name || !username || !email || !phone || !address || !password) {
+        return res.status(400).json({ message: "All fields are required. Please fill in all information." });
+    }
+
+    try {
+        // Check uniqueness for username and email in tbl_collection_centers
+        const [existing] = await db.query(
+            "SELECT * FROM tbl_collection_centers WHERE username = ? OR email = ?",
+            [username, email]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({ message: "Center already registered with this username or email." });
+        }
+
+        // Hash password securely
+        const password_hash = await bcrypt.hash(password, 10);
+
+        // Insert into tbl_collection_centers
+        // Default values for operational fields
+        await db.query(`
+            INSERT INTO tbl_collection_centers 
+            (center_name, username, password_hash, email, phone, address, status, center_status, latitude, longitude, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'OPEN', 'offline', 0, 0, NOW())
+        `, [name, username, password_hash, email, phone, address]);
+
+        res.status(201).json({
+            success: true,
+            message: "Registration Successful — Please Login",
+            autoFillUsername: username
+        });
+
+    } catch (error) {
+        console.error("Register Center Error:", error);
+        res.status(500).json({ message: "Registration failed: " + error.message });
+    }
+};
+
+// Center Login
+export const centerLogin = async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required." });
+    }
+
+    try {
+        // Login by username or email
+        const [rows] = await db.query(
+            "SELECT * FROM tbl_collection_centers WHERE username = ? OR email = ?",
+            [username, username]
+        );
+
+        if (rows.length === 0) {
+            return res.status(401).json({ message: "Invalid username or password" });
+        }
+
+        const center = rows[0];
+        const isMatch = await bcrypt.compare(password, center.password_hash);
+
+        if (!isMatch) {
+            return res.status(401).json({ message: "Invalid username or password" });
+        }
+
+        // Update center status to 'online' on successful login
+        await db.query(
+            "UPDATE tbl_collection_centers SET center_status = 'online', last_active_at = NOW(), offline_since = NULL WHERE center_id = ?",
+            [center.center_id]
+        );
+
+        // Create a mock token for session handling (consistent with frontend requirements)
+        const token = crypto.randomBytes(32).toString('hex');
+
+        // Omit password hash for safety
+        const { password_hash, ...centerInfo } = center;
+
+        res.json({
+            message: 'Login successful.',
+            token,
+            center: {
+                ...centerInfo,
+                id: center.center_id // Helper for frontend mapping
+            }
+        });
+
+    } catch (error) {
+        console.error("Center Login Error:", error);
+        res.status(500).json({ message: "Server error during login." });
+    }
+};
+
+// Helper (Internal)
+export const createCenterNotification = async (centerId, type, title, message) => {
+    try {
+        await db.query(
+            "INSERT INTO tbl_center_notifications (center_id, type, title, message) VALUES (?, ?, ?, ?)",
+            [centerId, type, title, message]
+        );
+    } catch (e) {
+        console.error("Create Center Notification Error:", e);
+    }
+};

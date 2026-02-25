@@ -117,98 +117,128 @@ body {
 /* Tabs */
 .role-tabs {
     display: flex;
-    background: rgba(30, 41, 59, 0.3);
-    padding: 0.3rem;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(15, 23, 42, 0.6);
+    padding: 0.4rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(4px);
+    margin-bottom: 2rem;
 }
 
 .role-tab {
     flex: 1;
-    padding: 0.6rem;
+    padding: 0.75rem 1rem;
     border: none;
     background: transparent;
-    color: var(--text-muted);
-    font-family: var(--font-body);
-    font-weight: 500;
+    color: #94a3b8;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
     cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.3s;
-    font-size: 0.9rem;
+    border-radius: 12px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
-.role-tab:hover {
+.role-tab:hover:not(.active) {
     color: white;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .role-tab.active {
-    background: var(--primary-color);
-    /* #10b981 */
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: white;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    font-weight: 600;
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+    transform: translateY(-1px);
 }
 
-/* Card - Made transparent for split layout so it floats on bg */
+/* Card */
 .login-card {
-    background: rgba(30, 41, 59, 0.0);
+    background: transparent;
     border: none;
-    box-shadow: none;
-    padding: 1rem 0;
+    padding: 0;
 }
 
 .card-header {
     text-align: left;
-    /* Align left usually looks better in split screen */
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 }
 
 .card-header h2 {
-    font-family: var(--font-heading);
-    font-size: 2rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 2.5rem;
     color: white;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
 }
 
 .card-header p {
-    color: var(--text-muted);
-    font-size: 1rem;
+    color: #94a3b8;
+    font-size: 1.1rem;
+    font-family: 'Inter', sans-serif;
 }
 
 /* Form Elements */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
 .form-group label {
     display: block;
     font-size: 0.9rem;
-    color: #cbd5e1;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-}
-
-.input-with-icon input {
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    width: 100%;
-    padding: 1rem 3rem;
-    border-radius: 12px;
+    color: #94a3b8;
+    margin-bottom: 0.6rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .input-with-icon {
     position: relative;
+    transition: all 0.3s ease;
+}
+
+.input-with-icon input {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    width: 100%;
+    padding: 1.1rem 3.2rem;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-with-icon input:focus {
+    outline: none;
+    background: rgba(30, 41, 59, 0.8);
+    border-color: #10b981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
 }
 
 .input-with-icon i {
     position: absolute;
-    left: 1rem;
+    left: 1.2rem;
     top: 50%;
     transform: translateY(-50%);
-    color: #94a3b8;
+    color: #64748b;
+    font-size: 1.2rem;
+    transition: color 0.3s ease;
+}
+
+.input-with-icon input:focus+i {
+    color: #10b981;
 }
 
 .input-with-icon .toggle-password {
     left: auto;
-    right: 1rem;
+    right: 1.2rem;
     cursor: pointer;
 }
 
@@ -217,52 +247,82 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    font-size: 0.9rem;
+    margin: 1.5rem 0 2.5rem;
+    font-size: 0.95rem;
 }
 
 .remember-me {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    color: var(--text-muted);
+    gap: 0.6rem;
+    color: #94a3b8;
     cursor: pointer;
+    font-family: 'Inter', sans-serif;
 }
 
 .remember-me input {
-    accent-color: var(--primary-color);
+    width: 18px;
+    height: 18px;
+    accent-color: #10b981;
+    cursor: pointer;
 }
 
 .forgot-password {
-    color: var(--primary-color);
-    font-weight: 500;
+    color: #10b981;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.2s;
+}
+
+.forgot-password:hover {
+    opacity: 0.8;
 }
 
 .auth-submit-btn {
     width: 100%;
-    padding: 1rem;
-    border-radius: 50px;
-    background: var(--primary-color);
+    padding: 1.1rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     border: none;
     color: white;
     font-weight: 700;
+    font-size: 1.1rem;
+    font-family: 'Outfit', sans-serif;
     cursor: pointer;
     margin-bottom: 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
 }
 
 .auth-submit-btn:hover {
-    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 15px 20px -5px rgba(16, 185, 129, 0.4);
+}
+
+.auth-submit-btn:active {
+    transform: translateY(0);
 }
 
 .auth-switch {
     text-align: center;
-    color: var(--text-muted);
-    font-size: 0.95rem;
+    color: #94a3b8;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
 }
 
 .auth-switch a {
-    color: var(--primary-color);
-    font-weight: 600;
+    color: #10b981;
+    font-weight: 700;
+    text-decoration: none;
+    margin-left: 0.25rem;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
 }
 
 /* Google */

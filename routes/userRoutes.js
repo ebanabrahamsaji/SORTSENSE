@@ -15,6 +15,10 @@ router.get('/reports/v1/:userId', getUserHistory); // Reusing history as the rep
 router.get('/notifications/v1/:userId', getNotifications);
 router.get('/report/download/:reportId', downloadUserReport);
 
+// History Routes
+router.get('/history', getUserHistory);
+router.get('/:userId/history', getUserHistory);
+
 // Other Parametric Routes
 router.get('/:userId/stats', getUserStats);
 router.delete('/:userId/history', clearUserHistory);

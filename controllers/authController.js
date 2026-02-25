@@ -66,6 +66,8 @@ export const registerUser = async (req, res) => {
     }
 };
 
+import moderationService from '../services/moderationService.js';
+
 // Login User
 export const loginUser = async (req, res) => {
     const { email, password } = req.body;
@@ -90,16 +92,23 @@ export const loginUser = async (req, res) => {
 
         const user = users[0];
 
-        // If no password hash (Google-only account), direct them to Google Sign-In
-        if (!user.password_hash) {
-            return res.status(401).json({ message: 'This account uses Google Sign-In. Please click "Sign in with Google".' });
+        if (user.user_status === 'suspended') {
+            return res.status(403).json({ message: 'Your account has been suspended due to policy violations. Please contact support.', suspended: true });
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
 
         if (!isMatch) {
+            // Log failed attempt for moderation
+            if (user.user_id) {
+                // Get current failed count
+                const [rows] = await db.query("SELECT failed_login_attempts FROM tbl_users WHERE user_id = ?", [user.user_id]);
+                const newCount = (rows[0].failed_login_attempts || 0) + 1;
+                await db.query("UPDATE tbl_users SET failed_login_attempts = ? WHERE user_id = ?", [newCount, user.user_id]);
+                await moderationService.handleFailedLogin(user.user_id, newCount);
+            }
+
             // If user has a profile_picture, they likely registered via Google Sign-In.
-            // Their password_hash is a dummy value that won't match anything.
             const isGoogleAccount = !!user.profile_picture;
             return res.status(401).json({
                 message: isGoogleAccount
@@ -107,6 +116,18 @@ export const loginUser = async (req, res) => {
                     : 'Incorrect password. Please try again or use "Forgot password?".'
             });
         }
+
+        // Reset failed attempts on success
+        await db.query("UPDATE tbl_users SET failed_login_attempts = 0, last_active = NOW() WHERE user_id = ?", [user.user_id]);
+
+        // --- Center Status Automation ---
+        if (user.role === 'CENTER' && user.center_id) {
+            await db.query(
+                "UPDATE tbl_collection_centers SET center_status = 'online', last_active_time = NOW(), offline_since = NULL WHERE center_id = ?",
+                [user.center_id]
+            ).catch(err => console.error("Center status update error:", err));
+        }
+        // ------------------------------
 
         // Return user info (omit password)
         const { password_hash, ...userInfo } = user;
@@ -136,11 +157,18 @@ export const googleLogin = async (req, res) => {
         if (users.length > 0) {
             // User Exists
             const user = users[0];
+            if (user.user_status === 'suspended') {
+                return res.status(403).json({ message: 'Your account has been suspended due to policy violations.', suspended: true });
+            }
+
             const role = user.role || 'USER';
 
             if (role === 'ADMIN' || role === 'CENTER') {
                 return res.status(403).json({ message: 'Google Login is disabled for Admin/Center accounts. Please use Password.' });
             }
+
+            // Update last active
+            await db.query("UPDATE tbl_users SET last_active = NOW() WHERE user_id = ?", [user.user_id]);
 
             // Return user details (like loginUser)
             const { password_hash, ...userInfo } = user;

@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let userId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
 
     if (!userId) {
-        window.location.href = '../index.html';
+        window.location.href = 'login.html?role=user';
         return;
     }
 
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', () => {
         localStorage.clear();
-        window.location.href = '../index.html';
+        window.location.href = 'login.html?role=user';
     });
 });
 

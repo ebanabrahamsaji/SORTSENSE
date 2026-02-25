@@ -120,6 +120,81 @@
                     <button type="submit" class="btn btn-primary auth-submit-btn">
                         Sign In <i class="ri-arrow-right-line"></i>
                     </button>
+
+                    <!-- Center Register Link (Only for Center Role) -->
+                    <div id="center-reg-link-box" style="text-align: center; margin-top: 1.5rem; display: none;">
+                        <p style="color: #94a3b8; font-size: 0.9rem;">
+                            New Center? <a href="#" id="showRegisterForm"
+                                style="color: #10b981; font-weight: 600; text-decoration: none;">Register</a>
+                            <span style="color: #64748b; font-size: 0.7rem; margin-left: 5px;">TEST REGISTER</span>
+                        </p>
+                    </div>
+                </form>
+
+                <!-- Center Register Form (Hidden by Default) -->
+                <form id="registerForm" class="auth-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="reg-name">Center Name</label>
+                        <div class="input-with-icon">
+                            <i class="ri-building-2-line"></i>
+                            <input type="text" id="reg-name" placeholder="Enter collection center name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-username">Username</label>
+                        <div class="input-with-icon">
+                            <i class="ri-user-star-line"></i>
+                            <input type="text" id="reg-username" placeholder="Choose a unique username" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Email Address</label>
+                        <div class="input-with-icon">
+                            <i class="ri-mail-line"></i>
+                            <input type="email" id="reg-email" placeholder="official@center.com" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-phone">Phone Number</label>
+                        <div class="input-with-icon">
+                            <i class="ri-phone-line"></i>
+                            <input type="tel" id="reg-phone" placeholder="+91 XXXXX XXXXX" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-address">Full Address</label>
+                        <div class="input-with-icon">
+                            <i class="ri-map-pin-line"></i>
+                            <input type="text" id="reg-address" placeholder="Location of the center" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Password</label>
+                        <div class="input-with-icon">
+                            <i class="ri-lock-line"></i>
+                            <input type="password" id="reg-password" placeholder="••••••••" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-confirm">Confirm Password</label>
+                        <div class="input-with-icon">
+                            <i class="ri-lock-check-line"></i>
+                            <input type="password" id="reg-confirm" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <div id="reg-error-msg"
+                        style="color:#ef4444; font-size:0.9rem; margin-bottom:1rem; display:none; text-align:center;">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary auth-submit-btn" id="reg-btn">
+                        Register <i class="ri-check-line"></i>
+                    </button>
+
+                    <div style="text-align: center; margin-top: 1.5rem;">
+                        <a href="#" id="backToLogin"
+                            style="color: #94a3b8; font-size: 0.9rem; text-decoration: underline;">Back to Login</a>
+                    </div>
                 </form>
 
                 <div class="auth-switch" id="signup-link-block">
@@ -161,6 +236,15 @@
             const passwordInput = document.getElementById('password');
             const rememberCheckbox = document.getElementById('remember');
             const errorMsg = document.getElementById('login-error-msg');
+            const centerRegLink = document.getElementById('center-reg-link-box');
+            const loginForm = document.getElementById('unifiedLoginForm');
+            const regForm = document.getElementById('registerForm');
+            const loginTitle = document.getElementById('login-title');
+            const loginDesc = document.getElementById('login-desc');
+
+            // Reset Forms
+            loginForm.style.display = 'block';
+            regForm.style.display = 'none';
 
             // Reset Form Fields
             if (emailInput) emailInput.value = '';
@@ -178,6 +262,9 @@
                 emailLabel.textContent = 'Email Address';
                 emailInput.placeholder = 'your@email.com';
                 if (emailIcon) emailIcon.className = 'ri-mail-line';
+                centerRegLink.style.display = 'none';
+                loginTitle.innerText = "Sign In";
+                loginDesc.innerText = "Access your account to continue";
             }
             else {
                 // Center & Admin
@@ -187,8 +274,31 @@
                 emailLabel.textContent = 'Username';
                 emailInput.placeholder = role === 'admin' ? 'Enter Admin Username' : 'Enter Center Username';
                 if (emailIcon) emailIcon.className = 'ri-user-3-line';
+
+                if (role === 'center') {
+                    centerRegLink.style.display = 'block';
+                } else {
+                    centerRegLink.style.display = 'none';
+                }
             }
         }
+
+        // Toggle Logic
+        document.getElementById('showRegisterForm').onclick = (e) => {
+            e.preventDefault();
+            document.getElementById('unifiedLoginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+            document.getElementById('login-title').innerText = "Register Center";
+            document.getElementById('login-desc').innerText = "Create a new collection center account";
+        };
+
+        document.getElementById('backToLogin').onclick = (e) => {
+            e.preventDefault();
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('unifiedLoginForm').style.display = 'block';
+            document.getElementById('login-title').innerText = "Sign In";
+            document.getElementById('login-desc').innerText = "Access your account to continue";
+        };
 
         // Toggler
         document.querySelector('#togglePassword').addEventListener('click', function () {
@@ -233,10 +343,22 @@
             btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Signing In...';
             btn.disabled = true;
 
-            fetch('/api/auth/login', {
+            // ── Route to the CORRECT endpoint based on selected tab ──
+            let loginEndpoint = '/api/auth/login';
+            let loginPayload = { email: email, password: password };
+
+            if (currentRole === 'center') {
+                loginEndpoint = '/api/centers/login';
+                loginPayload = { username: email, password: password };
+            } else if (currentRole === 'admin') {
+                loginEndpoint = '/api/auth/login';
+                loginPayload = { email: email, password: password };
+            }
+
+            fetch(loginEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email, password: password }) // Ensure keys match backend
+                body: JSON.stringify(loginPayload)
             })
                 .then(async res => {
                     const data = await res.json();
@@ -248,8 +370,8 @@
                     btn.disabled = false;
 
                     if (status === 200 || status === 201) {
-                        const user = body.user;
-                        const userRole = user.role || 'USER';
+                        const user = body.user || body.center;
+                        const userRole = (user.role || (body.center ? 'CENTER' : 'USER')).toUpperCase();
 
                         // Role Validation
                         if (currentRole === 'user' && userRole !== 'USER') {
@@ -265,44 +387,40 @@
                             return;
                         }
 
-                        window.showSuccess("Welcome back, " + (user.name || "User") + "!");
+                        window.showSuccess("Welcome back, " + (user.name || user.center_name || "User") + "!");
 
-                        // STRICT ROLE SEPARATION: Use distinct storage namespaces
+                        // Storage logic
                         if (userRole === 'CENTER') {
-                            localStorage.setItem('center_sys_id', user.user_id);
+                            localStorage.setItem('centerToken', body.token);
+                            localStorage.setItem('centerId', user.center_id || user.user_id);
+                            localStorage.setItem('centerLoggedIn', 'true');
+                            localStorage.setItem('role', 'center');
+
+                            // Legacy/Sync Support
+                            localStorage.setItem('center_sys_id', user.center_id || user.user_id);
                             localStorage.setItem('center_sys_email', user.email);
                             localStorage.setItem('center_sys_role', 'CENTER');
-                            if (user.name) localStorage.setItem('center_sys_name', user.name);
-
-                            // Clear User keys to prevent leakage
-                            localStorage.removeItem('app_user_id');
-                            localStorage.removeItem('app_user_email');
-                            localStorage.removeItem('app_user_role');
-                            localStorage.removeItem('userId'); // Cleanup legacy
+                            if (user.center_name || user.name) localStorage.setItem('center_sys_name', user.center_name || user.name);
+                            localStorage.setItem('token', body.token);
 
                             setTimeout(() => { window.location.href = 'center-dashboard.html'; }, 800);
                         }
                         else if (userRole === 'ADMIN') {
+                            localStorage.setItem('adminToken', body.token);
                             localStorage.setItem('admin_sys_id', user.user_id);
                             localStorage.setItem('admin_sys_email', user.email);
                             localStorage.setItem('admin_sys_role', 'ADMIN');
+                            localStorage.setItem('token', body.token);
 
                             setTimeout(() => { window.location.href = 'admin-dashboard.html'; }, 800);
                         }
                         else {
                             // Regular USER
+                            localStorage.setItem('token', body.token);
                             localStorage.setItem('app_user_id', user.user_id);
                             localStorage.setItem('app_user_email', user.email);
                             localStorage.setItem('app_user_role', 'USER');
-                            if (user.name) localStorage.setItem('app_user_name', user.name);
-
-                            // Legacy support for scripts using 'userId'
                             localStorage.setItem('userId', user.user_id);
-
-                            // Clear Center/Admin keys
-                            localStorage.removeItem('center_sys_id');
-                            localStorage.removeItem('center_sys_email');
-                            localStorage.removeItem('center_sys_role');
 
                             setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
                         }
@@ -315,6 +433,53 @@
                     btn.innerHTML = originalText;
                     btn.disabled = false;
                     window.showError("Connection failed. Please check your network.");
+                });
+        });
+
+        // Registration Handler
+        document.getElementById('registerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('reg-name').value;
+            const username = document.getElementById('reg-username').value;
+            const email = document.getElementById('reg-email').value;
+            const phone = document.getElementById('reg-phone').value;
+            const address = document.getElementById('reg-address').value;
+            const password = document.getElementById('reg-password').value;
+            const confirm = document.getElementById('reg-confirm').value;
+
+            if (password !== confirm) {
+                window.showWarning("Passwords do not match.");
+                return;
+            }
+
+            const btn = document.getElementById('reg-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Registering...';
+            btn.disabled = true;
+
+            fetch('/api/centers/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, username, email, phone, address, password })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    if (data.success) {
+                        window.showSuccess(data.message || "Registration Successful — Please Login");
+                        setTimeout(() => {
+                            document.getElementById('backToLogin').click();
+                            document.getElementById('email').value = username;
+                        }, 2000);
+                    } else {
+                        window.showError(data.message || "Registration failed");
+                    }
+                })
+                .catch(err => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    window.showError("Network error during registration.");
                 });
         });
 

@@ -18,14 +18,27 @@ window.filterRequests = () => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchRequests(); // Special
-    fetchCenters();
-
-    document.getElementById('filterStatus').addEventListener('change', renderTable);
-    document.getElementById('filterCategory').addEventListener('change', renderTable);
     document.getElementById('regFilterStatus').addEventListener('change', renderRegularTable);
 
+    const init = async () => {
+        await fetchCenters();
+        await fetchRequests();
+    };
+    init();
+
     document.getElementById('confirmBtn').addEventListener('click', submitUpdate);
+
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.onclick = () => {
+            window.showCustomConfirm('Logout', 'Logout from Admin Panel?', () => {
+                localStorage.removeItem('adminUser');
+                localStorage.removeItem('admin_sys_id');
+                window.location.href = 'login.html?role=admin';
+            });
+        };
+    }
 });
 
 // --- Tab Logic ---
@@ -109,11 +122,14 @@ function renderTable(query = '') {
         const row = document.createElement('tr');
         row.style.borderBottom = '1px solid #334155';
 
-        // Find Center Name if assigned
-        let assignedName = '<span style="color:#64748b; font-style:italic;">Unassigned</span>';
-        if (req.center_id && allCenters.length) {
+        // Find Center Name if assigned (Priority: Joined name > assignment_status check > Local lookup)
+        let assignedName = '<span style="color:#64748b; font-style:italic; font-size:0.85rem;"><i class="ri-map-pin-line"></i> Unassigned</span>';
+
+        if (req.center_name && req.center_name !== 'Unassigned' && req.assignment_status === 'assigned') {
+            assignedName = `<span style="color:#10b981; font-weight:500;"><i class="ri-map-pin-2-line"></i> ${req.center_name}</span>`;
+        } else if (req.center_id && allCenters.length) {
             const c = allCenters.find(x => x.center_id == req.center_id);
-            if (c) assignedName = c.center_name;
+            if (c) assignedName = `<span style="color:#10b981; font-weight:500;"><i class="ri-map-pin-2-line"></i> ${c.center_name}</span>`;
         }
 
         let actionsHtml = '';
@@ -127,10 +143,11 @@ function renderTable(query = '') {
 
         } else if (req.status === 'Scheduled') {
             actionsHtml += `<button class="table-action-btn btn-complete" onclick="openModal(${req.request_id}, 'Completed')">Complete</button>`;
+            actionsHtml += `<button class="table-action-btn" style="background:#64748b; margin-left:5px;" onclick="openModal(${req.request_id}, 'Scheduled')">Change Center</button>`;
         } else if (req.status === 'Rejected') {
             actionsHtml = `<button class="table-action-btn" style="background:#EF4444;" onclick="deleteRequest(${req.request_id}, 'special')">Delete</button>`;
         } else {
-            actionsHtml = `<button class="table-action-btn" style="background:#64748b;" onclick="openEditRequestModal(${req.request_id})">View</button>` + actionsHtml; // Prepend View for others too
+            actionsHtml = `<button class="table-action-btn" style="background:#64748b;" onclick="openEditRequestModal(${req.request_id})">View</button>`;
             if (actionsHtml === `<button class="table-action-btn" style="background:#64748b;" onclick="openEditRequestModal(${req.request_id})">View</button>`) {
                 actionsHtml += '<span style="color:#64748b; font-size:0.8rem; margin-left:5px;">No other actions</span>';
             }
@@ -253,7 +270,7 @@ window.openModal = async (id, action) => {
     const wrapper = document.getElementById('centerSelectWrapper');
     const select = document.getElementById('modalCenterSelect');
 
-    if (activeTab === 'special' && action === 'Approved') {
+    if (activeTab === 'special' && (action === 'Approved' || action === 'Scheduled')) {
         select.innerHTML = '<option value="">Loading suggestions...</option>';
         wrapper.style.display = 'block';
 
@@ -366,6 +383,23 @@ async function submitUpdate() {
         if (res.ok) {
             closeModal();
             window.showSuccess(`Request ${currentAction}`);
+
+            // --- Instant UI Feedback ---
+            const reqIdx = allRequests.findIndex(r => r.request_id === currentId);
+            if (reqIdx !== -1) {
+                allRequests[reqIdx].status = currentAction;
+                allRequests[reqIdx].admin_notes = notes;
+                if (centerId) {
+                    allRequests[reqIdx].center_id = centerId;
+                    allRequests[reqIdx].assignment_status = 'assigned';
+                    const c = allCenters.find(x => x.center_id == centerId);
+                    if (c) allRequests[reqIdx].center_name = c.center_name;
+                }
+                renderTable(); // Re-render immediately with local state
+            }
+            // ---------------------------
+
+            // Sync with DB
             if (activeTab === 'special') fetchRequests();
             else fetchRegularRequests();
         } else {

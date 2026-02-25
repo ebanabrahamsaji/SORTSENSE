@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moderation Center - SortSense Admin</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <style>
+        :root {
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+            --info: #3b82f6;
+        }
+
+        .risk-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+
+        .risk-low {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .risk-medium {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .risk-high {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-Active {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .status-Flagged {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .status-Suspended {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .status-Disabled {
+            background: #333;
+            color: #999;
+        }
+
+        .mod-log-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid var(--primary-color);
+            margin-bottom: 12px;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 1rem;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            transition: 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .appeal-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="logo-text">Sort Sense</span>
+                    <span class="badge" style="background: #f59e0b; color: #000;">ADMIN</span>
+                </div>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="admin-dashboard.html"><i class="ri-dashboard-3-line"></i><span>Overview</span></a></li>
+                    <li><a href="admin-users.html"><i class="ri-user-settings-line"></i><span>User Management</span></a>
+                    </li>
+                    <li class="active"><a href="#"><i class="ri-shield-user-line"></i><span>Moderation Center</span></a>
+                    </li>
+                    <li><a href="admin-waste-data.html"><i class="ri-delete-bin-2-line"></i><span>Waste Data</span></a>
+                    </li>
+                    <li><a href="admin-special-waste.html"><i class="ri-alert-fill"></i><span>Special Waste
+                                Requests</span></a></li>
+                    <div class="sidebar-footer">
+                        <button id="logoutBtn" class="logout-btn"><i
+                                class="ri-logout-box-line"></i><span>Logout</span></button>
+                    </div>
+        </aside>
+
+        <script src="../js/config.js"></script>
+        <script src="../js/script.js"></script>
+        <script src="../js/auth.js"></script>
+        <script src="../js/admin-auth.js"></script>
+
+        <main class="main-content">
+            <header class="top-header">
+                <h2>Moderation Center</h2>
+                <div class="header-profile">
+                    <span id="adminName">Admin User</span>
+                </div>
+            </header>
+
+            <div class="dashboard-content" style="padding: 2rem;">
+                <div class="tabs">
+                    <div class="tab active" onclick="switchTab('flagged', this)">Flagged Users</div>
+                    <div class="tab" onclick="switchTab('all', this)">All Users List</div>
+                    <div class="tab" onclick="switchTab('appeals', this)">Pending Appeals</div>
+                    <div class="tab" onclick="switchTab('reports', this)">User Reports</div>
+                    <div class="tab" onclick="switchTab('logs', this)">Audit Logs</div>
+                </div>
+
+                <!-- FLAGGED USERS SECTION -->
+                <div id="flaggedSection" class="section-card mod-section">
+                    <div class="section-title">
+                        <h3>Users Requiring Review</h3>
+                        <p>Automatic deactivation triggers and suspicious behavior monitoring</p>
+                    </div>
+                    <table class="recent-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Risk Score</th>
+                                <th>Current Status</th>
+                                <th>Detected Since</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flaggedUsersTable">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ALL USERS SECTION -->
+                <div id="allSection" class="section-card mod-section hidden">
+                    <div class="section-title">
+                        <h3>All Platform Users</h3>
+                        <p>Search and moderate any account manually</p>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <input type="text" id="userListSearch" placeholder="Search by name or email..."
+                            class="form-input" style="padding-left: 12px; max-width: 400px;" onkeyup="searchUserList()">
+                    </div>
+                    <table class="recent-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Risk Score</th>
+                                <th>Status</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allUsersTable">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- APPEALS SECTION -->
+                <div id="appealsSection" class="section-card mod-section hidden">
+                    <div class="section-title">
+                        <h3>Pending Appeals</h3>
+                        <p>Review requests from suspended users looking to restore their accounts</p>
+                    </div>
+                    <div id="appealsContainer">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- USER REPORTS SECTION -->
+                <div id="reportsSection" class="section-card mod-section hidden">
+                    <div class="section-title">
+                        <h3>User Submitted Reports</h3>
+                        <p>Reports filed by users against others for spam, fraud, or abuse</p>
+                    </div>
+                    <table class="recent-table">
+                        <thead>
+                            <tr>
+                                <th>Reporter</th>
+                                <th>Target User</th>
+                                <th>Category</th>
+                                <th>Reason</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportsTable">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- AUDIT LOGS SECTION -->
+                <div id="logsSection" class="section-card mod-section hidden">
+                    <div class="section-title">
+                        <h3>Moderation Audit Trail</h3>
+                        <p>History of all status changes and automated system decisions</p>
+                    </div>
+                    <div id="modLogsContainer">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL: Update Status -->
+    <div id="modModal" class="pdf-loading-overlay"
+        style="display:none; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="section-card" style="width: 420px; background: #1e293b;">
+            <h3 id="modModalTitle">Moderate User</h3>
+            <p id="modModalUser" style="margin-bottom: 20px; color: var(--text-secondary);"></p>
+
+            <div class="form-group">
+                <label class="form-label">New Status</label>
+                <select id="newStatusSelect" class="form-select" style="padding-left: 12px;">
+                    <option value="Active">Active (Safe)</option>
+                    <option value="Flagged">Flagged (Monitoring)</option>
+                    <option value="Suspended">Suspended (Blocked)</option>
+                    <option value="Disabled">Disabled (Permanent)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Reason / Notes</label>
+                <textarea id="modReason" class="form-input" style="padding-left: 12px; height: 80px;"
+                    placeholder="Describe why this action is being taken..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="submitModAction()" class="btn btn-primary" style="flex:1;">Apply Changes</button>
+                <button onclick="closeModModal()" class="btn"
+                    style="background: rgba(255,255,255,0.05);">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Appeal Resolution -->
+    <div id="appealModal" class="pdf-loading-overlay"
+        style="display:none; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="section-card" style="width: 450px; background: #1e293b;">
+            <h3>Process Appeal</h3>
+            <p id="appealUserText" style="color:var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;"></p>
+
+            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                <label style="font-size: 0.75rem; color: gray; text-transform: uppercase;">User's Appeal Reason</label>
+                <p id="appealReasonText" style="font-size: 0.95rem; line-height: 1.4;"></p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Decision</label>
+                <select id="appealDecision" class="form-select" style="padding-left: 12px;">
+                    <option value="APPROVED">Approve (Restore Account)</option>
+                    <option value="REJECTED">Reject (Maintain Suspension)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Admin Notes (Visible to User)</label>
+                <textarea id="appealAdminNotes" class="form-input" style="padding-left: 12px; height: 70px;"
+                    placeholder="Explain your decision..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button onclick="submitAppealDecision()" class="btn btn-primary" style="flex:1;">Confirm
+                    Decision</button>
+                <button onclick="closeAppealModal()" class="btn"
+                    style="background: rgba(255,255,255,0.05);">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script>
+        const API = window.API_BASE || '';
+        let selectedUserId = null;
+        let selectedAppealId = null;
+        let allUsersData = [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFlaggedUsers();
+            loadAllUsers();
+            loadAppeals();
+            loadReports();
+            loadLogs();
+        });
+
+        async function loadFlaggedUsers() {
+            try {
+                const res = await fetch(`${API}/api/admin/flagged-users`);
+                const users = await res.json();
+                const tbody = document.getElementById('flaggedUsersTable');
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem;">No users currently flagged for review.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = users.map(u => renderUserRow(u)).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadAllUsers() {
+            try {
+                const res = await fetch(`${API}/api/admin/users`);
+                allUsersData = await res.json();
+                renderAllUsersTable(allUsersData);
+            } catch (err) { console.error(err); }
+        }
+
+        function renderAllUsersTable(users) {
+            const tbody = document.getElementById('allUsersTable');
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>
+                        <div style="font-weight:600;">${u.name}</div>
+                        <div style="font-size:0.8rem; color:gray;">${u.email}</div>
+                    </td>
+                    <td>
+                        <span class="risk-badge risk-${getRiskLevel(u.risk_score)}">${u.risk_score || 0}/100</span>
+                    </td>
+                    <td>
+                        <span class="status-pill status-${u.status}">${u.status}</span>
+                    </td>
+                    <td><span class="badge" style="background: rgba(255,255,255,0.05); color: #94a3b8;">${u.role || 'USER'}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="openModModal(${u.user_id}, '${u.name}', '${u.status}')">
+                            Moderate
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadAppeals() {
+            try {
+                const res = await fetch(`${API}/api/admin/moderation/appeals/pending`);
+                const appeals = await res.json();
+                const container = document.getElementById('appealsContainer');
+                if (appeals.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding: 3rem; color: gray;">No pending appeals at this time.</div>';
+                    return;
+                }
+                container.innerHTML = appeals.map(a => `
+                    <div class="appeal-card">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 1rem;">
+                            <div>
+                                <h4 style="margin:0;">${a.user_name}</h4>
+                                <small style="color:gray;">${a.user_email} • Submitted ${new Date(a.created_at).toLocaleDateString()}</small>
+                            </div>
+                            <button class="btn btn-sm btn-primary" onclick="openAppealModal(${a.appeal_id}, '${a.user_name}', \`${a.reason}\`)">
+                                Review Appeal
+                            </button>
+                        </div>
+                        <p style="font-style: italic; color: #cbd5e1; margin:0;">"${a.reason}"</p>
+                    </div>
+                `).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadReports() {
+            try {
+                const res = await fetch(`${API}/api/admin/user-reports`);
+                const reports = await res.json();
+                const tbody = document.getElementById('reportsTable');
+                if (reports.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem;">No user reports submitted yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = reports.map(r => `
+                    <tr>
+                        <td>${r.reporter_name}</td>
+                        <td>${r.target_name}</td>
+                        <td><span class="badge" style="background:rgba(239,68,68,0.1); color:var(--danger);">${r.category}</span></td>
+                        <td><div style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${r.description}">${r.description}</div></td>
+                        <td>${new Date(r.created_at).toLocaleDateString()}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline" onclick="openModModal(${r.target_id}, '${r.target_name}', 'Flagged')">
+                                Investigate
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadLogs() {
+            try {
+                const res = await fetch(`${API}/api/admin/user/moderation-log`);
+                const logs = await res.json();
+                const container = document.getElementById('modLogsContainer');
+                container.innerHTML = logs.map(l => `
+                    <div class="mod-log-card" style="border-left-color: ${l.new_status === 'Active' ? '#10b981' : (l.new_status === 'Suspended' ? '#ef4444' : '#f59e0b')}">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 5px;">
+                            <strong>User: ${l.user_name}</strong>
+                            <small style="color:gray;">${new Date(l.created_at).toLocaleString()}</small>
+                        </div>
+                        <div style="font-size:0.9rem; margin-bottom: 8px;">
+                            Transition: <span class="status-pill status-${l.previous_status}">${l.previous_status}</span> 
+                            → <span class="status-pill status-${l.new_status}">${l.new_status}</span>
+                            (${l.triggered_by}${l.admin_name ? ' by ' + l.admin_name : ''})
+                        </div>
+                        <div style="font-size:0.85rem; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 4px;">
+                            <strong>Reason:</strong> ${l.reason}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) { console.error(err); }
+        }
+
+        function renderUserRow(u) {
+            return `
+                <tr>
+                    <td>
+                        <div style="font-weight:600;">${u.name}</div>
+                        <div style="font-size:0.8rem; color:gray;">${u.email}</div>
+                    </td>
+                    <td>
+                        <span class="risk-badge risk-${getRiskLevel(u.risk_score)}">${u.risk_score}/100</span>
+                    </td>
+                    <td>
+                        <span class="status-pill status-${u.status}">${u.status}</span>
+                    </td>
+                    <td>${new Date(u.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline" onclick="openModModal(${u.user_id}, '${u.name}', '${u.status}')">
+                            Moderate
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function getRiskLevel(score) {
+            if (score > 70) return 'high';
+            if (score > 30) return 'medium';
+            return 'low';
+        }
+
+        function switchTab(tabId, el) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+
+            document.querySelectorAll('.mod-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(tabId + 'Section').classList.remove('hidden');
+        }
+
+        function searchUserList() {
+            const q = document.getElementById('userListSearch').value.toLowerCase();
+            const filtered = allUsersData.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+            renderAllUsersTable(filtered);
+        }
+
+        function openModModal(id, name, status) {
+            selectedUserId = id;
+            document.getElementById('modModalUser').innerText = `Reviewing: ${name} (Current: ${status})`;
+            document.getElementById('newStatusSelect').value = status;
+            document.getElementById('modModal').style.display = 'flex';
+        }
+
+        function closeModModal() {
+            document.getElementById('modModal').style.display = 'none';
+        }
+
+        async function submitModAction() {
+            const status = document.getElementById('newStatusSelect').value;
+            const reason = document.getElementById('modReason').value;
+            if (!reason) return alert("Please provide a reason.");
+
+            try {
+                const res = await fetch(`${API}/api/admin/user/update-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: selectedUserId, status, reason })
+                });
+                if (res.ok) {
+                    alert("Status updated.");
+                    closeModModal();
+                    refreshData();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function openAppealModal(id, name, reason) {
+            selectedAppealId = id;
+            document.getElementById('appealUserText').innerText = `Reviewing Appeal for: ${name}`;
+            document.getElementById('appealReasonText').innerText = reason;
+            document.getElementById('appealModal').style.display = 'flex';
+        }
+
+        function closeAppealModal() {
+            document.getElementById('appealModal').style.display = 'none';
+        }
+
+        async function submitAppealDecision() {
+            const decision = document.getElementById('appealDecision').value;
+            const notes = document.getElementById('appealAdminNotes').value;
+            if (!notes) return alert("Please add admin notes for the record.");
+
+            try {
+                const res = await fetch(`${API}/api/admin/moderation/appeals/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ appealId: selectedAppealId, decision, adminNotes: notes })
+                });
+                if (res.ok) {
+                    alert("Appeal processed.");
+                    closeAppealModal();
+                    refreshData();
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        function refreshData() {
+            loadFlaggedUsers();
+            loadAllUsers();
+            loadAppeals();
+            loadReports();
+            loadLogs();
+        }
+    </script>
+</body>
+
+</html>

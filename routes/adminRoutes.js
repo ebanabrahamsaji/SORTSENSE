@@ -30,7 +30,8 @@ import {
     getSystemInfo,
     getAdminNotifications,
     markNotificationRead,
-    clearNotifications
+    clearNotifications,
+    resetRiskScore
 } from '../controllers/adminController.js';
 
 router.get('/stats', getDashboardStats);
@@ -40,6 +41,7 @@ router.delete('/activities/:type/:id', deleteActivity);
 router.get('/users', getAllUsers);
 router.post('/users', addNewUser);
 router.post('/user-status', updateUserStatus);
+router.post('/user-risk-reset', resetRiskScore);
 router.delete('/users/:id', deleteUser);
 router.post('/categories', addCategory);
 router.delete('/categories/:id', deleteCategory);

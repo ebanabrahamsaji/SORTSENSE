@@ -28,48 +28,68 @@ export const markNotificationRead = async (req, res) => {
 
 // Get Full User History (Scans + Searches + Pickups)
 export const getUserHistory = async (req, res) => {
-    const { userId } = req.params;
+    const userId = req.params.userId || req.query.userId;
+    if (!userId) return res.status(400).json({ message: "userId required" });
     try {
-        // 1. Fetch System History (Scans/Searches)
-        const [sysHistory] = await db.query(
-            "SELECT * FROM tbl_user_history WHERE user_id = ? ORDER BY created_at DESC",
-            [userId]
-        );
+        // 1. Fetch System History (Scans/Searches/BotChats)
+        let sysHistory = [];
+        try {
+            const [rows] = await db.query(
+                "SELECT * FROM tbl_user_history WHERE user_id = ? ORDER BY created_at DESC",
+                [userId]
+            );
+            sysHistory = rows || [];
+        } catch (e) {
+            console.warn("History query warning:", e.message);
+        }
 
-        // 2. Fetch Pickup Requests
-        const [pickups] = await db.query(
-            "SELECT * FROM tbl_pickup_requests WHERE user_id = ? ORDER BY created_at DESC",
-            [userId]
-        );
+        // 2. Fetch Pickup Requests (separate try-catch so it never breaks the whole response)
+        let pickups = [];
+        try {
+            const [rows] = await db.query(
+                "SELECT * FROM tbl_pickup_requests WHERE user_id = ? ORDER BY created_at DESC",
+                [userId]
+            );
+            pickups = rows || [];
+        } catch (e) {
+            console.warn("Pickup query warning:", e.message);
+        }
 
-        // 3. Merge & Format
+        // 3. Merge & Format — always serialize details as a plain string so frontend JSON.parse is safe
         const formattedHistory = [
             ...sysHistory.map(h => ({
                 id: `sys-${h.history_id}`,
                 type: h.activity_type,
-                details: h.details,
+                details: typeof h.details === 'string' ? h.details : JSON.stringify(h.details || {}),
                 date: h.created_at,
-                status: 'Completed' // Searches/Scans are always 'done'
+                status: 'Completed'
             })),
             ...pickups.map(p => ({
                 id: `pup-${p.request_id}`,
                 type: 'PICKUP',
-                details: { wasteTypes: p.waste_type, quantity: p.quantity, centerId: p.center_id },
+                details: JSON.stringify({
+                    wasteTypes: p.waste_type,
+                    quantity: p.quantity,
+                    centerId: p.center_id,
+                    address: p.address || ''
+                }),
                 date: p.created_at,
                 status: p.status
             }))
         ];
 
-        // Sort Combined
+        // 4. Sort newest first
         formattedHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
 
+        // 5. Always return array — never 500 for empty data
         res.json(formattedHistory);
 
     } catch (error) {
         console.error("Get History Error:", error);
-        res.status(500).json({ message: "Error fetching history" });
+        res.json([]); // Safe fallback: empty array, not 500
     }
 };
+
 
 // Clear User History (Scans/Searches only)
 export const clearUserHistory = async (req, res) => {

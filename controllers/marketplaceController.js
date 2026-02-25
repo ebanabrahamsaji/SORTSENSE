@@ -1,5 +1,8 @@
 import db from '../db.js';
 import { body, validationResult } from 'express-validator';
+import moderationService from '../services/moderationService.js';
+
+const ABUSE_WORDS = ['spam', 'abuse', 'fake', 'fraud', 'steal', 'hack', 'fuck', 'shit', 'scam'];
 
 export const getMarketplaceItems = async (req, res) => {
     try {
@@ -34,7 +37,6 @@ export const validateMarketplaceItem = [
     body('image_url')
         .optional({ checkFalsy: true })
         .custom(value => {
-            // Accept full URLs (http/https) OR local upload paths (/uploads/...)
             if (!value) return true;
             const isFullUrl = /^https?:\/\/.+/.test(value);
             const isLocalPath = /^\/uploads\//.test(value);
@@ -59,6 +61,18 @@ export const createMarketplaceItem = async (req, res) => {
 
     try {
         const { user_id, title, description, category, image_url } = req.body;
+
+        // --- SPAM DETECTION ---
+        const [existing] = await db.query(
+            "SELECT * FROM tbl_marketplace_items WHERE user_id = ? AND title = ? AND category = ? AND created_at > NOW() - INTERVAL 30 MINUTE",
+            [user_id, title, category]
+        );
+        if (existing.length > 0) {
+            console.log(`⚠️ Spam listing detected for user ${user_id}. Penalizing.`);
+            await moderationService.handleContentViolation(user_id, 'SPAM', `Repeated marketplace listing: ${title}`);
+            return res.status(409).json({ message: "You have already posted a similar item recently. Please wait before posting again." });
+        }
+        // ----------------------
 
         const allowed = ["Plastic", "Paper", "Glass", "Metal", "E-Waste"];
         if (!allowed.includes(category)) {
@@ -85,7 +99,6 @@ export const markInterested = async (req, res) => {
             return res.status(400).json({ message: "Item ID and User ID are required" });
         }
 
-        // Check if already interested
         const [existing] = await db.query(
             "SELECT * FROM tbl_marketplace_interest WHERE item_id = ? AND user_id = ?",
             [item_id, user_id]
@@ -100,6 +113,21 @@ export const markInterested = async (req, res) => {
             [item_id, user_id]
         );
 
+        // --- Notification for Owner ---
+        try {
+            const [ownerRows] = await db.query(
+                "SELECT m.user_id as owner_id, m.title, u.name as interested_user FROM tbl_marketplace_items m JOIN tbl_users u ON u.user_id = ? WHERE m.item_id = ?",
+                [user_id, item_id]
+            );
+            if (ownerRows.length > 0) {
+                const { owner_id, title, interested_user } = ownerRows[0];
+                await db.query(
+                    "INSERT INTO tbl_notifications (user_id, title, message, type) VALUES (?, ?, ?, 'MARKETPLACE')",
+                    [owner_id, "New Interest in your item!", `${interested_user} is interested in "${title}". Check your messages.`]
+                );
+            }
+        } catch (e) { console.error("Marketplace Notif Error:", e); }
+
         res.json({ success: true, message: "Interest recorded" });
     } catch (error) {
         console.error("Mark Interested Error:", error);
@@ -110,7 +138,7 @@ export const markInterested = async (req, res) => {
 export const deleteMarketplaceItem = async (req, res) => {
     try {
         const { id } = req.params;
-        const { user_id } = req.body; // To verify ownership
+        const { user_id } = req.body;
 
         await db.query(
             "UPDATE tbl_marketplace_items SET status = 'deleted' WHERE item_id = ? AND user_id = ?",
@@ -134,7 +162,15 @@ export const sendMessage = async (req, res) => {
             return res.status(400).json({ success: false, error: "Missing required fields" });
         }
 
-        // 1. Find the Seller (Receiver)
+        // --- ABUSE FILTERING ---
+        const lowerMsg = message.toLowerCase();
+        const foundAbuse = ABUSE_WORDS.filter(word => lowerMsg.includes(word));
+        if (foundAbuse.length > 0) {
+            await moderationService.handleContentViolation(sender_id, 'ABUSE', `Marketplace message contained: ${foundAbuse.join(', ')}`);
+            return res.status(400).json({ success: false, error: "Message blocked due to prohibited language." });
+        }
+        // -----------------------
+
         const [items] = await db.query("SELECT user_id, title FROM tbl_marketplace_items WHERE item_id = ?", [item_id]);
         if (items.length === 0) {
             return res.status(404).json({ success: false, error: "Item not found" });
@@ -142,17 +178,25 @@ export const sendMessage = async (req, res) => {
 
         const seller_id = items[0].user_id;
 
-        // Prevent self-messaging
         if (String(seller_id) === String(sender_id)) {
             return res.status(400).json({ success: false, error: "You cannot message yourself." });
         }
 
-        // 2. Insert Message
         await db.query(
             `INSERT INTO tbl_marketplace_messages (sender_id, receiver_id, product_id, message_text) 
              VALUES (?, ?, ?, ?)`,
             [sender_id, seller_id, item_id, message]
         );
+
+        // --- Notification for Seller ---
+        try {
+            const [senderRows] = await db.query("SELECT name FROM tbl_users WHERE user_id = ?", [sender_id]);
+            const senderName = senderRows.length > 0 ? senderRows[0].name : "Someone";
+            await db.query(
+                "INSERT INTO tbl_notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
+                [seller_id, "New Marketplace Message", `${senderName} sent you a message about "${items[0].title}".`, 'MESSAGE']
+            );
+        } catch (e) { console.error("Marketplace Notif Error:", e); }
 
         res.json({ success: true, message: "Message sent successfully" });
 
@@ -166,8 +210,6 @@ export const getMessages = async (req, res) => {
     try {
         const { userId } = req.params;
 
-        // Fetch conversations where the user is involved (either sender or receiver)
-        // We join to get details about the other party and the product
         const [messages] = await db.query(`
             SELECT 
                 m.*,
@@ -198,11 +240,33 @@ export const replyMessage = async (req, res) => {
             return res.status(400).json({ success: false, error: "Missing reply fields" });
         }
 
+        // --- ABUSE FILTERING ---
+        const lowerMsg = message.toLowerCase();
+        const foundAbuse = ABUSE_WORDS.filter(word => lowerMsg.includes(word));
+        if (foundAbuse.length > 0) {
+            await moderationService.handleContentViolation(sender_id, 'ABUSE', `Marketplace reply contained: ${foundAbuse.join(', ')}`);
+            return res.status(400).json({ success: false, error: "Message blocked." });
+        }
+        // -----------------------
+
         await db.query(
             `INSERT INTO tbl_marketplace_messages (sender_id, receiver_id, product_id, message_text) 
              VALUES (?, ?, ?, ?)`,
             [sender_id, receiver_id, product_id, message]
         );
+
+        // --- Notification for Receiver ---
+        try {
+            const [senderRows] = await db.query("SELECT name FROM tbl_users WHERE user_id = ?", [sender_id]);
+            const senderName = senderRows.length > 0 ? senderRows[0].name : "Someone";
+            const [productRows] = await db.query("SELECT title FROM tbl_marketplace_items WHERE item_id = ?", [product_id]);
+            const productTitle = productRows.length > 0 ? productRows[0].title : "an item";
+
+            await db.query(
+                "INSERT INTO tbl_notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
+                [receiver_id, "New Reply Received", `${senderName} replied to your message regarding "${productTitle}".`, 'MESSAGE']
+            );
+        } catch (e) { console.error("Marketplace Reply Notif Error:", e); }
 
         res.json({ success: true, message: "Reply sent successfully" });
 

@@ -392,7 +392,8 @@ function setupEventListeners() {
         logoutBtn.onclick = () => {
             window.showCustomConfirm('Logout', 'Logout from Admin Panel?', () => {
                 localStorage.removeItem('adminUser');
-                window.location.href = 'login-user.html';
+                localStorage.removeItem('admin_sys_id');
+                window.location.href = 'login.html?role=admin';
             });
         };
     }

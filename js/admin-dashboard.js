@@ -1,367 +1,63 @@
 // Use relative paths for better reliability across different hostnames/ports
 const API_BASE_URL = '';
 
+// --- STABLE MODE: GLOBAL GUARDS (Item 9 & Patch) ---
+const STABLE = {
+    isActive: () => document.hasFocus(),
+    loading: new Set(),
+
+    // Stop Double Rendering (Item 1)
+    safeUpdate: (id, html) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (STABLE.loading.has(id)) {
+            el.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#94a3b8;"><i class="ri-loader-4-line ri-spin"></i> Loading...</div>`;
+            STABLE.loading.delete(id);
+        }
+        if (el.innerHTML !== html) el.innerHTML = html;
+    },
+
+    // Fix NULL/Undefined Rendering (Item 4)
+    s: (val, fallback = "—") => (val !== null && val !== undefined && val !== "" && val !== "null") ? val : fallback
+};
+
 document.addEventListener('DOMContentLoaded', function () {
     checkAdminAuth();
-    fetchCenterStatus(); // Load Status Table
-    // populateRecentActivity();
+
+    // Initial Load - Ensure data arrives before first render (Item 1)
+    STABLE.loading.add('centerTableBody');
+    STABLE.loading.add('systemHealthPanel');
+
+    fetchCenterStatus();
     setupInteractions();
     setupCenterToggle();
     fetchAndAnimateStats();
-    fetchSystemHealth(); // Load System Health
+    fetchSystemHealth();
+    initAdminNotifications();
+
+    // Check for message parameter in URL on load
+    const urlParams = new URLSearchParams(window.location.search);
+    const messageCenterId = urlParams.get('message');
+    if (messageCenterId) {
+        setTimeout(() => openMessageModal(messageCenterId), 300);
+    }
 });
 
-// Check if user is authenticated as admin
-function checkAdminAuth() {
-    const isAdmin = localStorage.getItem('admin_sys_id') || localStorage.getItem('adminUser');
-    if (!isAdmin) {
-        window.location.href = 'login-admin.html';
-    }
-}
-
-
-// Populate Recent Activity Table - REMOVED to avoid duplication with dedicated page
-// async function populateRecentActivity() {
-//     const activityTableBody = document.getElementById('activityTableBody');
-//     if (!activityTableBody) return;
-
-//     try {
-//         const response = await fetch(`${API_BASE_URL}/api/admin/activities`);
-//         const activities = await response.json();
-
-//         if (activities.length === 0) {
-//             activityTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 2rem;">No recent activity records.</td></tr>`;
-//             return;
-//         }
-
-//         activityTableBody.innerHTML = activities.map(activity => {
-//             const status = activity.statusLabel || activity.status || 'Pending';
-//             let statusClass = 'status-pending';
-//             const lowerStatus = status.toLowerCase();
-
-//             if (lowerStatus.includes('analyzed')) statusClass = 'status-analyzed';
-//             else if (lowerStatus.includes('verified') || lowerStatus.includes('approved') || lowerStatus.includes('completed')) statusClass = 'status-approved';
-//             else if (lowerStatus.includes('rejected') || lowerStatus.includes('flagged')) statusClass = 'status-rejected';
-
-//             return `
-//                 <tr style="cursor: pointer;" onclick="window.location.href='admin-recent-activity.html'">
-//                     <td>
-//                         <div style="display: flex; align-items: center; gap: 12px; padding: 8px 0;">
-//                             <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(activity.user)}&background=random&color=fff&size=36&bold=true" 
-//                                  style="border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);" 
-//                                  alt="${activity.user}">
-//                             <div style="display: flex; flex-direction: column;">
-//                                 <span style="font-weight: 600; color: white;">${activity.user}</span>
-//                             </div>
-//                         </div>
-//                     </td>
-//                     <td style="color: var(--text-primary); font-size: 0.9rem;">${activity.action}</td>
-//                     <td style="color: var(--text-secondary); font-size: 0.85rem;">${activity.time}</td>
-//                     <td><span class="status-badge ${statusClass}">${status}</span></td>
-//                 </tr>
-//             `;
-//         }).join('');
-//     } catch (error) {
-//         console.error("Error fetching activities:", error);
-//         activityTableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 2rem; color: #ef4444;">Failed to load activities.</td></tr>`;
-//     }
-// }
-
-// Setup Basic Interactions
-function setupInteractions() {
-    // Logout
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function () {
-            window.showCustomConfirm('Logout', 'Are you sure you want to logout from Admin Panel?', function () {
-                localStorage.removeItem('adminUser');
-                localStorage.removeItem('admin_sys_id');
-                window.location.href = 'login-admin.html';
-            });
-        });
-    }
-
-    // Quick Action Buttons
-    const btnAddUser = document.getElementById('btnAddUser');
-    const btnAddCategory = document.getElementById('btnAddCategory');
-    const btnExportReports = document.getElementById('btnExportReports');
-    const btnInvalidateSessions = document.getElementById('btnInvalidateSessions');
-
-    if (btnAddUser) btnAddUser.onclick = () => showModal('addUserModal');
-    if (btnAddCategory) btnAddCategory.onclick = () => showModal('addCategoryModal');
-    if (btnExportReports) btnExportReports.onclick = () => showModal('exportReportsModal');
-
-    if (btnInvalidateSessions) {
-        btnInvalidateSessions.onclick = async () => {
-            window.showCustomConfirm('Invalidate Sessions', 'Are you sure you want to invalidate all active sessions? This will force logout all users.', async () => {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/admin/sessions/invalidate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    const result = await response.json();
-                    if (response.ok) {
-                        showToast('All user sessions have been invalidated successfully.', 'success');
-                    } else {
-                        showToast(result.message || 'Failed to invalidate sessions.', 'error');
-                    }
-                } catch (error) {
-                    console.error('Error invalidating sessions:', error);
-                    showToast('System error while invalidating sessions.', 'error');
-                }
-            });
-        };
-    }
-
-    // Export Pickups CSV Button
-    const btnExportPickups = document.getElementById('btnExportPickups');
-    if (btnExportPickups) {
-        btnExportPickups.onclick = async () => {
-            try {
-                showToast('Generating CSV file...', 'info');
-                window.location.href = `${API_BASE_URL}/api/admin/export/pickups`;
-                setTimeout(() => {
-                    showToast('CSV download started!', 'success');
-                }, 500);
-            } catch (error) {
-                console.error('Export Error:', error);
-                showToast('Failed to export pickups data.', 'error');
-            }
-        };
-    }
-
-    // Form Submissions
-    setupFormHandlers();
-
-    // Search Input - Smart Routing
-    const searchInput = document.querySelector('.header-search input');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function (e) {
-            if (e.key === 'Enter') {
-                const query = this.value.toLowerCase().trim();
-
-                // Map keywords to pages
-                if (['users', 'user', 'admins', 'admin', 'centers', 'center', 'accounts'].some(k => query.includes(k))) {
-                    showToast('Navigating to User Management...', 'info');
-                    setTimeout(() => window.location.href = 'admin-users.html', 500); // Small delay for UX
-                    return;
-                }
-
-                if (['requests', 'request', 'pickup', 'pickups', 'special', 'waste'].some(k => query.includes(k))) {
-                    showToast('Navigating to Pickup Requests...', 'info');
-                    setTimeout(() => window.location.href = 'admin-special-waste.html', 500);
-                    return;
-                }
-
-                if (['reports', 'report', 'analytics', 'data', 'export', 'chart'].some(k => query.includes(k))) {
-                    showToast('Navigating to Waste Data & Reports...', 'info');
-                    setTimeout(() => window.location.href = 'admin-waste-data.html', 500);
-                    return;
-                }
-
-                if (['logs', 'log', 'activity', 'activities', 'history', 'audit'].some(k => query.includes(k))) {
-                    showToast('Navigating to Activity Logs...', 'info');
-                    setTimeout(() => window.location.href = 'admin-recent-activity.html', 500);
-                    return;
-                }
-
-                showToast(`No quick access module found for: "${this.value}"`, 'warning');
-            }
-        });
-    }
-}
-
-function setupFormHandlers() {
-    // Password Toggle
-    const toggleBtn = document.getElementById('togglePasswordBtn');
-    const passwordInput = document.getElementById('newUserPassword');
-    if (toggleBtn && passwordInput) {
-        toggleBtn.addEventListener('click', () => {
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            toggleBtn.className = type === 'password' ? 'ri-eye-off-line password-toggle' : 'ri-eye-line password-toggle';
-        });
-    }
-
-    // Add User Form
-    const addUserForm = document.getElementById('addUserForm');
-    if (addUserForm) {
-        addUserForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const formData = new FormData(addUserForm);
-            const data = Object.fromEntries(formData.entries());
-
-            // Trim inputs
-            data.name = data.name.trim();
-            data.email = data.email.trim();
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-                if (response.ok) {
-                    showToast('User created successfully. Welcome email sent.', 'success');
-                    closeModal('addUserModal');
-                    addUserForm.reset();
-                    // Reset password toggle
-                    if (passwordInput) passwordInput.type = 'password';
-                    if (toggleBtn) toggleBtn.className = 'ri-eye-off-line password-toggle';
-
-                    // Refresh stats and activity
-                    fetchAndAnimateStats();
-                } else {
-                    if (response.status === 409) {
-                        showToast(result.message, 'warning'); // Use warning color for duplicates
-                    } else {
-                        showToast(result.message || 'Error creating user', 'error');
-                    }
-                }
-            } catch (error) {
-                showToast('Network error while creating user', 'error');
-            }
-        };
-    }
-
-    // Add Category Form
-    const addCategoryForm = document.getElementById('addCategoryForm');
-    if (addCategoryForm) {
-        addCategoryForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const formData = new FormData(addCategoryForm);
-            const data = Object.fromEntries(formData.entries());
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/categories`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    showToast('New waste category added successfully.', 'success');
-                    closeModal('addCategoryModal');
-                    addCategoryForm.reset();
-                } else {
-                    const result = await response.json();
-                    showToast(result.message || 'Error adding category', 'error');
-                }
-            } catch (error) {
-                showToast('Network error while adding category', 'error');
-            }
-        };
-    }
-
-    // Export Reports Form
-    const exportReportsForm = document.getElementById('exportReportsForm');
-    if (exportReportsForm) {
-        exportReportsForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const formData = new FormData(exportReportsForm);
-            const params = new URLSearchParams(Object.fromEntries(formData.entries())).toString();
-
-            showToast('Generating report...', 'info');
-
-            // Trigger download
-            window.location.href = `${API_BASE_URL}/api/admin/reports/export?${params}`;
-            closeModal('exportReportsModal');
-        };
-    }
-}
-
-// Modal Helpers
-function showModal(id) {
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-}
-
-window.closeModal = function (id) {
-    const modal = document.getElementById(id);
-    if (modal) {
-        modal.style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-};
-
-// Toast Notification System
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.style.cssText = `
-        background: #1e293b;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        border-left: 4px solid;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 300px;
-        animation: slideInRight 0.3s ease-out;
-    `;
-
-    let icon = 'ri-information-line';
-    let borderColor = '#3b82f6';
-
-    if (type === 'success') {
-        icon = 'ri-checkbox-circle-line';
-        borderColor = '#10b981';
-    } else if (type === 'error') {
-        icon = 'ri-error-warning-line';
-        borderColor = '#ef4444';
-    } else if (type === 'warning') {
-        icon = 'ri-alert-line';
-        borderColor = '#f59e0b';
-    }
-
-    toast.style.borderLeftColor = borderColor;
-    toast.innerHTML = `
-        <i class="${icon}" style="color:${borderColor}"></i>
-        <div style="flex-grow:1">${message}</div>
-        <i class="ri-close-line" style="cursor:pointer; opacity:0.6" onclick="this.parentElement.remove()"></i>
-    `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.animation = 'fadeOut 0.5s ease-out forwards';
-        setTimeout(() => toast.remove(), 500);
-    }, 4000);
-}
-
-// Add CSS for toast animations if not present
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes fadeOut {
-        from { opacity: 1; }
-        to { opacity: 0; }
-    }
-`;
-document.head.appendChild(style);
-
-// Fetch and Animate Stats
 async function fetchAndAnimateStats() {
+    if (!STABLE.isActive()) return; // Item 2 & Patch
+
     try {
         const response = await fetch(`${API_BASE_URL}/api/admin/stats`);
         const data = await response.json();
 
         const updateStat = (id, value) => {
             const el = document.getElementById(id);
-            if (el) el.innerText = value;
+            if (el) {
+                const cleanVal = STABLE.s(value, "0");
+                if (el.innerText !== cleanVal.toString()) {
+                    el.innerText = cleanVal;
+                }
+            }
         };
 
         updateStat('stats-total-users', data.totalUsers);
@@ -374,119 +70,282 @@ async function fetchAndAnimateStats() {
     }
 }
 
-// --- New Features: System Health & Center Management ---
-
 async function fetchSystemHealth() {
-    const container = document.getElementById('systemHealthPanel');
-    if (!container) return; // Might need to add this to HTML first if not present
+    if (!STABLE.isActive()) return;
+
+    const containerId = 'systemHealthPanel';
+    const container = document.getElementById(containerId);
+    if (!container) return;
 
     try {
         const res = await fetch(`${API_BASE_URL}/api/admin/system-health`);
         const data = await res.json();
 
         if (data.error) {
-            container.innerHTML = `<div style="color:#ef4444; padding:10px;">System Health Check Failed</div>`;
+            STABLE.safeUpdate(containerId, `<div style="color:#ef4444; padding:10px;">System Health Check Failed</div>`);
             return;
         }
 
-        container.innerHTML = `
+        const html = `
             <div class="health-card" style="display:flex; gap:15px; background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; font-size:0.9rem; align-items:center;">
                 <div style="flex:1;">
                     <span style="color:#94a3b8; font-size:0.8rem;">AI Service</span>
                     <div style="font-weight:600; color:${data.aiService === 'Running' ? '#10b981' : '#ef4444'}">
-                        <i class="ri-${data.aiService === 'Running' ? 'robot' : 'error-warning'}-line"></i> ${data.aiService}
+                        <i class="ri-${data.aiService === 'Running' ? 'robot' : 'error-warning'}-line"></i> ${STABLE.s(data.aiService, "Unknown")}
                     </div>
                 </div>
 
                 <div style="flex:1;">
                     <span style="color:#94a3b8; font-size:0.8rem;">Pickups Today</span>
-                    <div style="font-weight:600; color:#e2e8f0;">${data.todaysPickups}</div>
+                    <div style="font-weight:600; color:#e2e8f0;">${STABLE.s(data.todaysPickups, "0")}</div>
                 </div>
                 <div style="flex:1;">
                     <span style="color:#94a3b8; font-size:0.8rem;">Active Users</span>
-                    <div style="font-weight:600; color:#e2e8f0;">${data.activeUsers}</div>
+                    <div style="font-weight:600; color:#e2e8f0;">${STABLE.s(data.activeUsers, "0")}</div>
                 </div>
             </div>
         `;
+        STABLE.safeUpdate(containerId, html);
     } catch (e) {
         console.error("Health Check Error:", e);
     }
 }
 
-async function fetchCenterStatus() {
-    const tableBody = document.getElementById('centerTableBody');
-    if (!tableBody) return;
+// Check if user is authenticated as admin
+function checkAdminAuth() {
+    const isAdmin = localStorage.getItem('admin_sys_id') || localStorage.getItem('adminUser');
+    if (!isAdmin) {
+        window.location.href = 'login.html?role=admin';
+    }
+}
 
-    tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color:gray;"><i class="ri-loader-4-line ri-spin"></i> Loading status...</td></tr>';
+// Setup Basic Interactions
+function setupInteractions() {
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.onclick = () => {
+            if (window.showCustomConfirm) {
+                window.showCustomConfirm(
+                    'Logout',
+                    'Are you sure you want to logout from the Admin Panel?',
+                    () => {
+                        if (window.AdminAuth) {
+                            window.AdminAuth.logout('manual');
+                        } else if (window.logoutSafely) {
+                            window.logoutSafely('manual', 'ADMIN');
+                        } else {
+                            localStorage.clear();
+                            sessionStorage.clear();
+                            window.location.replace('/');
+                        }
+                    }
+                );
+            } else {
+                // Fallback if modal not available
+                if (window.AdminAuth) {
+                    window.AdminAuth.logout('manual');
+                } else {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.replace('/');
+                }
+            }
+        };
+    }
+
+    const btnAddUser = document.getElementById('btnAddUser');
+    const btnAddCategory = document.getElementById('btnAddCategory');
+    const btnExportReports = document.getElementById('btnExportReports');
+
+    if (btnAddUser) btnAddUser.onclick = () => showModal('addUserModal');
+    if (btnAddCategory) btnAddCategory.onclick = () => showModal('addCategoryModal');
+    if (btnExportReports) btnExportReports.onclick = () => showModal('exportReportsModal');
+
+    // Messaging Form
+    const sendMessageForm = document.getElementById('sendMessageForm');
+    if (sendMessageForm) {
+        sendMessageForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const centerId = document.getElementById('msgCenterId').value;
+            const messageText = document.getElementById('msgContent').value;
+            const sendBtn = document.getElementById('msgSendBtn');
+
+            if (!messageText.trim()) return;
+
+            sendBtn.disabled = true;
+            const originalHtml = sendBtn.innerHTML;
+            sendBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Sending...';
+
+            try {
+                const token = localStorage.getItem('adminToken') || localStorage.getItem('admin_sys_token');
+                const response = await fetch(`${API_BASE_URL}/api/messages/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ center_id: centerId, messageText })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('msgContent').value = '';
+                    const historyRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const historyData = await historyRes.json();
+                    if (historyData && historyData.data) renderChatHistory(historyData.data);
+                    showToast('Message sent successfully', 'success');
+                } else {
+                    throw new Error(result.error || 'Failed to send message');
+                }
+            } catch (error) {
+                console.error("Send Error:", error);
+                showToast(error.message || 'Network issue', 'error');
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = originalHtml;
+            }
+        };
+    }
+}
+
+// --- Admin Messaging System ---
+async function openMessageModal(centerId) {
+    const modal = document.getElementById('messageCenterModal');
+    const title = document.getElementById('msgModalTitle');
+    const statusText = document.getElementById('msgCenterStatus');
+    const msgIdInput = document.getElementById('msgCenterId');
+    const history = document.getElementById('chatHistory');
+
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    msgIdInput.value = centerId;
+    title.textContent = 'Loading...';
+    statusText.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Initializing...';
+    history.innerHTML = '<div style="text-align: center; color: #64748b; padding-top: 80px;"><i class="ri-loader-4-line ri-spin"></i><br>Loading secure chat...</div>';
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/centers`);
+        const centers = await res.json();
+        const center = centers.find(c => c.center_id == centerId);
+
+        if (center) {
+            title.textContent = `Message ${center.center_name}`;
+            const liveStatus = center.center_status || 'offline';
+            let sColor = '#ef4444';
+            let sText = 'Closed (Offline)';
+
+            if (liveStatus === 'online') { sColor = '#10b981'; sText = 'Open (Online)'; }
+            else if (liveStatus === 'idle') { sColor = '#f59e0b'; sText = 'Idle'; }
+
+            statusText.innerHTML = `<span style="color:${sColor}; font-weight:600;"><i class="ri-checkbox-circle-fill"></i> ${sText}</span>`;
+        }
+
+        const token = localStorage.getItem('adminToken') || localStorage.getItem('admin_sys_token');
+        const hRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const hData = await hRes.json();
+        renderChatHistory(hData.data || []);
+
+    } catch (e) {
+        console.error("Messaging Modal Error:", e);
+        history.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444;">Failed to load chat history.</div>';
+    }
+}
+
+function renderChatHistory(messages) {
+    const history = document.getElementById('chatHistory');
+    if (!history) return;
+
+    if (!messages || messages.length === 0) {
+        history.innerHTML = '<div style="text-align: center; color: #64748b; padding-top: 80px;">No messages yet.</div>';
+        return;
+    }
+
+    const html = messages.map(m => {
+        const isSelf = m.senderRole === 'ADMIN';
+        const align = isSelf ? 'flex-end' : 'flex-start';
+        const bg = isSelf ? '#6366f1' : 'rgba(255,255,255,0.05)';
+        return `
+            <div style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;">
+                <div style="background: ${bg}; color: white; padding: 8px 14px; border-radius: 12px; font-size: 0.9rem;">
+                    ${m.messageText}
+                </div>
+                <div style="font-size: 0.7rem; color: #64748b; align-self: ${align};">
+                    ${STABLE.s(m.senderName, "System")} • ${new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (history.innerHTML !== html) {
+        history.innerHTML = html;
+        history.scrollTo({ top: history.scrollHeight, behavior: 'smooth' });
+    }
+}
+
+async function fetchCenterStatus() {
+    if (!STABLE.isActive()) return; // Item 2 & Patch
+
+    const tableId = 'centerTableBody';
+    const tableBody = document.getElementById(tableId);
+    if (!tableBody) return;
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/centers`);
         const centers = await response.json();
 
         if (!Array.isArray(centers) || centers.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:2rem; color: #94a3b8;">No centers found.</td></tr>';
+            STABLE.safeUpdate(tableId, '<tr><td colspan="5" style="text-align:center; padding:2rem; color: #94a3b8;">No centers found.</td></tr>');
             return;
         }
 
-        tableBody.innerHTML = centers.map(center => {
-            let statusColor = '#10b981'; // Green (Open)
-            let loadColor = '#10b981'; // Green (Free)
-            let toggleIcon = 'ri-lock-unlock-line';
-            let toggleTitle = 'Close Center';
+        const html = centers.map(center => {
+            const liveStatus = center.center_status || 'offline';
+            let sText = 'Closed';
+            let sColor = '#ef4444';
+            if (liveStatus === 'online') { sText = 'Open'; sColor = '#10b981'; }
+            else if (liveStatus === 'idle') { sText = 'Idle'; sColor = '#f59e0b'; }
 
-            if (center.status === 'CLOSED') {
-                statusColor = '#ef4444';
-                toggleIcon = 'ri-lock-line';
-                toggleTitle = 'Open Center';
-            }
-
-            if (center.busyLevel === 'Busy') loadColor = '#f59e0b';
-            else if (center.busyLevel === 'Full') loadColor = '#ef4444';
-
-            // Progress Bar Logic
             const usage = center.max_slots - center.available_slots;
             const percent = (usage / center.max_slots) * 100;
+            const perfScore = center.performance_score || 100;
 
             return `
                 <tr>
-                    <td style="font-weight: 500; color: white;">${center.center_name}</td>
                     <td>
-                        <button onclick="toggleCenterStatus(${center.center_id})" class="btn-text" style="color:${statusColor}; cursor:pointer; background:none; border:none; display:flex; align-items:center; gap:5px;" title="${toggleTitle}">
-                            <span class="status-badge" style="background:${statusColor}20; color:${statusColor}">${center.status}</span>
-                            <i class="ri-refresh-line" style="font-size:0.8rem; opacity:0.7;"></i>
-                        </button>
+                        <div style="font-weight: 600; color: white;">${STABLE.s(center.center_name, "Center")}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">Score: ${perfScore}%</div>
                     </td>
-                    <td style="width:200px;">
+                    <td><span class="status-badge" style="background:${sColor}20; color:${sColor}">${sText}</span></td>
+                    <td style="width:180px;">
                         <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px;">
                             <span>${center.available_slots} / ${center.max_slots} Left</span>
-                            <span>${Math.round(percent)}% Used</span>
+                            <span>${Math.round(percent)}%</span>
                         </div>
                         <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
-                            <div style="width:${percent}%; height:100%; background:${loadColor}; transition:width 0.3s;"></div>
+                            <div style="width:${percent}%; height:100%; background:#10b981;"></div>
                         </div>
                     </td>
+                    <td><span class="status-badge" style="background:#10b98120; color:#10b981">${STABLE.s(center.busyLevel, "Normal")}</span></td>
                     <td>
-                        <span class="status-badge" style="background:${loadColor}20; color:${loadColor}">${center.busyLevel}</span>
-                    </td>
-                    <td>
-                        <div style="display:flex; gap:5px;">
-                            <button class="btn btn-sm" style="padding:4px 8px; font-size: 1.1rem; background: rgba(255,255,255,0.05); color:#cbd5e1;" title="Reset Slots" onclick="resetCenterSlots(${center.center_id})">
-                                <i class="ri-restart-line"></i>
-                            </button>
-                            <button class="btn btn-sm" style="padding:4px 8px; font-size: 1.1rem; background: rgba(255,255,255,0.05); color:#cbd5e1; display:none;" title="View Details" onclick="viewCenterDetails(${center.center_id})">
-                                <i class="ri-eye-line"></i>
-                            </button>
-                        </div>
+                        <button class="btn btn-sm" onclick="openMessageModal(${center.center_id})"><i class="ri-message-3-line"></i></button>
                     </td>
                 </tr>
             `;
         }).join('');
 
+        STABLE.safeUpdate(tableId, html);
+
     } catch (error) {
         console.error("Error fetching center status:", error);
-        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#ef4444;">Failed to load status.</td></tr>';
     }
 }
+
 
 window.resetCenterSlots = async (id) => {
     if (!confirm('Reset this center slots to Maximum capacity?')) return;
@@ -651,10 +510,18 @@ function initAdminNotifications() {
             dropdown.innerHTML = `
                 <div class="dropdown-header">
                     <span>Notifications</span>
-                    <button class="mark-read-btn" onclick="markAsRead('all')">Mark all as read</button>
+                    <div style="display:flex; gap:10px;">
+                        <button class="mark-read-btn" onclick="markAsRead('all')" style="color:#60a5fa;">Mark all read</button>
+                        <button class="mark-read-btn" onclick="clearAllNotifications()" style="color:#ef4444;">Clear all</button>
+                    </div>
                 </div>
                 <div class="dropdown-content" id="notificationList">
                     <div style="padding:20px; text-align:center; color:var(--text-secondary);">Loading...</div>
+                </div>
+                <div class="dropdown-footer" style="padding:10px; text-align:center; border-top:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.02);">
+                    <a href="admin-recent-activity.html" style="color:#94a3b8; font-size:0.8rem; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:5px;">
+                        View All Activity <i class="ri-arrow-right-s-line"></i>
+                    </a>
                 </div>
             `;
             bellBtn.parentElement.appendChild(dropdown);
@@ -673,6 +540,15 @@ function initAdminNotifications() {
         });
     }
 }
+
+window.clearAllNotifications = async () => {
+    if (!confirm('Are you sure you want to clear all notifications?')) return;
+    try {
+        await fetch(`${API_BASE_URL}/api/admin/notifications/clear`, { method: 'DELETE' });
+        showToast('Notifications cleared', 'success');
+        fetchNotifications();
+    } catch (e) { console.error(e); }
+};
 
 async function fetchNotifications() {
     try {

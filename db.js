@@ -64,11 +64,11 @@ const mockData = {
         { center_id: 23, center_name: 'Spice Route Ventures', type: 'E-waste', latitude: 9.570000, longitude: 76.540000, address: 'Kanjikuzhy, Kottayam', status: 'OPEN', available_slots: 7, max_slots: 10 },
         { center_id: 24, center_name: 'HKS Unit Kottayam', type: 'HKS', latitude: 9.590000, longitude: 76.520000, address: 'Kottayam', status: 'OPEN', available_slots: 10, max_slots: 20 },
         // Kanjirapally Centers
-        { center_id: 25, center_name: 'Kanjirapally Plastic MCF', type: 'Plastic', latitude: 9.5550, longitude: 76.7910, address: 'Near Private Bus Stand, Kanjirapally', status: 'OPEN', available_slots: 10, max_slots: 10 },
-        { center_id: 26, center_name: 'St. Dominics College E-Waste Drop', type: 'E-waste', latitude: 9.5600, longitude: 76.7950, address: 'Parathode, Kanjirapally', status: 'OPEN', available_slots: 10, max_slots: 10 },
-        { center_id: 27, center_name: 'Erumely Organic Plant', type: 'Organic', latitude: 9.4800, longitude: 76.8400, address: 'Erumely Town', status: 'OPEN', available_slots: 5, max_slots: 10 },
-        { center_id: 28, center_name: 'Ponkunnam Scrap Yard', type: 'Metal', latitude: 9.5700, longitude: 76.7700, address: 'Ponkunnam', status: 'OPEN', available_slots: 8, max_slots: 10 },
-        { center_id: 29, center_name: 'Mundakayam Glass Recyclers', type: 'Glass', latitude: 9.5300, longitude: 76.8800, address: 'Mundakayam', status: 'OPEN', available_slots: 2, max_slots: 10 }
+        { center_id: 25, center_name: 'Kanjirapally Plastic MCF', type: 'Plastic', latitude: 9.5550, longitude: 76.7910, address: 'Near Private Bus Stand, Kanjirapally', status: 'OPEN', available_slots: 10, max_slots: 10, center_status: 'offline', last_active_time: null, center_performance_score: 100 },
+        { center_id: 26, center_name: 'St. Dominics College E-Waste Drop', type: 'E-waste', latitude: 9.5600, longitude: 76.7950, address: 'Parathode, Kanjirapally', status: 'OPEN', available_slots: 10, max_slots: 10, center_status: 'offline', last_active_time: null, center_performance_score: 100 },
+        { center_id: 27, center_name: 'Erumely Organic Plant', type: 'Organic', latitude: 9.4800, longitude: 76.8400, address: 'Erumely Town', status: 'OPEN', available_slots: 5, max_slots: 10, center_status: 'offline', last_active_time: null, center_performance_score: 100 },
+        { center_id: 28, center_name: 'Ponkunnam Scrap Yard', type: 'Metal', latitude: 9.5700, longitude: 76.7700, address: 'Ponkunnam', status: 'OPEN', available_slots: 8, max_slots: 10, center_status: 'offline', last_active_time: null, center_performance_score: 100 },
+        { center_id: 29, center_name: 'Mundakayam Glass Recyclers', type: 'Glass', latitude: 9.5300, longitude: 76.8800, address: 'Mundakayam', status: 'OPEN', available_slots: 2, max_slots: 10, center_status: 'offline', last_active_time: null, center_performance_score: 100 }
     ],
     marketplace: [
         { item_id: 1, user_id: 1, title: 'Clean Plastic Bottles', category: 'Plastic', description: 'Clear PET bottles, washed and dried.', created_at: new Date(Date.now() - 3600000), owner_name: 'Mathew', image_url: 'https://images.unsplash.com/photo-1558449028-08571068832a?auto=format&fit=crop&q=80&w=800', status: 'active' },
@@ -77,7 +77,17 @@ const mockData = {
         { item_id: 4, user_id: 1, title: 'Aluminum Soda Cans', category: 'Metal', description: 'Empty soda cans, bulk quantity.', created_at: new Date(Date.now() - 172800000), owner_name: 'Alex', image_url: 'https://images.unsplash.com/photo-1600511213386-89d15c7e0f21?auto=format&fit=crop&q=80&w=800', status: 'active' },
         { item_id: 5, user_id: 1, title: 'Scrap Copper Wires', category: 'Metal', description: 'High-grade copper for recycling.', created_at: new Date(Date.now() - 86400000), owner_name: 'Don', image_url: 'https://images.unsplash.com/photo-1621259182978-fbf93132d53d?auto=format&fit=crop&q=80&w=800', status: 'active' },
         { item_id: 6, user_id: 1, title: 'Old Laptop Spare Parts', category: 'E-Waste', description: 'Components for electronic hobbyists.', created_at: new Date(Date.now() - 259200000), owner_name: 'Sarah', image_url: 'https://images.unsplash.com/photo-1593642532454-e138e28a63f4?auto=format&fit=crop&q=80&w=800', status: 'active' }
-    ]
+    ],
+    special_waste: [
+        { request_id: 101, user_id: 2, category: 'Bulk', quantity_value: 1000, quantity_unit: 'kg', location: 'Startup Valley TBI...', status: 'Approved', center_id: null, created_at: new Date() },
+        { request_id: 102, user_id: 2, category: 'Festival', quantity_value: 45, quantity_unit: 'kg', location: 'Startup Valley TBI...', status: 'Approved', center_id: null, created_at: new Date() }
+    ],
+    user_history: [
+        { history_id: 1, user_id: 2, activity_type: 'SCAN', details: { category: 'Plastic Bottle', confidence: 98, result: 'Recyclable' }, created_at: new Date(Date.now() - 86400000) },
+        { history_id: 2, user_id: 2, activity_type: 'SEARCH', details: { query: 'battery disposal' }, created_at: new Date(Date.now() - 172800000) },
+        { history_id: 3, user_id: 1, activity_type: 'SCAN', details: { category: 'Glass Jar', confidence: 95 }, created_at: new Date() }
+    ],
+    marketplace_messages: []
 };
 
 class MockPool {
@@ -347,6 +357,180 @@ class MockPool {
             return [{ insertId: newItem.item_id }];
         }
 
+        // 14. Special Waste: SELECT
+        if (lowerSql.includes('from tbl_special_waste_requests r')) {
+            const results = mockData.special_waste.map(req => {
+                const user = mockData.users.find(u => u.user_id == req.user_id) || { name: 'Demo User', email: 'demo@example.com' };
+                const center = mockData.collection_centers.find(c => c.center_id == req.center_id);
+                return {
+                    ...req,
+                    user_name: user.name,
+                    email: user.email,
+                    center_name: center ? center.center_name : null,
+                    assignment_status: req.assignment_status || (req.center_id ? 'assigned' : 'unassigned')
+                };
+            });
+            return [results];
+        }
+
+        // 14. Special Waste: UPDATE
+        if (lowerSql.includes('update tbl_special_waste_requests')) {
+            const requestId = params[params.length - 1];
+            const request = mockData.special_waste.find(r => r.request_id == requestId);
+            if (request) {
+                request.status = params[0];
+                request.admin_notes = params[1];
+                if (params.length > 3) request.center_id = params[2];
+                return [{ affectedRows: 1 }];
+            }
+            return [{ affectedRows: 0 }];
+        }
+
+        // 15. User History: SELECT
+        if (lowerSql.includes('from tbl_user_history')) {
+            const userId = params[0];
+            let results = mockData.user_history.filter(h => h.user_id == userId);
+
+            if (lowerSql.includes('activity_type in')) {
+                results = results.filter(h => ['SCAN', 'SEARCH', 'BOT_CHAT'].includes(h.activity_type));
+            }
+            if (lowerSql.includes("activity_type = 'scan'")) {
+                results = results.filter(h => h.activity_type === 'SCAN');
+            }
+
+            if (lowerSql.includes('count(*)')) {
+                return [[{ total: results.length }]];
+            }
+
+            // Always serialize details as string so JSON.parse on frontend works safely
+            const serialized = results.map(h => ({
+                ...h,
+                details: typeof h.details === 'string' ? h.details : JSON.stringify(h.details || {})
+            }));
+            return [serialized];
+        }
+
+        // 16. User History: INSERT
+        if (lowerSql.includes('insert into tbl_user_history')) {
+            const newHistory = {
+                history_id: mockData.user_history.length + 1,
+                user_id: params[0],
+                activity_type: params[1],
+                details: typeof params[2] === 'string' ? params[2] : JSON.stringify(params[2] || {}),
+                created_at: new Date()
+            };
+            mockData.user_history.push(newHistory);
+            return [{ insertId: newHistory.history_id }];
+        }
+
+        // 17. User History: DELETE (Clear History)
+        if (lowerSql.includes('delete from tbl_user_history')) {
+            const userId = params[0];
+            const before = mockData.user_history.length;
+            mockData.user_history = mockData.user_history.filter(h => h.user_id != userId);
+            return [{ affectedRows: before - mockData.user_history.length }];
+        }
+
+        // 18. Pickup Requests: SELECT
+        if (lowerSql.includes('from tbl_pickup_requests')) {
+            if (!mockData.pickup_requests) mockData.pickup_requests = [];
+            const userId = params[0];
+            let results = mockData.pickup_requests.filter(p => p.user_id == userId);
+
+            if (lowerSql.includes('sum(quantity)')) {
+                const total = results
+                    .filter(p => !lowerSql.includes("status = 'completed'") || p.status === 'Completed')
+                    .reduce((s, p) => s + (parseFloat(p.quantity) || 0), 0);
+                return [[{ total_kg: total || null }]];
+            }
+            if (lowerSql.includes('count(*)')) {
+                const count = results.filter(p => p.status === 'Completed').length;
+                return [[{ completed_count: count }]];
+            }
+
+            return [results];
+        }
+
+        // 19. Pickup Requests: INSERT
+        if (lowerSql.includes('insert into tbl_pickup_requests')) {
+            if (!mockData.pickup_requests) mockData.pickup_requests = [];
+            const newReq = {
+                request_id: mockData.pickup_requests.length + 1001,
+                user_id: params[0],
+                center_id: params[1],
+                waste_type: params[2],
+                quantity: params[3],
+                status: params[4] || 'Pending',
+                latitude: params[5],
+                longitude: params[6],
+                address: params[7] || '',
+                created_at: new Date()
+            };
+            mockData.pickup_requests.push(newReq);
+            return [{ insertId: newReq.request_id }];
+        }
+
+        // 20. Pickup Requests: UPDATE
+        if (lowerSql.includes('update tbl_pickup_requests')) {
+            if (!mockData.pickup_requests) mockData.pickup_requests = [];
+            const id = params[params.length - 1];
+            const req = mockData.pickup_requests.find(r => r.request_id == id);
+            if (req) {
+                if (lowerSql.includes('set status')) {
+                    req.status = params[0];
+                    if (params[0] === 'Approved') req.accepted_time = new Date();
+                    if (params[0] === 'Completed') req.completed_time = new Date();
+                }
+                if (lowerSql.includes('accepted_time')) req.accepted_time = params[params.indexOf(id) - 1];
+                if (lowerSql.includes('completed_time')) req.completed_time = params[params.indexOf(id) - 1];
+                return [{ affectedRows: 1 }];
+            }
+            return [{ affectedRows: 0 }];
+        }
+
+        // 21. Pickup Items: INSERT (sub-table)
+        if (lowerSql.includes('insert into tbl_pickup_items')) {
+            return [{ insertId: Math.floor(Math.random() * 9000) + 1000 }];
+        }
+
+        // 22. Notifications: SELECT (user notifications)
+        if (lowerSql.includes('from tbl_notifications')) {
+            if (!mockData.notifications) mockData.notifications = [];
+            const userId = params[0];
+            const results = mockData.notifications.filter(n => n.user_id == userId);
+            return [results];
+        }
+
+        // 23. Notifications: INSERT
+        if (lowerSql.includes('insert into tbl_notifications')) {
+            if (!mockData.notifications) mockData.notifications = [];
+            const newNotif = {
+                notification_id: mockData.notifications.length + 1,
+                user_id: params[0],
+                type: params[1],
+                title: params[2],
+                message: params[3],
+                is_read: false,
+                created_at: new Date()
+            };
+            mockData.notifications.push(newNotif);
+            return [{ insertId: newNotif.notification_id }];
+        }
+
+        // 24. Notifications: UPDATE (mark read)
+        if (lowerSql.includes('update tbl_notifications')) {
+            if (!mockData.notifications) mockData.notifications = [];
+            const id = params[params.length - 1];
+            const notif = mockData.notifications.find(n => n.notification_id == id);
+            if (notif) { notif.is_read = true; return [{ affectedRows: 1 }]; }
+            return [{ affectedRows: 0 }];
+        }
+
+        // 25. Admin Notifications: INSERT/SELECT (silently succeed)
+        if (lowerSql.includes('tbl_admin_notifications') || lowerSql.includes('tbl_center_notifications')) {
+            return [{ insertId: Math.floor(Math.random() * 9000) + 1000, affectedRows: 1 }];
+        }
+
         // Default empty
         return [[], []];
     }
@@ -427,8 +611,19 @@ const smartPool = {
         await migrate("tbl_collection_centers", "max_slots INT DEFAULT 10");
         await migrate("tbl_collection_centers", "is_primary BOOLEAN DEFAULT FALSE");
 
+        // --- Center Status Automation (Step 8) ---
+        await migrate("tbl_collection_centers", "center_status ENUM('online','offline','idle') DEFAULT 'offline'");
+        await migrate("tbl_collection_centers", "last_active_time DATETIME NULL");
+        await migrate("tbl_collection_centers", "offline_since DATETIME NULL");
+        await migrate("tbl_collection_centers", "center_performance_score INT DEFAULT 100");
+
         // 3. Pickup Requests Migrations
         await migrate("tbl_pickup_requests", "is_urgent BOOLEAN DEFAULT FALSE");
+
+        // --- Pickup Timing (Step 8) ---
+        await migrate("tbl_pickup_requests", "assigned_time DATETIME");
+        await migrate("tbl_pickup_requests", "accepted_time DATETIME");
+        await migrate("tbl_pickup_requests", "completed_time DATETIME");
 
         // 4. Reports Table Initialization
         try {
@@ -450,6 +645,46 @@ const smartPool = {
             console.log("✅ Reports Table verified");
         } catch (err) {
             console.error("❌ Reports Table Migration Error:", err);
+        }
+
+        // 5. Special Waste Table Enhancements & Notifications
+        await migrate("tbl_special_waste_requests", "center_id INT NULL");
+        await migrate("tbl_special_waste_requests", "assignment_status VARCHAR(20) DEFAULT 'unassigned'");
+        await migrate("tbl_special_waste_requests", "admin_notes TEXT");
+
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS tbl_center_notifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    center_id INT NOT NULL,
+                    type VARCHAR(50) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    message TEXT NOT NULL,
+                    is_read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (center_id) REFERENCES tbl_collection_centers(center_id) ON DELETE CASCADE
+                )
+            `);
+            console.log("✅ Center Notifications Table verified");
+        } catch (err) {
+            // console.error("❌ Center Notifications Table Migration Error:", err);
+        }
+
+        // 6. User History Table
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS tbl_user_history (
+                    history_id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id INT NOT NULL,
+                    activity_type VARCHAR(50) NOT NULL,
+                    details JSON,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES tbl_users(user_id) ON DELETE CASCADE
+                )
+            `);
+            console.log("✅ User History Table verified");
+        } catch (err) {
+            console.error("❌ User History Table Migration Error:", err);
         }
 
         conn.release();

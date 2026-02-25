@@ -17,7 +17,8 @@
     // ── Constants ────────────────────────────────────────────────────────────
     const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;   // 8 hours
     const ACTIVITY_EXTEND_MS = 30 * 60 * 1000;        // extend on activity if <30 min left
-    const LOGIN_PAGE = 'login-admin.html';
+    const LOGIN_PAGE = 'login.html';
+    const LOGIN_QUERY = '?role=admin';
     const DASHBOARD_PAGE = 'admin-dashboard.html';
     const WARN_BEFORE_EXPIRY = 5 * 60 * 1000;         // warn 5 min before expiry
 
@@ -32,6 +33,16 @@
     };
 
     // ── Internal Helpers ─────────────────────────────────────────────────────
+
+    /** Kill every setInterval and setTimeout currently running in this page.
+     *  Self-contained — does not rely on window._killAllTimers from auth.js. */
+    function _killTimers() {
+        var highest = window.setTimeout(function () { }, 0);
+        for (var i = 0; i <= highest; i++) {
+            window.clearInterval(i);
+            window.clearTimeout(i);
+        }
+    }
 
     function _log(...args) {
         console.log('[AdminAuth]', ...args);
@@ -109,17 +120,17 @@
 
     let _watchdogTimer = null;
     let _warnFired = false;
+    let _redirecting = false; // Redirect lock — prevents glitch from concurrent redirects
 
     function _startWatchdog() {
         if (_watchdogTimer) clearInterval(_watchdogTimer);
         _warnFired = false;
 
         _watchdogTimer = setInterval(() => {
+            if (_redirecting) return; // Already leaving — don't pile on
             if (!_isValid()) {
-                _log('Watchdog: session expired — redirecting.');
-                clearInterval(_watchdogTimer);
+                _log('Watchdog: session expired — logging out.');
                 AdminAuth.logout('expired');
-                return;
             }
 
             const remaining = parseInt(localStorage.getItem(KEYS.expiry) || '0', 10) - Date.now();
@@ -145,26 +156,28 @@
 
     function _bindStorageSync() {
         window.addEventListener('storage', (e) => {
+            if (_redirecting) return; // Already leaving — don't pile on
             if (e.key === KEYS.id && e.newValue === null) {
-                // Another tab cleared the session
-                _log('Multi-tab: session cleared in another tab — redirecting.');
-                _redirectToLogin('multiTab');
+                _log('Multi-tab: session cleared in another tab — logging out.');
+                AdminAuth.logout('multiTab');
             }
         });
     }
 
     // ── Redirect Helpers ─────────────────────────────────────────────────────
 
-    function _redirectToLogin(reason) {
-        _log('Redirecting to login. Reason:', reason);
-        // All admin pages (including login-admin.html) are siblings inside /pages/.
-        // Use a bare filename — the browser resolves it relative to the current directory.
-        window.location.replace(`${LOGIN_PAGE}?reason=${reason}`);
+    function _redirectToLanding() {
+        if (_redirecting) return;
+        _redirecting = true;
+        _log('Redirecting to landing page.');
+        _killTimers(); // Stop all polling before navigating
+        window.location.replace('/');
     }
 
     function _redirectToDashboard() {
+        if (_redirecting) return;
+        _redirecting = true;
         _log('Already authenticated — redirecting to dashboard.');
-        // Same directory sibling redirect
         window.location.replace(DASHBOARD_PAGE);
     }
 
@@ -178,13 +191,17 @@
          *
          * @param {Object} user   - user object from API (user_id, email, role, name)
          */
-        createSession(user) {
+        createSession(user, token) {
             const expiry = Date.now() + SESSION_DURATION_MS;
             localStorage.setItem(KEYS.id, String(user.user_id || user.id || ''));
             localStorage.setItem(KEYS.email, user.email || '');
             localStorage.setItem(KEYS.role, (user.role || 'ADMIN').toUpperCase());
             localStorage.setItem(KEYS.name, user.name || '');
             localStorage.setItem(KEYS.expiry, expiry.toString());
+            if (token) {
+                localStorage.setItem(KEYS.token, token);
+                localStorage.setItem('adminToken', token); // legacy compat
+            }
             // Legacy compat
             localStorage.setItem(KEYS.adminUser, String(user.user_id || user.id || ''));
             _log('Session created. Expires:', new Date(expiry).toLocaleTimeString());
@@ -211,11 +228,14 @@
          */
         guardDashboard() {
             if (!_isValid()) {
-                _log('Guard: not authenticated.');
-                _redirectToLogin(_readSession().id ? 'expired' : 'unauthenticated');
+                _log('Guard: not authenticated — redirecting to landing.');
+                _redirectToLanding();
                 return false;
             }
             _log('Guard: session valid ✓');
+            // Replace the current history entry so back-button after logout
+            // does NOT return to the dashboard page.
+            try { history.replaceState(null, '', window.location.href); } catch (e) { }
             _startWatchdog();
             _bindActivityListeners();
             _bindStorageSync();
@@ -232,25 +252,6 @@
                 _redirectToDashboard();
                 return false;
             }
-            // Check for expiry message to show
-            const reason = new URLSearchParams(window.location.search).get('reason');
-            if (reason === 'expired') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    const err = document.getElementById('errorMsg');
-                    if (err) {
-                        err.innerText = '⏱ Your session has expired. Please log in again.';
-                        err.style.display = 'block';
-                    }
-                });
-            } else if (reason === 'multiTab') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    const err = document.getElementById('errorMsg');
-                    if (err) {
-                        err.innerText = 'You were signed out in another tab.';
-                        err.style.display = 'block';
-                    }
-                });
-            }
             return true;
         },
 
@@ -258,11 +259,17 @@
          * Perform a clean logout.
          * @param {string} reason - optional reason tag
          */
-        logout(reason = 'manual') {
+        logout(reason) {
+            reason = reason || 'manual';
+            if (_redirecting) return; // Already in progress — block duplicate calls
+            // Do NOT set _redirecting here — let _redirectToLanding() own the flag.
+            // Setting it here would cause _redirectToLanding() to bail out immediately
+            // before ever calling window.location.replace('/').
             _log('Logging out. Reason:', reason);
-            if (_watchdogTimer) clearInterval(_watchdogTimer);
+            // Stop watchdog first so it can't race with the redirect
+            if (_watchdogTimer) { clearInterval(_watchdogTimer); _watchdogTimer = null; }
             _clear();
-            _redirectToLogin(reason);
+            _redirectToLanding(); // <-- sets _redirecting = true internally, then navigates
         },
 
         /**
@@ -293,18 +300,17 @@
     if (_isLoginPage()) {
         AdminAuth.guardLogin();
     } else {
-        // Any other HTML file under /pages/ that loads this script is a protected page
-        // Hide body immediately to prevent flash, reveal after guard passes
+        // Hide immediately to prevent flash before auth check
         document.documentElement.style.visibility = 'hidden';
 
         if (!AdminAuth.guardDashboard()) {
             // guardDashboard will redirect — body stays hidden
         } else {
             // Auth passed — reveal page smoothly
+            // NOTE: logout button wiring is handled by each dashboard's own JS
+            // (e.g. admin-dashboard.js) to avoid duplicate event listener conflicts.
             document.addEventListener('DOMContentLoaded', () => {
                 document.documentElement.style.visibility = 'visible';
-                // Bind logout button
-                AdminAuth.bindLogoutButton('logoutBtn');
                 _log('Page secured and visible.');
             });
         }

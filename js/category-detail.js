@@ -113,7 +113,7 @@ if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
         window.showCustomConfirm("Logout", "Are you sure you want to logout?", () => {
             localStorage.clear();
-            window.location.href = '../index.html';
+            window.location.href = 'login.html?role=user';
         });
     });
 }

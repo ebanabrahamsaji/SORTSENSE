@@ -1,0 +1,294 @@
+{
+  "tbl_accepted_categories": [
+    "center_id",
+    "category_id"
+  ],
+  "tbl_admin_audit_logs": [
+    "log_id",
+    "admin_id",
+    "action_type",
+    "target_type",
+    "target_id",
+    "details",
+    "ip_address",
+    "created_at"
+  ],
+  "tbl_admin_notifications": [
+    "id",
+    "type",
+    "title",
+    "message",
+    "reference_id",
+    "is_read",
+    "created_at"
+  ],
+  "tbl_ai_performance_logs": [
+    "log_id",
+    "image_id",
+    "predicted_category",
+    "confidence_score",
+    "user_feedback",
+    "processing_time_ms",
+    "created_at"
+  ],
+  "tbl_categories": [
+    "category_id",
+    "category_name",
+    "description"
+  ],
+  "tbl_challenges": [
+    "challenge_id",
+    "title",
+    "description",
+    "target",
+    "reward_points",
+    "type",
+    "active",
+    "created_at"
+  ],
+  "tbl_collection_centers": [
+    "center_id",
+    "center_name",
+    "type",
+    "latitude",
+    "longitude",
+    "address",
+    "contact_person",
+    "phone",
+    "notes",
+    "status",
+    "available_slots",
+    "max_slots",
+    "is_primary"
+  ],
+  "tbl_item_images": [
+    "image_id",
+    "item_id",
+    "uploaded_by",
+    "image_url",
+    "uploaded_at"
+  ],
+  "tbl_marketplace_interest": [
+    "interest_id",
+    "item_id",
+    "user_id",
+    "created_at"
+  ],
+  "tbl_marketplace_items": [
+    "item_id",
+    "user_id",
+    "title",
+    "description",
+    "category",
+    "image_url",
+    "status",
+    "created_at"
+  ],
+  "tbl_marketplace_messages": [
+    "message_id",
+    "sender_id",
+    "receiver_id",
+    "product_id",
+    "message_text",
+    "is_read",
+    "created_at"
+  ],
+  "tbl_moderation_appeals": [
+    "appeal_id",
+    "user_id",
+    "reason",
+    "status",
+    "admin_notes",
+    "created_at",
+    "updated_at"
+  ],
+  "tbl_moderation_logs": [
+    "log_id",
+    "user_id",
+    "previous_status",
+    "new_status",
+    "reason",
+    "risk_score",
+    "triggered_by",
+    "admin_id",
+    "created_at"
+  ],
+  "tbl_notifications": [
+    "notification_id",
+    "user_id",
+    "title",
+    "message",
+    "type",
+    "is_read",
+    "created_at"
+  ],
+  "tbl_pickup_items": [
+    "item_id",
+    "request_id",
+    "waste_type",
+    "quantity",
+    "created_at"
+  ],
+  "tbl_pickup_requests": [
+    "request_id",
+    "user_id",
+    "center_id",
+    "waste_type",
+    "quantity",
+    "status",
+    "created_at",
+    "updated_at",
+    "priority_score",
+    "scheduled_at",
+    "notes",
+    "rejection_reason",
+    "estimated_pickup_time",
+    "latitude",
+    "longitude",
+    "address",
+    "pickup_pin",
+    "verified_at",
+    "is_urgent"
+  ],
+  "tbl_reports": [
+    "report_id",
+    "request_id",
+    "user_id",
+    "center_id",
+    "report_type",
+    "date_generated",
+    "report_hash",
+    "impact_json",
+    "filters_json",
+    "generated_by"
+  ],
+  "tbl_security_logs": [
+    "log_id",
+    "user_id",
+    "event",
+    "details",
+    "ip_address",
+    "created_at"
+  ],
+  "tbl_special_waste_requests": [
+    "request_id",
+    "user_id",
+    "category",
+    "quantity_value",
+    "quantity_unit",
+    "description",
+    "preferred_date",
+    "location",
+    "status",
+    "admin_notes",
+    "created_at",
+    "image_url",
+    "center_id",
+    "is_mixed_waste",
+    "ai_analysis_json"
+  ],
+  "tbl_suspicious_flags": [
+    "flag_id",
+    "user_id",
+    "activity_type",
+    "reason",
+    "severity",
+    "status",
+    "created_at"
+  ],
+  "tbl_system_events": [
+    "event_id",
+    "event_type",
+    "actor_id",
+    "actor_role",
+    "target_resource",
+    "target_id",
+    "payload",
+    "ip_address",
+    "user_agent",
+    "severity",
+    "hash",
+    "created_at"
+  ],
+  "tbl_system_health_logs": [
+    "log_id",
+    "cpu_usage",
+    "memory_usage",
+    "active_connections",
+    "api_response_time_ms",
+    "status",
+    "recorded_at"
+  ],
+  "tbl_user_challenges": [
+    "user_challenge_id",
+    "user_id",
+    "challenge_id",
+    "progress",
+    "completed",
+    "last_updated"
+  ],
+  "tbl_user_history": [
+    "history_id",
+    "user_id",
+    "activity_type",
+    "details",
+    "created_at"
+  ],
+  "tbl_user_reports": [
+    "report_id",
+    "reporter_id",
+    "target_id",
+    "category",
+    "description",
+    "status",
+    "created_at"
+  ],
+  "tbl_users": [
+    "user_id",
+    "name",
+    "email",
+    "password_hash",
+    "language_pref",
+    "green_score",
+    "leaderboard_rank",
+    "created_at",
+    "profile_picture",
+    "phone",
+    "city",
+    "state",
+    "zip",
+    "country",
+    "role",
+    "status",
+    "eco_credits",
+    "carbon_saved_kg",
+    "monthly_points",
+    "streak",
+    "risk_score",
+    "failed_login_attempts",
+    "last_login_attempt"
+  ],
+  "tbl_waste_items": [
+    "item_id",
+    "item_name",
+    "category_id",
+    "disposal_guideline",
+    "safety_instructions"
+  ],
+  "tbl_waste_records": [
+    "record_id",
+    "user_id",
+    "waste_type",
+    "category",
+    "weight",
+    "quantity",
+    "location",
+    "scan_method",
+    "pickup_id",
+    "status",
+    "verified_by",
+    "comments",
+    "created_at",
+    "updated_at"
+  ]
+}

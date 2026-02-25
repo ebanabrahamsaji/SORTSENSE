@@ -14,6 +14,8 @@ const WASTE_RULES = {
 };
 
 // Create Request
+import moderationService from '../services/moderationService.js';
+
 // Create Request
 export const createRequest = async (req, res) => {
     console.log("Create Request Body:", req.body); // Debug log
@@ -30,6 +32,20 @@ export const createRequest = async (req, res) => {
         if (!description) missing.push('description');
         return res.status(400).json({ message: `Missing required fields: ${missing.join(', ')}` });
     }
+
+    // --- DUPLICATE DETECTION ---
+    try {
+        const [existing] = await db.query(
+            "SELECT * FROM tbl_special_waste_requests WHERE user_id = ? AND category = ? AND location = ? AND created_at > NOW() - INTERVAL 30 MINUTE",
+            [userId, category, location]
+        );
+        if (existing.length > 0) {
+            console.log(`⚠️ Duplicate special waste request from user ${userId}. Penalizing.`);
+            await moderationService.handleContentViolation(userId, 'DUPLICATE_ENTRY', `Repeated ${category} request from same location`);
+            return res.status(409).json({ message: "A similar request was recently submitted. This incident has been logged for moderation." });
+        }
+    } catch (e) { console.error("Duplicate check error:", e); }
+    // ---------------------------
 
     if (description.trim().length < 20) {
         return res.status(400).json({ message: 'Description must be at least 20 characters.' });
@@ -51,6 +67,14 @@ export const createRequest = async (req, res) => {
             'INSERT INTO tbl_special_waste_requests (user_id, category, quantity_value, quantity_unit, description, preferred_date, location, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [userId, category, qty, unit, description, preferredDate, location, imageUrl]
         );
+
+        // --- Notifications ---
+        try {
+            await db.query(
+                "INSERT INTO tbl_admin_notifications (type, title, message, reference_id) VALUES (?, ?, ?, ?)",
+                ['WASTE', 'New Special Waste Request', `User ${userId} requested ${category} (${qty} ${unit}).`, result.insertId]
+            );
+        } catch (e) { console.error("Admin Notif Error:", e); }
 
         res.status(201).json({ message: 'Special waste request submitted successfully.', id: result.insertId });
 
@@ -77,13 +101,15 @@ export const getUserRequests = async (req, res) => {
 export const getAllRequests = async (req, res) => {
     try {
         const [rows] = await db.query(`
-            SELECT r.*, u.name as user_name, u.email 
+            SELECT r.*, u.name as user_name, u.email, cc.center_name, r.assignment_status
             FROM tbl_special_waste_requests r 
             JOIN tbl_users u ON r.user_id = u.user_id 
+            LEFT JOIN tbl_collection_centers cc ON r.center_id = cc.center_id
             ORDER BY r.created_at DESC
         `);
         res.json(rows);
     } catch (error) {
+        console.error("Fetch All Error:", error);
         res.status(500).json({ message: 'Error fetching requests.' });
     }
 };
@@ -100,15 +126,24 @@ export const updateStatus = async (req, res) => {
         let updateQuery = 'UPDATE tbl_special_waste_requests SET status = ?, admin_notes = ?';
         const params = [status, adminNotes || ''];
 
-        if (status === 'Approved' && centerId) {
-            updateQuery += ', center_id = ?';
+        // If a center is selected, update center_id and set assignment_status to 'assigned'
+        if (centerId) {
+            updateQuery += ', center_id = ?, assignment_status = "assigned"';
             params.push(centerId);
+        } else if (status === 'Approved' || status === 'Scheduled') {
+            // If Approved/Scheduled but no centerId somehow, but we usually require it in frontend
+            // We set it to unassigned explicitly if centerId is missing for these states
+            updateQuery += ', assignment_status = "unassigned"';
         }
 
         updateQuery += ' WHERE request_id = ?';
         params.push(requestId);
 
-        await db.query(updateQuery, params);
+        const [result] = await db.query(updateQuery, params);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Request not found.' });
+        }
 
         // Fetch Request Details for Notifications
         const [rows] = await db.query('SELECT r.*, u.email, u.name, u.user_id FROM tbl_special_waste_requests r JOIN tbl_users u ON r.user_id = u.user_id WHERE r.request_id = ?', [requestId]);
@@ -123,11 +158,19 @@ export const updateStatus = async (req, res) => {
                 try {
                     const title = `Special Waste ${status}`;
                     const message = `Your request for ${reqData.category} has been ${status}. ${adminNotes ? 'Note: ' + adminNotes : ''}`;
-                    // Assuming tbl_notifications exists
-                    await db.query('INSERT INTO tbl_notifications (user_id, title, message) VALUES (?, ?, ?)',
-                        [reqData.user_id, title, message]);
+                    await db.query('INSERT INTO tbl_notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)',
+                        [reqData.user_id, title, message, status === 'Rejected' ? 'ALERT' : 'PICKUP']);
+
+                    // Notify Center if assigned
+                    const targetCenter = centerId || reqData.center_id;
+                    if (targetCenter) {
+                        await db.query(
+                            "INSERT INTO tbl_center_notifications (center_id, type, title, message) VALUES (?, ?, ?, ?)",
+                            [targetCenter, 'PICKUP', 'Special Waste Assigned', `A ${reqData.category} request (#${requestId}) has been ${status} and assigned to you.`]
+                        );
+                    }
                 } catch (e) {
-                    // Ignore notif table errors if any
+                    console.error("Notif Error:", e);
                 }
             }
         }

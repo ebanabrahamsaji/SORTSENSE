@@ -13,6 +13,40 @@
     <link rel="stylesheet" href="../css/dashboard.css">
     <script src="../js/script.js"></script>
     <style>
+        .filter-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .filter-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .filter-btn:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .risk-progress-container {
+            width: 80px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 4px;
+        }
+
+        .risk-progress-bar {
+            height: 100%;
+            border-radius: 3px;
+        }
+
         .admin-sidebar {
             background: rgba(30, 30, 40, 0.95);
         }
@@ -75,14 +109,22 @@
                 <h2>User Management</h2>
                 <div class="header-search">
                     <i class="ri-search-line"></i>
-                    <input type="text" id="userSearchInput" placeholder="Search users..." onkeyup="filterUsers()">
+                    <input type="text" id="userSearchInput" placeholder="Search users/email..." onkeyup="filterUsers()">
                 </div>
                 <div class="header-profile">
-                    <div class="user-info"><span style="font-weight: 600;">Admin User</span></div>
+                    <div class="user-info"><span id="adminNameDisplay" style="font-weight: 600;">Admin User</span></div>
                 </div>
             </header>
 
             <div class="dashboard-content" style="padding: 2rem;">
+                <!-- Filters Section -->
+                <div class="filter-section" style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button class="filter-btn active" onclick="setStatusFilter('all')">Show All</button>
+                    <button class="filter-btn" onclick="setStatusFilter('active')">Active</button>
+                    <button class="filter-btn" onclick="setStatusFilter('flagged')">Flagged</button>
+                    <button class="filter-btn" onclick="setStatusFilter('suspended')">Suspended</button>
+                    <button class="filter-btn" onclick="setStatusFilter('high-risk')">High Risk (>50)</button>
+                </div>
                 <div class="section-card"
                     style="background: rgba(30, 41, 59, 0.5); padding: 1.5rem; border-radius: 16px;">
                     <div class="section-title">
@@ -93,9 +135,10 @@
                             <tr style="border-bottom: 1px solid #334155; text-align: left;">
                                 <th style="padding: 10px;">User</th>
                                 <th style="padding: 10px;">Email</th>
-                                <th style="padding: 10px;">Role</th>
-                                <th style="padding: 10px;">Joined</th>
+                                <th style="padding: 10px;">Risk Score</th>
+                                <th style="padding: 10px;">Reports</th>
                                 <th style="padding: 10px;">Status</th>
+                                <th style="padding: 10px;">Last Active</th>
                                 <th style="padding: 10px;">Action</th>
                             </tr>
                         </thead>
@@ -110,6 +153,9 @@
         </main>
     </div>
     <script src="../js/config.js"></script>
+    <script src="../js/script.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/admin-auth.js"></script>
     <script src="../js/admin-users.js"></script>
 </body>
 

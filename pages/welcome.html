@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script>
+        // Security Redirect: Welcome page is disabled to streamline login flow.
+        const role = localStorage.getItem('app_user_role') || localStorage.getItem('userRole') || 'USER';
+        if (role === 'ADMIN') window.location.replace('admin-dashboard.html');
+        else if (role === 'CENTER') window.location.replace('center-dashboard.html');
+        else window.location.replace('dashboard.html');
+    </script>
+</head>
+
+<body>
+    <p>Redirecting to dashboard...</p>
+</body>
+
+</html>

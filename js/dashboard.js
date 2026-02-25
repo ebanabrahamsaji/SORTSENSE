@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!userEmail || !userId) {
         // Not logged in or Wrong Role
-        window.location.href = '../index.html';
+        window.location.href = 'login.html?role=user';
         return;
     }
 
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             localStorage.clear(); // Clear all user data
-            window.location.href = '../index.html';
+            window.location.href = 'login.html?role=user';
         });
     }
 
@@ -245,17 +245,21 @@ function initNotifications() {
 }
 
 async function loadNotifications(listContainer, dot) {
-    const userId = localStorage.getItem('userId');
+    const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
     if (!userId) return;
 
-    listContainer.innerHTML = '<div style="padding:1rem; text-align:center; color:gray;">Loading...</div>';
+    listContainer.innerHTML = '<div style="padding:1.5rem; text-align:center; color:#94a3b8;"><i class="ri-loader-4-line ri-spin" style="font-size:1.5rem;"></i></div>';
 
     try {
-        const res = await fetch(`/api/user/${userId}/notifications`);
+        const res = await fetch(`/api/user/notifications/v1/${userId}`);
         const data = await res.json();
 
         if (!Array.isArray(data) || data.length === 0) {
-            listContainer.innerHTML = '<div class="no-notifs">No notifications yet.</div>';
+            listContainer.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: #94a3b8;">
+                    <i class="ri-notification-off-line" style="font-size: 2.5rem; display: block; margin-bottom: 0.5rem; opacity: 0.3;"></i>
+                    No notifications yet.
+                </div>`;
             return;
         }
 
@@ -263,36 +267,66 @@ async function loadNotifications(listContainer, dot) {
         data.forEach(notif => {
             const item = document.createElement('div');
             item.className = `notif-item ${notif.is_read ? '' : 'unread'}`;
+
+            // Premium icons based on type
+            let icon = 'ri-notification-3-line';
+            let iconColor = '#60a5fa';
+            if (notif.type === 'REWARD' || notif.title?.toLowerCase().includes('reward')) { icon = 'ri-medal-line'; iconColor = '#f59e0b'; }
+            else if (notif.type === 'PICKUP' || notif.title?.toLowerCase().includes('pickup')) { icon = 'ri-truck-line'; iconColor = '#10b981'; }
+            else if (notif.type === 'ALERT' || notif.title?.toLowerCase().includes('alert')) { icon = 'ri-error-warning-line'; iconColor = '#ef4444'; }
+            else if (notif.type === 'MARKETPLACE' || notif.title?.toLowerCase().includes('marketplace')) { icon = 'ri-shopping-bag-line'; iconColor = '#8b5cf6'; }
+            else if (notif.type === 'MESSAGE' || notif.title?.toLowerCase().includes('message')) { icon = 'ri-chat-3-line'; iconColor = '#3b82f6'; }
+
             item.innerHTML = `
-                <span class="notif-title">${notif.title}</span>
-                <span class="notif-msg">${notif.message}</span>
-                <span class="notif-time">${new Date(notif.created_at).toLocaleString()}</span>
+                <div style="display: flex; gap: 12px; align-items: flex-start; padding: 10px; border-radius: 8px; transition: background 0.2s;">
+                    <div style="background: ${iconColor}15; color: ${iconColor}; width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                         <i class="${icon}" style="font-size:1.3rem;"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <span class="notif-title" style="font-weight: 600; color: white; font-size: 0.95rem;">${notif.title || 'Notification'}</span>
+                        <span class="notif-msg" style="color: #94a3b8; font-size: 0.85rem; display: block; margin-top:2px; line-height: 1.4;">${notif.message}</span>
+                        <span class="notif-time" style="color: #64748b; font-size: 0.75rem; margin-top: 6px; display: flex; align-items: center; gap: 4px;">
+                            <i class="ri-time-line" style="font-size: 0.7rem;"></i> ${new Date(notif.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    </div>
+                    ${!notif.is_read ? `<div style="width:8px; height:8px; background:#10b981; border-radius:50%; margin-top:5px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);"></div>` : ''}
+                </div>
             `;
 
             // Mark as read on click
-            if (!notif.is_read) {
-                item.addEventListener('click', async () => {
+            item.style.cursor = 'pointer';
+            item.addEventListener('click', async () => {
+                if (!notif.is_read) {
                     await fetch(`/api/user/notifications/${notif.notification_id}/read`, { method: 'PUT' });
                     item.classList.remove('unread');
-                    checkUnread(dot); // Re-check dot status
-                });
-            }
+                    const dotIndicator = item.querySelector('div[style*="background:#10b981"]');
+                    if (dotIndicator) dotIndicator.style.display = 'none';
+                    checkUnread(dot);
+                }
+
+                // Redirect logic based on notification type/content
+                if (notif.type === 'MARKETPLACE' || notif.type === 'MESSAGE') {
+                    // If we had a marketplace messages page, we would redirect here. 
+                    // For now, let's assume it's coming soon or redirect to a relevant section if available.
+                    console.log("Marketplace notification clicked");
+                }
+            });
 
             listContainer.appendChild(item);
         });
 
     } catch (e) {
         console.error("Notif Load Error:", e);
-        listContainer.innerHTML = '<div class="no-notifs" style="color:red;">Error loading notifications.</div>';
+        listContainer.innerHTML = '<div class="no-notifs" style="color:#ef4444; padding:1.5rem; text-align:center;"><i class="ri-error-warning-line" style="font-size:1.5rem;"></i><br>Error loading notifications.</div>';
     }
 }
 
 async function checkUnread(dot) {
-    const userId = window.currentUserId || localStorage.getItem('app_user_id');
+    const userId = window.currentUserId || localStorage.getItem('userId') || localStorage.getItem('app_user_id');
     if (!userId || !dot) return;
 
     try {
-        const res = await fetch(`/api/user/${userId}/notifications`);
+        const res = await fetch(`/api/user/notifications/v1/${userId}`);
         const data = await res.json();
         const hasUnread = Array.isArray(data) && data.some(n => !n.is_read);
         dot.style.display = hasUnread ? 'block' : 'none';
@@ -300,13 +334,17 @@ async function checkUnread(dot) {
 }
 
 function initHistoryLink() {
-    const historyLink = document.querySelector('a span[data-i18n="history_menu"]');
-    if (historyLink && historyLink.parentElement) {
-        historyLink.parentElement.addEventListener('click', (e) => {
-            e.preventDefault();
-            showUserHistoryModal();
-        });
-    }
+    // Both sidebar link and any other history trigger
+    const historyLinks = document.querySelectorAll('a[href="history.html"], span[data-i18n="history_menu"]');
+    historyLinks.forEach(link => {
+        const parent = link.tagName === 'SPAN' ? link.parentElement : link;
+        if (parent) {
+            parent.addEventListener('click', (e) => {
+                e.preventDefault();
+                showUserHistoryModal();
+            });
+        }
+    });
 }
 
 function showUserHistoryModal() {
@@ -344,13 +382,13 @@ function showUserHistoryModal() {
         };
 
         modal.querySelector('#clearHistBtn').onclick = async () => {
-            window.showCustomConfirm("Clear History", "Are you sure you want to clear your Search & Scan history? pickup requests will remain.", async () => {
-                const userId = localStorage.getItem('userId');
+            window.showCustomConfirm("Clear History", "Are you sure you want to clear your activity history? pickup requests will remain.", async () => {
+                const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
                 try {
                     await fetch(`/api/user/${userId}/history`, { method: 'DELETE' });
                     loadUserHistory(document.getElementById('histContent'));
-                    window.showSuccess("History cleared.");
-                } catch (e) { window.showError("Failed to clear history."); }
+                    if (window.showSuccess) window.showSuccess("History cleared.");
+                } catch (e) { if (window.showError) window.showError("Failed to clear history."); }
             });
         };
     }
@@ -360,131 +398,113 @@ function showUserHistoryModal() {
 }
 
 async function loadHistory() {
-    const historyContainer = document.querySelector('.history-list');
+    const historyContainer = document.querySelector('.history-list') || document.getElementById('histContent');
     if (!historyContainer) return;
 
-    historyContainer.innerHTML = '<p class="loading-text">Loading...</p>';
-
-    try {
-        // Using window.currentUserId set at top
-        const res = await fetch(`/api/user/history?userId=${window.currentUserId || localStorage.getItem('app_user_id')}`);
-        const data = await res.json();
-
-        if (!Array.isArray(data) || data.length === 0) {
-            historyContainer.innerHTML = '<p style="text-align:center;">No activity recorded yet.</p>';
-            return;
-        }
-
-        let html = '<table style="width:100%; border-collapse:collapse; color:white; font-size:0.9rem;">';
-        html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left;"><th style="padding:10px;">Date</th><th style="padding:10px;">Activity</th><th style="padding:10px;">Details</th><th style="padding:10px;">Status</th></tr>';
-
-        data.forEach(item => {
-            let detailText = '';
-            if (item.type === 'SCAN') {
-                const d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-                detailText = `Scanned: <strong>${d.category}</strong> (${Math.round(d.confidence || 0)}%)`;
-            } else if (item.type === 'SEARCH') {
-                const d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-                detailText = `Searched: "<strong>${d.query}</strong>"`;
-            } else if (item.type === 'PICKUP') {
-                const slot = item.details.timeSlot || (item.details.address && item.details.address.includes('SLOT:') ? item.details.address.split('SLOT:')[1] : "");
-                detailText = `${item.details.wasteTypes} (${item.details.quantity}kg)${slot ? ` <br><span style="font-size:0.8rem; color:#f59e0b;"><i class="ri-time-line"></i> ${slot}</span>` : ''}`;
-            }
-
-            let sColor = '#94a3b8';
-            let statusText = item.status || 'Done';
-            if (statusText === 'Completed' || statusText === 'Approved') sColor = '#10b981';
-            if (statusText === 'Rejected' || statusText === 'Cancelled') sColor = '#ef4444';
-            if (statusText === 'Pending') sColor = '#f59e0b';
-
-            // Override for actions
-            if (item.type === 'SCAN' || item.type === 'SEARCH') {
-                statusText = 'Recorded';
-                sColor = '#3b82f6';
-            }
-
-            html += `
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <td style="padding:12px; color:#94a3b8;">${new Date(item.date).toLocaleDateString()}</td>
-                    <td style="padding:12px; font-weight:600;">
-                        ${item.type === 'PICKUP' ? '<i class="ri-truck-line"></i> Pickup' :
-                    item.type === 'SCAN' ? '<i class="ri-camera-line"></i> Scan' :
-                        '<i class="ri-search-line"></i> Search'}
-                    </td>
-                    <td style="padding:12px;">${detailText}</td>
-                    <td style="padding:12px;"><span style="color:${sColor}; border:1px solid ${sColor}; padding:2px 8px; border-radius:4px; font-size:0.75rem;">${statusText}</span></td>
-                </tr>
-            `;
-        });
-
-        html += '</table>';
-        historyContainer.innerHTML = html;
-
-    } catch (e) {
-        historyContainer.innerText = "Failed to load history.";
-        console.error(e);
-    }
+    await loadUserHistory(historyContainer);
 }
 
 async function loadUserHistory(container) {
-    const userId = window.currentUserId || localStorage.getItem('app_user_id');
+    const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+    if (!userId) {
+        container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">User ID not found. Please log in again.</p>';
+        return;
+    }
+
+    container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;"><i class="ri-loader-4-line ri-spin" style="font-size:1.5rem;"></i></p>';
+
     try {
         const res = await fetch(`/api/user/${userId}/history`);
-        const data = await res.json();
+
+        // Check for real server error before attempting JSON parse
+        if (!res.ok) {
+            throw new Error(`Server error: ${res.status}`);
+        }
+
+        let data;
+        try {
+            data = await res.json();
+        } catch (parseErr) {
+            throw new Error('Invalid response from server.');
+        }
 
         if (!Array.isArray(data) || data.length === 0) {
-            container.innerHTML = '<p style="text-align:center;">No activity recorded yet.</p>';
+            container.innerHTML = `
+                <div style="text-align:center; padding:30px; color:#94a3b8;">
+                    <i class="ri-history-line" style="font-size:2.5rem; display:block; margin-bottom:10px; opacity:0.3;"></i>
+                    No activity recorded yet.
+                </div>`;
             return;
         }
+
+        // Helper: safely parse details regardless of input type
+        const safeDetails = (raw) => {
+            if (!raw) return {};
+            if (typeof raw === 'object') return raw;
+            try { return JSON.parse(raw); } catch { return {}; }
+        };
 
         let html = '<table style="width:100%; border-collapse:collapse; color:white; font-size:0.9rem;">';
         html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.1); text-align:left;"><th style="padding:10px;">Date</th><th style="padding:10px;">Activity</th><th style="padding:10px;">Details</th><th style="padding:10px;">Status</th></tr>';
 
         data.forEach(item => {
-            let detailText = '';
-            if (item.type === 'SCAN') {
-                const d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-                detailText = `Scanned: <strong>${d.category}</strong> (${Math.round(d.confidence || 0)}%)`;
-            } else if (item.type === 'SEARCH') {
-                const d = typeof item.details === 'string' ? JSON.parse(item.details) : item.details;
-                detailText = `Searched: "<strong>${d.query}</strong>"`;
-            } else if (item.type === 'PICKUP') {
-                const slot = item.details.timeSlot || (item.details.address && item.details.address.includes('SLOT:') ? item.details.address.split('SLOT:')[1] : "");
-                detailText = `${item.details.wasteTypes} (${item.details.quantity}kg)${slot ? ` <br><span style="font-size:0.8rem; color:#f59e0b;"><i class="ri-time-line"></i> ${slot}</span>` : ''}`;
+            try {
+                const details = safeDetails(item.details);
+                let detailText = '';
+
+                if (item.type === 'SCAN') {
+                    detailText = `Scanned: <strong>${details.category || 'Unknown'}</strong> (${Math.round(details.confidence || 0)}%)`;
+                } else if (item.type === 'SEARCH') {
+                    detailText = `Searched: "<strong>${details.query || ''}</strong>"`;
+                } else if (item.type === 'BOT_CHAT') {
+                    detailText = `Bot Query: "<em>${details.message || ''}</em>"`;
+                } else if (item.type === 'PICKUP') {
+                    const slot = details.timeSlot || (details.address && details.address.includes('SLOT:') ? details.address.split('SLOT:')[1] : '');
+                    detailText = `${details.wasteTypes || 'Waste'} (${details.quantity || 0}kg)${slot ? ` <br><span style="font-size:0.8rem; color:#f59e0b;"><i class="ri-time-line"></i> ${slot}</span>` : ''}`;
+                } else {
+                    detailText = details.query || details.category || details.message || JSON.stringify(details).substring(0, 60);
+                }
+
+                let sColor = '#94a3b8';
+                let statusText = item.status || 'Done';
+                if (statusText === 'Completed' || statusText === 'Approved') sColor = '#10b981';
+                if (statusText === 'Rejected' || statusText === 'Cancelled') sColor = '#ef4444';
+                if (statusText === 'Pending') sColor = '#f59e0b';
+                if (['SCAN', 'SEARCH', 'BOT_CHAT'].includes(item.type)) { statusText = 'Recorded'; sColor = '#3b82f6'; }
+
+                const dateStr = item.date ? new Date(item.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+
+                html += `
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:12px; color:#94a3b8; white-space:nowrap;">${dateStr}</td>
+                        <td style="padding:12px; font-weight:600;">
+                            ${item.type === 'PICKUP' ? '<i class="ri-truck-line"></i> Pickup' :
+                        item.type === 'SCAN' ? '<i class="ri-camera-line"></i> Scan' :
+                            item.type === 'BOT_CHAT' ? '<i class="ri-chat-smile-2-line"></i> Bot' :
+                                '<i class="ri-search-line"></i> Search'}
+                        </td>
+                        <td style="padding:12px;">${detailText}</td>
+                        <td style="padding:12px;"><span style="color:${sColor}; border:1px solid ${sColor}; padding:2px 8px; border-radius:4px; font-size:0.75rem;">${statusText}</span></td>
+                    </tr>`;
+            } catch (rowErr) {
+                console.warn('Skipping malformed history row:', rowErr);
             }
-
-            let sColor = '#94a3b8';
-            let statusText = item.status || 'Done';
-            if (statusText === 'Completed' || statusText === 'Approved') sColor = '#10b981';
-            if (statusText === 'Rejected' || statusText === 'Cancelled') sColor = '#ef4444';
-            if (statusText === 'Pending') sColor = '#f59e0b';
-
-            // Override for actions
-            if (item.type === 'SCAN' || item.type === 'SEARCH') {
-                statusText = 'Recorded';
-                sColor = '#3b82f6';
-            }
-
-            html += `
-                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <td style="padding:12px; color:#94a3b8;">${new Date(item.date).toLocaleDateString()}</td>
-                    <td style="padding:12px; font-weight:600;">
-                        ${item.type === 'PICKUP' ? '<i class="ri-truck-line"></i> Pickup' :
-                    item.type === 'SCAN' ? '<i class="ri-camera-line"></i> Scan' :
-                        '<i class="ri-search-line"></i> Search'}
-                    </td>
-                    <td style="padding:12px;">${detailText}</td>
-                    <td style="padding:12px;"><span style="color:${sColor}; border:1px solid ${sColor}; padding:2px 8px; border-radius:4px; font-size:0.75rem;">${statusText}</span></td>
-                </tr>
-            `;
         });
 
         html += '</table>';
         container.innerHTML = html;
 
     } catch (e) {
-        container.innerText = "Failed to load history.";
-        console.error(e);
+        console.error('History load error:', e);
+        container.innerHTML = `
+            <div style="text-align:center; padding:30px; color:#ef4444;">
+                <i class="ri-error-warning-line" style="font-size:2rem; display:block; margin-bottom:8px;"></i>
+                <p style="margin:0 0 12px;">Could not load history.</p>
+                <button onclick="loadUserHistory(this.closest('#histContent') || this.parentElement.parentElement)" 
+                    style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#ef4444; padding:6px 16px; border-radius:8px; cursor:pointer; font-size:0.85rem;">
+                    <i class="ri-refresh-line"></i> Retry
+                </button>
+            </div>`;
     }
 }
 
@@ -500,14 +520,14 @@ async function performQuickSearch(query) {
     searchBtn.disabled = true;
 
     try {
-        const response = await fetch('http://localhost:8000/api/waste/search', {
+        const response = await fetch('/api/waste/search', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 query: query,
-                userId: localStorage.getItem('userId')
+                userId: window.currentUserId || localStorage.getItem('app_user_id')
             })
         });
 
@@ -821,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // }
 
     function checkPickupStatus() {
-        const userId = localStorage.getItem('userId');
+        const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
         if (!userId) return;
 
         fetch(`/api/pickup/user/${userId}`)
@@ -840,7 +860,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const wasteType = typeSelect.value;
         const quantity = parseFloat(quantityInput.value);
-        const userId = localStorage.getItem('userId');
+        const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
 
         // 1. Validate Selection
         if (!wasteType) {
@@ -1410,7 +1430,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/api/chatbot/query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: msg })
+                body: JSON.stringify({
+                    message: msg,
+                    userId: window.currentUserId || localStorage.getItem('app_user_id')
+                })
             });
             const data = await res.json();
 
@@ -1550,80 +1573,69 @@ function disableBooking(message) {
 }
 
 // --- Robust Navigation Logic ---
-document.addEventListener("DOMContentLoaded", function () {
+// --- New Features (Pickup Reminder & Eco Score) ---
 
-    // --- Rewards Nav ---
-    const rewardsBtn = document.getElementById("rewardsNav");
-    const rewardsSection = document.getElementById("rewardsSection");
+// 1️⃣ Pickup Reminder
+window.checkPickupReminder = function (pickups) {
+    if (!pickups || pickups.length === 0) return;
 
-    // Navigation handled by inline script in dashboard.html for better section control
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
+    pickups.forEach(p => {
+        const dateStr = p.scheduled_date || p.created_at;
+        const pickupDate = new Date(dateStr);
+        pickupDate.setHours(0, 0, 0, 0);
 
-    // --- New Features (Pickup Reminder & Eco Score) ---
+        const diffTime = pickupDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    // 1️⃣ Pickup Reminder
-    window.checkPickupReminder = function (pickups) {
-        if (!pickups || pickups.length === 0) return;
+        if (diffDays === 1) {
+            showToast("🔔 Reminder: Pickup scheduled for tomorrow!", "info");
+        } else if (diffDays === 0) {
+            showToast("🔔 Reminder: You have a pickup scheduled today!", "info");
+        } else if (p.status === 'Completed' && diffDays === 0) {
+            showToast("✅ Pickup completed successfully!", "success");
+        }
+    });
+}
 
-        const today = new Date();
-        // Reset time for accurate date comparison
-        today.setHours(0, 0, 0, 0);
+// 2️⃣ Eco Score Progress Bar
+window.updateEcoScore = function (points) {
+    const max = 2000;
+    const safePoints = Math.max(0, Math.min(points, max));
+    const percent = (safePoints / max) * 100;
 
-        pickups.forEach(p => {
-            // Use scheduled_date if available (preferred), else created_at
-            const dateStr = p.scheduled_date || p.created_at;
-            const pickupDate = new Date(dateStr);
-            pickupDate.setHours(0, 0, 0, 0);
+    const fill = document.getElementById("ecoFill");
+    const text = document.getElementById("ecoText");
 
-            // Calculate difference in days
-            const diffTime = pickupDate - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (fill) fill.style.width = percent + "%";
+    if (text) text.textContent = safePoints + " / " + max;
+};
 
-            if (diffDays === 1) {
-                showToast("🔔 Reminder: Pickup scheduled for tomorrow!", "info");
-            } else if (diffDays === 0) {
-                showToast("🔔 Reminder: You have a pickup scheduled today!", "info");
-            } else if (p.status === 'Completed' && diffDays === 0) {
-                showToast("✅ Pickup completed successfully!", "success");
-            }
+// ── Badge Check (Gamification) ────────────────────
+window.checkBadges = async function (uid) {
+    const id = uid || window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+    if (!id) return;
+    try {
+        const res = await fetch('/api/gamification/check-badges', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: id })
         });
-    }
-
-    // 2️⃣ Eco Score Progress Bar
-    window.updateEcoScore = function (points) {
-        const max = 2000;
-        // Clamp points between 0 and max
-        const safePoints = Math.max(0, Math.min(points, max));
-        const percent = (safePoints / max) * 100;
-
-        const fill = document.getElementById("ecoFill");
-        const text = document.getElementById("ecoText");
-
-        if (fill) fill.style.width = percent + "%";
-        if (text) text.textContent = safePoints + " / " + max;
-    };
-
-    // ── Badge Check (Gamification) ────────────────────
-    window.checkBadges = async function (uid) {
-        const id = uid || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
-        if (!id) return;
-        try {
-            const res = await fetch('/api/gamification/check-badges', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: id })
+        const data = await res.json();
+        if (data.unlocked && data.unlocked.length > 0) {
+            data.unlocked.forEach((badge, i) => {
+                setTimeout(() => {
+                    if (window.showToast) window.showToast(`Badge Unlocked: ${badge}`, 'success', '🏅 Achievement');
+                }, i * 800);
             });
-            const data = await res.json();
-            if (data.unlocked && data.unlocked.length > 0) {
-                data.unlocked.forEach((badge, i) => {
-                    setTimeout(() => {
-                        if (window.showToast) window.showToast(`Badge Unlocked: ${badge}`, 'success', '🏅 Achievement');
-                    }, i * 800);
-                });
-            }
-        } catch (e) { /* silent fail */ }
-    };
+        }
+    } catch (e) { /* silent fail */ }
+};
 
+document.addEventListener("DOMContentLoaded", function () {
+    // Navigation handled by inline script in dashboard.html for better section control
 });
 
 /* ═══════════════════════════════════════
@@ -2025,7 +2037,7 @@ window.toggleRewardLog = function () {
     }
 }
 async function loadDashboardReports() {
-    const userId = window.currentUserId || localStorage.getItem('app_user_id');
+    const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
     const tbody = document.getElementById('dashboardReportsBody');
     if (!tbody || !userId) return;
 
@@ -2072,7 +2084,7 @@ async function loadDashboardReports() {
 }
 
 window.downloadReportPDF = async function (reportId, requestId) {
-    const userId = window.currentUserId || localStorage.getItem('app_user_id');
+    const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
     if (!userId) return window.showError("Auth session expired.");
 
     window.showInfo("Preparing your PDF report...");

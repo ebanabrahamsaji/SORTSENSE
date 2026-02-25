@@ -102,7 +102,7 @@ The frontend is ready! Now you need to:
 SORTSENSE/
 ├── index.html              # Landing page
 ├── pages/
-│   ├── login-admin.html    # Admin login (NEW & PROFESSIONAL)
+│   ├── login.html          # Unified login (User, Center, Admin)
 │   ├── login-user.html     # User login (with Google Sign-In)
 │   └── register-user.html  # User registration (with Google Sign-Up)
 ├── css/
@@ -147,7 +147,7 @@ Edit `js/config.js` to update:
 | Home | `/index.html` | Landing page with hero section |
 | User Login | `/pages/login-user.html` | User authentication |
 | User Register | `/pages/register-user.html` | New user signup |
-| **Admin Login** | `/pages/login-admin.html` | **Professional admin portal** |
+| **Admin Login** | `/pages/login.html?role=admin` | **Unified admin portal** |
 
 ## 🎯 Access Points
 
