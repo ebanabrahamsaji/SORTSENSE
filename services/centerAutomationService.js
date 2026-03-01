@@ -4,20 +4,19 @@ export const runCenterAutomation = async () => {
     try {
         // console.log("🤖 Running Center Automation Tasks...");
 
-        // 1. Mark Idle: IF no activity for 30 minutes
+        // 1. Auto-Offline: IF no heartbeat for > 5 minutes, set is_online = 0
         await db.query(`
             UPDATE tbl_collection_centers 
-            SET center_status = 'idle' 
-            WHERE center_status = 'online' 
-            AND last_active_time < NOW() - INTERVAL 30 MINUTE
+            SET is_online = 0, center_status = 'CLOSED', offline_since = NOW()
+            WHERE is_online = 1 
+            AND (last_seen < NOW() - INTERVAL 5 MINUTE OR last_seen IS NULL)
         `);
 
-        // 2. Mark Offline: IF no activity for 4 hours (Safety Session Timeout)
-        // This handles cases where center closed tab without logging out
+        // 2. Safety Session Timeout: IF no activity for 4 hours
         await db.query(`
             UPDATE tbl_collection_centers 
-            SET center_status = 'offline', offline_since = NOW()
-            WHERE center_status != 'offline' 
+            SET is_online = 0, center_status = 'CLOSED', offline_since = NOW()
+            WHERE is_online = 1 
             AND last_active_time < NOW() - INTERVAL 4 HOUR
         `);
 

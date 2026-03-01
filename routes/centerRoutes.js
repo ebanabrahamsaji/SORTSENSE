@@ -2,7 +2,7 @@ import express from 'express';
 import {
     getCollectionCenters, getCenterById, addCenter, deleteCenter, setPrimaryCenter, addCenterUser,
     getCenterNotifications, markCenterNotificationRead, clearCenterNotifications,
-    registerCenter, centerLogin
+    registerCenter, centerLogin, centerHeartbeat, centerLogout
 } from '../controllers/centerController.js';
 
 const router = express.Router();
@@ -14,6 +14,9 @@ router.post('/set-primary/:id', setPrimaryCenter);
 router.post('/add-user', addCenterUser); // Add new center user account
 router.delete('/:id', deleteCenter);
 
+// Heartbeat & Logout (Item 2 & 4 Sync)
+router.post('/heartbeat', centerHeartbeat);
+router.post('/logout', centerLogout);
 // Auth
 router.post('/register', registerCenter);
 router.post('/login', centerLogin);

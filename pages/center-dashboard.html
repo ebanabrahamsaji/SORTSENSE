@@ -858,7 +858,7 @@
                             <input type="text" id="msgInput" placeholder="Type a message to admin..."
                                 style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 0.8rem 1.2rem; border-radius: 10px; color: white; outline: none;">
                             <button onclick="sendMessage()"
-                                style="background: #3b82f6; color: white; border: none; padding: 0 1.5rem; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                style="background: #10b981; color: white; border: none; padding: 0 1.5rem; border-radius: 10px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
                                 <span>Send</span> <i class="ri-send-plane-2-line"></i>
                             </button>
                         </div>
@@ -933,37 +933,84 @@
         </div>
     </div>
 
+    <!-- Special Waste Details Modal -->
+    <div id="swDetailsModal" class="modal-overlay"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 1010; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.2s;">
+        <div class="modal-content"
+            style="background: #1e293b; padding: 2rem; border-radius: 16px; width: 90%; max-width: 500px; border: 1px solid rgba(255, 255, 255, 0.1); transform: scale(0.95); transition: transform 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="margin:0; font-size: 1.25rem;">Special Waste Request</h3>
+                <button onclick="closeSwDetailsModal()"
+                    style="background:none; border:none; color:gray; cursor:pointer; font-size:1.5rem;"><i
+                        class="ri-close-line"></i></button>
+            </div>
+            <div id="swDetailsContent" style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Content here -->
+            </div>
+            <div style="margin-top: 2rem; text-align: right;">
+                <button onclick="closeSwDetailsModal()"
+                    style="padding: 0.75rem 1.5rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: transparent; color: white; cursor: pointer; font-weight: 600;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        let allRequests = []; // Global store
+        // Standardize Confirmation Modals
+        window.showCustomConfirm = (title, text, onConfirm) => showModal({ title, text }, onConfirm);
+
+        let allRequests = [];      // Global data store
+        let _currentSwData = [];    // Local Special Waste data store
+        let _lastKnownCount = -1; // For new-arrival detection
+        let _lastKnownLatest = -1; // Highest request_id seen
+        let _pollController = null; // AbortController for active poll
+        let _pollTimer = null; // setTimeout handle
+        let _pollRunning = false; // Guard against overlapping polls
 
         function sText(str, fallback = '') {
             if (!str || str === 'null' || str === 'undefined') return fallback;
             return str;
         }
 
-        // --- STABLE MODE: GLOBAL GUARDS (Item 9 & Patch) ---
+        // ── STABLE: global guards ──
         const STABLE = {
             isActive: () => document.hasFocus(),
             isFetching: false,
-
-            // Stop Double Rendering (Item 1)
             safeUpdate: (id, html) => {
                 const el = document.getElementById(id);
-                if (!el) return;
-                // Only update if content changed to prevent flicker (Item 1)
-                if (el.innerHTML !== html) el.innerHTML = html;
+                if (!el || el.innerHTML === html) return;
+                el.innerHTML = html;
             },
-
-            // Fix NULL/Undefined Rendering (Item 4)
-            s: (val, fallback = "—") => (val !== null && val !== undefined && val !== "" && val !== "null") ? val : fallback
+            s: (val, fallback = '—') =>
+                (val !== null && val !== undefined && val !== '' && val !== 'null') ? val : fallback
         };
 
+        // ── Toast notification (non-intrusive) ──
+        function showAssignmentToast(msg) {
+            let toast = document.getElementById('_assignToast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = '_assignToast';
+                Object.assign(toast.style, {
+                    position: 'fixed', bottom: '24px', right: '24px',
+                    background: 'linear-gradient(135deg,#1e40af,#0f766e)',
+                    color: 'white', padding: '1rem 1.4rem', borderRadius: '14px',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                    fontSize: '0.9rem', lineHeight: '1.5', maxWidth: '360px',
+                    zIndex: '9999', transition: 'opacity 0.3s', opacity: '0',
+                    display: 'flex', alignItems: 'flex-start', gap: '0.75rem'
+                });
+                document.body.appendChild(toast);
+            }
+            toast.innerHTML = `<i class="ri-notification-3-fill" style="font-size:1.4rem;flex-shrink:0;margin-top:2px;"></i><span>${msg}</span>`;
+            toast.style.opacity = '1';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 6000);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Auth Check (Center Context)
-            let centerId = localStorage.getItem('center_sys_id');
+            const centerId = localStorage.getItem('center_sys_id');
             const centerEmail = localStorage.getItem('center_sys_email');
 
-            // Fallback for immediate migration if needed
             if (!centerId) {
                 window.location.href = 'login.html?role=center';
                 return;
@@ -973,51 +1020,45 @@
             loadRequests();
             initCenterNotifications();
 
-            // Logout Logic
+            // Logout
             document.getElementById('logoutBtn').addEventListener('click', () => {
                 showModal({
-                    type: 'danger',
-                    title: "Logout",
-                    text: "Logout from Collection Center?",
-                    confirmBtnText: "Yes, Logout"
-                }, () => {
-                    if (window.logoutSafely) {
-                        window.logoutSafely('manual', 'CENTER');
-                    } else {
-                        // Fallback: full clear and redirect to landing
-                        localStorage.clear();
-                        sessionStorage.clear();
-                        window.location.replace('/');
+                    title: 'Sign Out',
+                    text: 'Are you sure you want to sign out? This will set your collection center status to CLOSED for users and admin.',
+                }, async () => {
+                    const centerId = localStorage.getItem('center_sys_id');
+                    if (centerId) {
+                        try {
+                            await fetch('/api/centers/logout', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ centerId })
+                            });
+                        } catch (e) { console.warn('Logout status sync failed', e); }
                     }
+                    localStorage.removeItem('center_sys_id');
+                    localStorage.removeItem('center_sys_name');
+                    localStorage.removeItem('center_sys_email');
+                    localStorage.removeItem('center_sys_token');
+                    window.location.href = 'login.html?role=center';
                 });
             });
 
-            // Dynamic Header Info
             if (centerEmail && centerEmail !== 'null' && centerEmail !== 'undefined') {
                 const logoText = document.querySelector('.logo-text');
                 if (logoText) {
-                    logoText.innerHTML = `SortSense Center <br><span
-        style="font-size:0.7rem; color:var(--text-muted); font-weight:400;">${centerEmail}</span>`;
+                    logoText.innerHTML = `SortSense Center <br><span style="font-size:0.7rem;color:var(--text-muted);font-weight:400;">${centerEmail}</span>`;
                 }
             }
 
-            // Modal Event Listeners
             const cancelBtn = document.getElementById('modalCancelBtn');
             if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
 
-            // Initialize View
             switchView('overview');
+            console.log('Center Dashboard — Smart Polling Active');
 
-            console.log("Center Dashboard JS Optimized & Stabilized");
-
-            // Auto-Refresh Polling (Managed by Toggle)
-            if (typeof toggleAutoRefresh === 'function') {
-                toggleAutoRefresh(true);
-            } else {
-                setInterval(() => {
-                    if (STABLE.isActive()) loadRequests(true); // Item 2 & Patch
-                }, 30000);
-            }
+            // Start smart polling immediately
+            startPolling();
         });
 
         async function loadCenterInfo() {
@@ -1029,13 +1070,13 @@
             if (!headerName || !headerUser || !statusIndicator) return;
 
             try {
-                const res = await fetch(`/api/centers/${centerId}`);
-                if (!res.ok) throw new Error("Failed to fetch center info");
+                const res = await safeFetch(`/api/centers/${centerId}`);
+                if (!res.ok) throw new Error('Failed');
                 const data = await res.json();
 
                 if (data) {
-                    const name = STABLE.s(data.center_name, "Collection Center");
-                    const username = STABLE.s(data.username, "center_account");
+                    const name = STABLE.s(data.center_name, localStorage.getItem('center_sys_name') || 'Collection Center');
+                    const username = STABLE.s(data.username, localStorage.getItem('center_sys_username') || 'center_account');
 
                     if (headerName.innerText !== name) headerName.innerText = name;
                     if (headerUser.innerText !== `Center: ${username}`) headerUser.innerText = `Center: ${username}`;
@@ -1043,23 +1084,40 @@
                     localStorage.setItem('center_sys_name', name);
                     localStorage.setItem('center_sys_username', username);
 
-                    // Update Status Indicator
-                    const status = data.status || 'OPEN';
+                    const status = data.live_status || 'CLOSED';
                     const color = status === 'OPEN' ? '#10b981' : (status === 'IDLE' ? '#f59e0b' : '#ef4444');
                     statusIndicator.style.color = color;
-                    if (statusIndicator.querySelector('span:last-child')) {
-                        statusIndicator.querySelector('span:last-child').innerText = status;
-                    }
+                    const statusText = statusIndicator.querySelector('span:last-child');
+                    if (statusText) statusText.innerText = status;
 
                     window.centerMaxSlots = data.max_slots || 50;
                 }
             } catch (err) {
-                console.error("Error loading center info:", err);
+                console.error('Error loading center info:', err);
+                // Fallback to cached or default — never leave header blank
+                const cachedName = localStorage.getItem('center_sys_name') || 'Collection Center';
+                if (!headerName.innerText || headerName.innerText === 'Collection Center') {
+                    headerName.innerText = cachedName;
+                }
+            }
+        }
+
+        // ── Fetch with timeout helper ──────────────────────────────────────
+        async function safeFetch(url, options = {}, timeoutMs = 8000) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const res = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(timer);
+                return res;
+            } catch (e) {
+                clearTimeout(timer);
+                throw e;
             }
         }
 
         async function loadRequests(silent = false) {
-            if (STABLE.isFetching) return; // Item 3: Stop concurrent requests
+            if (STABLE.isFetching) return; // prevent parallel calls
             STABLE.isFetching = true;
 
             const activeList = document.getElementById('activeRequestsList');
@@ -1071,61 +1129,670 @@
             }
 
             if (!silent) {
-                const loadingHtml = `
-    <div style="display:flex; justify-content:center; padding:2rem; color:var(--text-muted);">
-        <i class="ri-loader-4-line ri-spin" style="font-size:1.5rem; margin-right:0.5rem;"></i> Loading...
-    </div>`;
+                const loadingHtml = `<div style="display:flex;justify-content:center;padding:2rem;color:var(--text-muted);"><i class="ri-loader-4-line ri-spin" style="font-size:1.5rem;margin-right:0.5rem;"></i> Loading...</div>`;
                 activeList.innerHTML = loadingHtml;
                 historyList.innerHTML = loadingHtml;
             }
 
             const centerId = localStorage.getItem('center_sys_id');
-            try {
-                const res = await fetch(`/api/pickup/center/all?centerId=${centerId}&t=${Date.now()}`);
-                if (!res.ok) throw new Error('Server Error');
-                const data = await res.json();
+            // 🔍 DEBUG — verify session center_id
+            console.log('[loadRequests] CENTER ID:', centerId);
 
-                if (Array.isArray(data)) {
-                    allRequests = data;
-                    applyFilters(); // Render
-                }
+            if (!centerId) {
+                STABLE.isFetching = false;
+                const emptyHtml = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">No nearby requests assigned</div>`;
+                activeList.innerHTML = emptyHtml;
+                historyList.innerHTML = emptyHtml;
+                return;
+            }
+
+            try {
+                const res = await safeFetch(`/api/pickup/center/all?centerId=${centerId}&t=${Date.now()}`);
+                const data = res.ok ? await res.json() : [];
+                allRequests = Array.isArray(data) ? data : [];
+                // 🔍 DEBUG — verify what arrived
+                console.log('[loadRequests] REQUESTS count:', allRequests.length, allRequests);
+                applyFilters();
             } catch (err) {
-                console.error("Load Requests Error:", err);
+                console.error('Load Requests Error:', err);
+                allRequests = [];
+                const emptyHtml = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">No nearby requests assigned</div>`;
+                activeList.innerHTML = emptyHtml;
+                historyList.innerHTML = emptyHtml;
             } finally {
                 STABLE.isFetching = false;
             }
         }
 
-        // Global Auto Refresh
-        let autoRefreshInterval = null;
+        // ──────────────────────────────────────────────────────────
+        // SMART POLLING ENGINE
+        // ──────────────────────────────────────────────────────────
+        //
+        //  Every POLL_INTERVAL_MS the engine:
+        //  1. Hits /api/pickup/center/count (tiny, cheap query)
+        //  2. If latestId > _lastKnownLatest  => new request arrived
+        //     → fetches full data, re-renders, shows toast, refreshes bell
+        //  3. If nothing changed => skips all rendering (no flicker)
+        //  4. AbortController cancels the fetch if the next tick fires
+        //     before the previous one completes (no overlapping calls)
+        //
+        const POLL_INTERVAL_MS = 8000;   // 8 seconds
+        const HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds (Requirement 4)
+        const POLL_MSG_SKIP_N = 5;      // refresh messages every 5th poll
+        const POLL_SW_SKIP_N = 3;      // refresh special waste every 3rd poll (~24s)
+        let _pollTick = 0;
+        let _heartbeatTimer = null;
 
+        async function sendCenterHeartbeat(centerId) {
+            if (!centerId) return;
+            try {
+                await fetch('/api/centers/heartbeat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ centerId })
+                });
+                console.log('[Heartbeat] Status updated (is_online: 1)');
+            } catch (e) {
+                console.warn('[Heartbeat] Sync failed:', e.message);
+            }
+        }
+
+        function startPolling() {
+            // Guard: only one polling loop
+            if (_pollTimer !== null) return;
+            schedulePoll();
+
+            // Strict 30s Heartbeat (Requirement 4)
+            if (_heartbeatTimer === null) {
+                const centerId = localStorage.getItem('center_sys_id');
+                if (centerId) sendCenterHeartbeat(centerId); // Initial call
+                _heartbeatTimer = setInterval(() => {
+                    const cid = localStorage.getItem('center_sys_id');
+                    if (cid) sendCenterHeartbeat(cid);
+                }, HEARTBEAT_INTERVAL_MS);
+            }
+        }
+
+        function stopPolling() {
+            if (_pollTimer !== null) { clearTimeout(_pollTimer); _pollTimer = null; }
+            if (_heartbeatTimer !== null) { clearInterval(_heartbeatTimer); _heartbeatTimer = null; }
+            if (_pollController) { _pollController.abort(); _pollController = null; }
+            _pollRunning = false;
+        }
+
+        async function pollTick() {
+            _pollRunning = true;
+            const centerId = localStorage.getItem('center_sys_id');
+            if (!centerId) { _pollRunning = false; schedulePoll(); return; }
+
+            // Abort any in-flight fetch from previous tick
+            if (_pollController) _pollController.abort();
+            _pollController = new AbortController();
+            const signal = _pollController.signal;
+
+            _pollTick++;
+
+            try {
+                // Step 1: cheap count-only check
+                const countRes = await fetch(
+                    `/api/pickup/center/count?centerId=${centerId}`,
+                    { signal }
+                );
+                if (!countRes.ok) throw new Error('count failed');
+                const { count, latestId } = await countRes.json();
+
+                const isNewRequest = latestId > _lastKnownLatest && _lastKnownLatest >= 0;
+                const isFirstLoad = _lastKnownLatest < 0;
+
+                if (isFirstLoad || isNewRequest) {
+                    // Full data refresh only when needed
+                    await loadRequests(true /* silent — no spinner */);
+                    updateDashboardStats();
+
+                    if (isNewRequest) {
+                        // Toast notification
+                        const diff = latestId - Math.max(_lastKnownLatest, 0);
+                        showAssignmentToast(
+                            `📦 ${diff} new pickup request${diff > 1 ? 's' : ''} assigned near your location.
+Check the Active Requests panel.`
+                        );
+                        // Refresh notification bell
+                        fetchCenterNotifications();
+                    }
+
+                    _lastKnownLatest = latestId;
+                    _lastKnownCount = count;
+                }
+
+                // Periodic message + special waste refresh (not every tick)
+                if (_pollTick % POLL_MSG_SKIP_N === 0) loadMessages(true);
+                if (_pollTick % POLL_SW_SKIP_N === 0) loadSpecialWaste(true);
+
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    console.warn('[Poll] Skipped tick:', e.message);
+                }
+            } finally {
+                _pollController = null;
+                _pollRunning = false;
+                schedulePoll();
+            }
+        }
+
+        function schedulePoll() {
+            _pollTimer = setTimeout(() => {
+                _pollTimer = null;
+                _pollRunning = false;
+                pollTick();
+            }, POLL_INTERVAL_MS);
+        }
+
+        // Legacy toggle shim (keeps any existing UI toggle working)
         function toggleAutoRefresh(skipImmediate = false) {
             const toggle = document.getElementById('autoRefreshToggle');
-            if (toggle && toggle.checked) {
-                if (!skipImmediate) loadRequests(true);
-
-                if (!autoRefreshInterval) {
-                    autoRefreshInterval = setInterval(() => {
-                        if (STABLE.isActive()) { // Item 2 & Patch
-                            loadRequests(true);
-                            loadMessages(true);
-                            loadSpecialWaste();
-                        }
-                    }, 30000);
-                }
+            if (toggle && !toggle.checked) {
+                stopPolling();
             } else {
-                if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
+                if (!skipImmediate) loadRequests(true);
+                startPolling();
             }
         }
 
 
-        function renderCharts(p, a, r, c) {
-            // Simplified rendering or removal of unused charts as per requirements
-            console.log("Charts hidden in this view to prioritize operational data.");
+        // ── Apply Filters & Render Pickup Requests ─────────────────────────
+        function applyFilters() {
+            const statusFilter = (document.getElementById('statusFilter')?.value || 'All').toLowerCase();
+            const priorityFilter = (document.getElementById('priorityFilter')?.value || 'All').toLowerCase();
+            const sortBy = document.getElementById('sortBy')?.value || 'Newest';
+
+            let filtered = [...allRequests];
+
+            // Status filter
+            if (statusFilter !== 'all') {
+                filtered = filtered.filter(r => (r.status || '').toLowerCase() === statusFilter);
+            }
+
+            // Priority filter
+            if (priorityFilter !== 'all') {
+                filtered = filtered.filter(r => {
+                    const p = getPriority(r.waste_type, r.quantity);
+                    return p.toLowerCase() === priorityFilter;
+                });
+            }
+
+            // Sort
+            if (sortBy === 'Newest') filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            if (sortBy === 'Oldest') filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            if (sortBy === 'QtyHigh') filtered.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
+            if (sortBy === 'QtyLow') filtered.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+
+            // Split into active vs history
+            const active = filtered.filter(r => !['completed', 'rejected', 'cancelled'].includes((r.status || '').toLowerCase()));
+            const history = filtered.filter(r => ['completed', 'rejected', 'cancelled'].includes((r.status || '').toLowerCase()));
+
+            renderRequestList('activeRequestsList', active, 'No nearby requests assigned');
+            renderRequestList('historyRequestsList', history, 'No history yet');
         }
 
+        function renderRequestList(containerId, requests, emptyMsg) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            if (!requests || requests.length === 0) {
+                el.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">${emptyMsg}</div>`;
+                return;
+            }
+            const frag = document.createDocumentFragment();
+            requests.forEach(r => frag.appendChild(createCard(r)));
+            el.innerHTML = '';
+            el.appendChild(frag);
+        }
+
+        // ── Dashboard Stats ────────────────────────────────────────────────
+        function updateDashboardStats() {
+            const today = new Date().toDateString();
+
+            let todayCount = 0, pendingCount = 0, approvedCount = 0, rejectedCount = 0;
+            let completedCount = 0;
+
+            allRequests.forEach(r => {
+                const s = (r.status || '').toLowerCase();
+                if (new Date(r.created_at).toDateString() === today) todayCount++;
+                if (s === 'pending') pendingCount++;
+                if (s === 'approved') approvedCount++;
+                if (s === 'rejected') rejectedCount++;
+                if (s === 'completed') completedCount++;
+            });
+
+            const total = allRequests.length;
+            const rate = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+            STABLE.safeUpdate('statTotalToday', todayCount);
+            STABLE.safeUpdate('statPending', pendingCount);
+            STABLE.safeUpdate('statApproved', approvedCount);
+            STABLE.safeUpdate('statRejected', rejectedCount);
+            STABLE.safeUpdate('perfTotal', total);
+            STABLE.safeUpdate('perfRate', rate + '%');
+
+            // Slot usage
+            const used = allRequests.filter(r => {
+                const s = (r.status || '').toLowerCase();
+                return ['pending', 'approved', 'scheduled'].includes(s);
+            }).length;
+            const maxSlots = window.centerMaxSlots || 50;
+            const usedClamped = Math.min(used, maxSlots);
+            const pct = maxSlots > 0 ? Math.round((usedClamped / maxSlots) * 100) : 0;
+
+            const slotBar = document.getElementById('slotProgressBar');
+            if (slotBar) slotBar.style.width = pct + '%';
+            STABLE.safeUpdate('slotCountDisplay', `${usedClamped} / ${maxSlots}`);
+
+            const slotText = document.getElementById('slotStatusText');
+            if (slotText) {
+                if (pct >= 90) { slotText.innerText = 'FULL'; slotText.style.color = '#ef4444'; }
+                else if (pct >= 60) { slotText.innerText = 'BUSY'; slotText.style.color = '#f59e0b'; }
+                else { slotText.innerText = 'AVAILABLE'; slotText.style.color = '#10b981'; }
+            }
+
+            renderActiveRequestsQuickPanel();
+            renderRecentActivityList();
+        }
+
+        function renderActiveRequestsQuickPanel() {
+            const panel = document.getElementById('activeRequestsQuickPanel');
+            if (!panel) return;
+
+            const active = allRequests.filter(r => {
+                const s = (r.status || '').toLowerCase();
+                return ['pending', 'approved', 'scheduled'].includes(s);
+            }).slice(0, 5);
+
+            if (active.length === 0) {
+                panel.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">No active requests</div>`;
+                return;
+            }
+
+            panel.innerHTML = active.map(r => {
+                const s = (r.status || 'Pending');
+                const sClass = s.toLowerCase();
+                const name = r.user_name || 'Unknown';
+                const wt = r.waste_type || 'General';
+                const qty = r.quantity != null ? r.quantity : 0;
+                return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05);">
+                    <div>
+                        <div style="font-weight:600;font-size:0.9rem;">${name}</div>
+                        <div style="color:var(--text-muted);font-size:0.8rem;">${wt} &bull; ${qty} kg</div>
+                    </div>
+                    <span class="status-badge ${sClass}">${s}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function renderRecentActivityList() {
+            const list = document.getElementById('recentActivityList');
+            if (!list) return;
+
+            const recent = [...allRequests]
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(0, 6);
+
+            if (recent.length === 0) {
+                list.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--text-muted);">No recent activity</div>`;
+                return;
+            }
+
+            list.innerHTML = recent.map(r => {
+                const s = (r.status || 'Pending');
+                const color = s === 'Completed' ? '#10b981' : s === 'Rejected' ? '#ef4444' : '#94a3b8';
+                const ago = timeAgoCenter(new Date(r.created_at));
+                const name = r.user_name || 'Unknown';
+                const wt = r.waste_type || 'General';
+                return `<div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+                    <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+                    <div style="flex:1;">
+                        <span style="font-size:0.85rem;font-weight:600;">${name}</span>
+                        <span style="color:var(--text-muted);font-size:0.8rem;"> &bull; ${wt}</span>
+                    </div>
+                    <span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;">${ago}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // ── Special Waste ──────────────────────────────────────────────────
+        let _swFetching = false;
+        async function loadSpecialWaste(silent = false) {
+            if (_swFetching) return;
+            _swFetching = true;
+
+            const tbody = document.getElementById('specialWasteList');
+            if (!tbody) { _swFetching = false; return; }
+
+            // Show inline spinner if not silent
+            if (!silent && (!tbody.innerHTML || tbody.innerHTML.includes('No special waste'))) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);"><i class="ri-loader-4-line ri-spin"></i> Loading...</td></tr>`;
+            }
+
+            const centerId = localStorage.getItem('center_sys_id');
+            // 🔍 DEBUG — verify session center_id
+            console.log('[loadSpecialWaste] CENTER ID:', centerId);
+
+            const token = localStorage.getItem('center_sys_token') || localStorage.getItem('centerToken') || localStorage.getItem('token');
+
+            if (!isValidId || !token) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">${!token ? 'Authentication error.' : 'Session expired.'} Please login again.</td></tr>`;
+                _swFetching = false;
+                return;
+            }
+
+            try {
+                const res = await safeFetch(`/api/special-waste/center-requests?t=${Date.now()}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error('[loadSpecialWaste] Server error:', res.status, errorData);
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:#ef4444;"><i class="ri-error-warning-line"></i> Failed to fetch data: Server Error ${res.status}</td></tr>`;
+                    _swFetching = false;
+                    return;
+                }
+
+                const data = await res.json();
+                const rows = Array.isArray(data) ? data : [];
+
+                // 🔍 DEBUG — verify what arrived
+                console.log('[loadSpecialWaste] SPECIAL WASTE count:', rows.length, rows);
+
+                _currentSwData = rows;
+
+                if (rows.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted);">No special waste assigned yet</td></tr>`;
+                } else {
+                    const safeStr = (v, fb = '—') => (v != null && v !== '' && v !== 'null' && v !== 'undefined') ? v : fb;
+                    const fmtDate = (v) => v ? new Date(v).toLocaleDateString() : '—';
+
+                    tbody.innerHTML = rows.map(row => {
+                        const statusRaw = safeStr(row.status, 'Pending');
+                        const sClass = statusRaw.toLowerCase();
+                        return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <td style="padding:1rem;">${safeStr(row.waste_type, 'Unknown')}</td>
+                            <td style="padding:1rem;">${row.quantity != null ? row.quantity : 0} ${safeStr(row.unit, '')}</td>
+                            <td style="padding:1rem;">${safeStr(row.location)}</td>
+                            <td style="padding:1rem;">${fmtDate(row.assigned_date)}</td>
+                            <td style="padding:1rem;"><span class="status-badge ${sClass}">${statusRaw}</span></td>
+                            <td style="padding:1rem; display: flex; gap: 0.5rem;">
+                                <button class="action-btn" onclick="viewSwDetails(${row.request_id})" style="background:rgba(255,255,255,0.05); color:white; border:1px solid rgba(255,255,255,0.1); font-size:0.8rem; padding:0.4rem 0.8rem;">
+                                    <i class="ri-eye-line"></i> View
+                                </button>
+                                <button class="action-btn btn-complete" onclick="markSpecialWasteDone(${row.request_id})" style="font-size:0.8rem;padding:0.4rem 0.8rem;" ${statusRaw === 'Completed' ? 'disabled style="opacity:0.4;cursor:default;"' : ''}>
+                                    <i class="ri-check-double-line"></i> Done
+                                </button>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                }
+            } catch (err) {
+                console.error('Load Special Waste Error:', err);
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:#ef4444;"><i class="ri-wifi-off-line"></i> Network Error: Failed to connect to server</td></tr>`;
+            } finally {
+                _swFetching = false;
+            }
+        }
+
+        async function viewSwDetails(id) {
+            const req = _currentSwData.find(r => r.request_id === id);
+            if (!req) return;
+
+            const content = document.getElementById('swDetailsContent');
+            const fmtDate = (v) => v ? new Date(v).toLocaleDateString() : '—';
+
+            content.innerHTML = `
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div><label style="font-size:0.7rem; color:gray; display:block;">CATEGORY</label><span style="font-weight:600;">${req.waste_type}</span></div>
+                    <div><label style="font-size:0.7rem; color:gray; display:block;">QUANTITY</label><span style="font-weight:600;">${req.quantity} ${req.unit}</span></div>
+                </div>
+                <div><label style="font-size:0.7rem; color:gray; display:block;">LOCATION</label><span style="font-size:0.9rem;">${req.location}</span></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div><label style="font-size:0.7rem; color:gray; display:block;">ASSIGNED ON</label><span style="font-size:0.9rem;">${fmtDate(req.assigned_date)}</span></div>
+                    <div><label style="font-size:0.7rem; color:gray; display:block;">PREFERRED DATE</label><span style="font-size:0.9rem;">${fmtDate(req.preferred_date)}</span></div>
+                </div>
+                <div style="padding:10px; background:rgba(255,255,255,0.03); border-radius:8px;">
+                    <label style="font-size:0.7rem; color:gray; display:block; margin-bottom:4px;">USER DESCRIPTION</label>
+                    <div style="font-size:0.85rem; color:#cbd5e1; white-space:pre-wrap;">${req.description || 'No description provided'}</div>
+                </div>
+                <div style="padding:10px; background:rgba(59,130,246,0.05); border-radius:8px; border-left:3px solid #3b82f6;">
+                    <label style="font-size:0.7rem; color:#60a5fa; display:block; margin-bottom:4px;">ADMIN NOTES</label>
+                    <div style="font-size:0.85rem; color:#cbd5e1; font-style:italic;">${req.admin_notes || 'No admin notes'}</div>
+                </div>
+            `;
+
+            const modal = document.getElementById('swDetailsModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                setTimeout(() => {
+                    modal.style.opacity = '1';
+                    const mc = modal.querySelector('.modal-content');
+                    if (mc) mc.style.transform = 'scale(1)';
+                }, 10);
+            }
+        }
+
+        function closeSwDetailsModal() {
+            const modal = document.getElementById('swDetailsModal');
+            if (modal) {
+                modal.style.opacity = '0';
+                const mc = modal.querySelector('.modal-content');
+                if (mc) mc.style.transform = 'scale(0.95)';
+                setTimeout(() => { modal.style.display = 'none'; }, 200);
+            }
+        }
+
+        async function markSpecialWasteDone(requestId) {
+            if (!requestId) return;
+            try {
+                const res = await safeFetch('/api/special-waste/update-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestId, status: 'Completed' })
+                });
+                const d = await res.json();
+                if (res.ok) {
+                    window.showSuccess && window.showSuccess('Marked as Completed');
+                    loadSpecialWaste();
+                } else {
+                    window.showError && window.showError(d.message || 'Failed to update');
+                }
+            } catch (e) {
+                console.error('Mark SW Done Error:', e);
+            }
+        }
+
+        // ── Messages ──────────────────────────────────────────────────────
+        let _msgFetching = false;
+        async function loadMessages(silent = false) {
+            if (_msgFetching) return;
+            _msgFetching = true;
+
+            const chatHistory = document.getElementById('chatHistory');
+            const quickPanel = document.getElementById('adminMessagesQuickPanel');
+
+            // 🔍 Robust Security: Check all possible center token keys
+            const centerId = localStorage.getItem('center_sys_id') || localStorage.getItem('centerId');
+            const token = localStorage.getItem('center_sys_token') || localStorage.getItem('centerToken') || localStorage.getItem('token');
+
+            if (!centerId) {
+                console.warn('[loadMessages] No centerId found in storage.');
+                _msgFetching = false;
+                return;
+            }
+
+            // Token guard — surface missing token early instead of silent 401
+            if (!token) {
+                console.error('[loadMessages] ❌ FAILED: No token found across center_sys_token, centerToken, or token keys.');
+                if (chatHistory) chatHistory.innerHTML = `<div style="text-align:center;padding:2rem;color:#ef4444;font-weight:600;">Session required.<br><span style="font-size:0.8rem;font-weight:400;color:gray;">Please refresh or log in again.</span></div>`;
+                _msgFetching = false;
+                return;
+            }
+
+
+            if (quickPanel && !silent) {
+                quickPanel.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted);"><i class="ri-loader-4-line ri-spin" style="font-size:1.5rem;"></i></div>`;
+            }
+
+            try {
+                const headers = { 'Authorization': `Bearer ${token}` };
+                console.log(`[loadMessages] Fetching /api/messages/center/${centerId}`);
+                const res = await safeFetch(`/api/messages/center/${centerId}`, { headers });
+
+                // Handle auth failure explicitly — don't silently show empty list
+                if (res.status === 401) {
+                    console.warn('[loadMessages] 401 — token rejected by server. Possible expiry.');
+                    if (chatHistory) chatHistory.innerHTML = `<div style="text-align:center;padding:2rem;color:#ef4444;">Session expired. Please log in again.</div>`;
+                    _msgFetching = false;
+                    return;
+                }
+
+                const body = res.ok ? await res.json() : { success: false, data: [] };
+
+                if (!res.ok) {
+                    console.warn(`[loadMessages] Server returned ${res.status}. body:`, body);
+                }
+
+                const msgs = Array.isArray(body.data) ? body.data : [];
+                console.log(`[loadMessages] Received ${msgs.length} messages for center ${centerId}.`);
+
+                // Render chat history (full messages view)
+                if (chatHistory) {
+                    if (msgs.length === 0) {
+                        chatHistory.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">No messages yet</div>`;
+                    } else {
+                        chatHistory.innerHTML = msgs.map(m => {
+                            const isCenter = (m.senderRole || '').toUpperCase() === 'CENTER';
+                            const align = isCenter ? 'flex-end' : 'flex-start';
+                            const bg = isCenter ? '#3b82f6' : 'rgba(255,255,255,0.08)';
+                            const border = isCenter ? 'none' : '1px solid rgba(255,255,255,0.1)';
+                            const name = m.senderName || (isCenter ? 'You' : 'Administrator');
+                            const text = m.messageText || '';
+                            const time = m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                            return `<div style="display:flex;flex-direction:column;align-items:${align};gap:0.25rem;margin-bottom:0.75rem;">
+                                <span style="font-size:0.75rem;color:var(--text-muted);margin:0 0.5rem;">${name}</span>
+                                <div style="max-width:75%;background:${bg};border:${border};padding:0.75rem 1rem;border-radius:12px;font-size:0.9rem;color:white;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${text}</div>
+                                <span style="font-size:0.7rem;color:var(--text-muted);margin:0 0.5rem;">${time}</span>
+                            </div>`;
+                        }).join('');
+                        chatHistory.scrollTop = chatHistory.scrollHeight;
+                    }
+                }
+
+                // Render quick panel (last 3 admin messages)
+                if (quickPanel) {
+                    const adminMsgs = msgs.filter(m => (m.senderRole || '').toUpperCase() === 'ADMIN').slice(-3);
+                    if (adminMsgs.length === 0) {
+                        quickPanel.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--text-muted);">No messages from admin</div>`;
+                    } else {
+                        quickPanel.innerHTML = adminMsgs.map(m => {
+                            const text = m.messageText || '';
+                            const time = m.timestamp ? timeAgoCenter(new Date(m.timestamp)) : '';
+                            return `<div style="padding:0.75rem;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:0.85rem;color:white;margin-bottom:0.3rem;">${text}</div>
+                                <div style="font-size:0.75rem;color:var(--text-muted);">${time}</div>
+                            </div>`;
+                        }).join('');
+                    }
+                }
+
+                // Update sidebar unread dot
+                const unreadCount = msgs.filter(m => !m.isRead && (m.senderRole || '').toUpperCase() === 'ADMIN').length;
+                const dot = document.getElementById('sidebarMsgDot');
+                if (dot) dot.style.display = unreadCount > 0 ? 'block' : 'none';
+
+            } catch (err) {
+                console.error('[loadMessages] Network/parse error:', err);
+                if (!silent) {
+                    if (quickPanel) quickPanel.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--text-muted);">Messages unavailable</div>`;
+                    if (chatHistory) chatHistory.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">No messages yet</div>`;
+                }
+            } finally {
+                _msgFetching = false;
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('msgInput');
+            const centerId = localStorage.getItem('center_sys_id') || localStorage.getItem('centerId');
+            const token = localStorage.getItem('center_sys_token') || localStorage.getItem('centerToken') || localStorage.getItem('token');
+            const btn = document.querySelector('button[onclick="sendMessage()"]');
+
+            if (!input || !input.value.trim() || !centerId) return;
+
+            if (!token) {
+                window.showError && window.showError('Session expired. Please log in again.');
+                return;
+            }
+
+            const messageText = input.value.trim();
+            const originalBtnHtml = btn ? btn.innerHTML : 'Send';
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
+            }
+
+            try {
+                const res = await safeFetch('/api/messages/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ center_id: centerId, messageText })
+                });
+
+                if (res.status === 401) {
+                    window.showError && window.showError('Session expired. Please log in again.');
+                    return;
+                }
+
+                const d = await res.json();
+                if (d.success) {
+                    input.value = '';
+                    // Reload chat (non-silent) so new message appears immediately
+                    loadMessages(false);
+                } else {
+                    window.showError && window.showError(d.error || 'Failed to send');
+                }
+            } catch (e) {
+                console.error('Send Message Error:', e);
+                window.showError && window.showError('Network error. Trying again...');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnHtml;
+                }
+            }
+        }
+
+        async function markAsRead() {
+            const centerId = localStorage.getItem('center_sys_id') || localStorage.getItem('centerId');
+            const token = localStorage.getItem('center_sys_token') || localStorage.getItem('centerToken') || localStorage.getItem('token');
+            if (!centerId || !token) return;
+            try {
+                await safeFetch('/api/messages/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ centerId })
+                });
+                const dot = document.getElementById('sidebarMsgDot');
+                if (dot) dot.style.display = 'none';
+                loadMessages();
+            } catch (e) { console.error('Mark Read Error:', e); }
+        }
+
+        function renderCharts(p, a, r, c) {
+            // Charts hidden — focus on operational data
+            console.log('Charts suppressed in favour of operational data.');
+        }
+
+        let currentCenterView = 'overview';
+
         function switchView(view) {
+            currentCenterView = view;
             const overview = document.getElementById('dashboardOverview');
             const activeList = document.getElementById('activeRequestsList');
             const historyList = document.getElementById('historyRequestsList');
@@ -1157,9 +1824,12 @@
             if (view === 'overview') {
                 if (overview) overview.style.display = 'block';
                 document.getElementById('nav-overview').classList.add('active');
-                document.getElementById('headerCenterName').parentElement.style.display = 'block';
+                if (document.getElementById('headerCenterName')) {
+                    document.getElementById('headerCenterName').parentElement.style.display = 'block';
+                }
+                // Update stats from cached data; also refresh messages
                 updateDashboardStats();
-                loadMessages();
+                loadMessages(true);
             }
             else if (view === 'special-waste') {
                 if (specialSect) specialSect.style.display = 'block';
@@ -1286,7 +1956,10 @@
         }
 
         async function deleteCenter(id) {
-            window.showCustomConfirm("Delete Center", "Are you sure you want to delete this center? This action cannot be undone.", async () => {
+            showModal({
+                title: "Delete Center",
+                text: "Are you sure you want to delete this center? This action cannot be undone."
+            }, async () => {
                 try {
                     const res = await fetch(`/api/centers/${id}`, {
                         method: 'DELETE'
@@ -1767,13 +2440,8 @@
                 }
             });
 
-            // Initial fetch
+            // Initial fetch (polling engine will drive subsequent updates)
             fetchCenterNotifications();
-
-            // Interval fetch (Managed by STABLE mode if needed, but here simple isActive check)
-            setInterval(() => {
-                if (STABLE.isActive()) fetchCenterNotifications();
-            }, 30000);
         }
 
         async function fetchCenterNotifications() {

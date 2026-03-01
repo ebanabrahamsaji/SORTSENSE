@@ -12,7 +12,7 @@ export const trackCenterActivity = async (req, res, next) => {
     if (centerId && (role === 'CENTER' || !role)) {
         try {
             await db.query(
-                "UPDATE tbl_collection_centers SET center_status = 'online', last_active_time = NOW(), offline_since = NULL WHERE center_id = ?",
+                "UPDATE tbl_collection_centers SET is_online = 1, last_seen = NOW(), center_status = 'online', last_active_time = NOW(), offline_since = NULL WHERE center_id = ?",
                 [centerId]
             );
         } catch (err) {

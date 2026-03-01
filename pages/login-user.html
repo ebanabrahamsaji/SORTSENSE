@@ -391,7 +391,8 @@
 
                         // Storage logic
                         if (userRole === 'CENTER') {
-                            localStorage.setItem('centerToken', body.token);
+                            const token = body.token;
+                            localStorage.setItem('centerToken', token);
                             localStorage.setItem('centerId', user.center_id || user.user_id);
                             localStorage.setItem('centerLoggedIn', 'true');
                             localStorage.setItem('role', 'center');
@@ -400,17 +401,24 @@
                             localStorage.setItem('center_sys_id', user.center_id || user.user_id);
                             localStorage.setItem('center_sys_email', user.email);
                             localStorage.setItem('center_sys_role', 'CENTER');
+                            localStorage.setItem('center_sys_token', token);
                             if (user.center_name || user.name) localStorage.setItem('center_sys_name', user.center_name || user.name);
-                            localStorage.setItem('token', body.token);
+                            localStorage.setItem('token', token);
 
                             setTimeout(() => { window.location.href = 'center-dashboard.html'; }, 800);
                         }
                         else if (userRole === 'ADMIN') {
-                            localStorage.setItem('adminToken', body.token);
+                            const token = body.token;
+                            const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours (matches admin-auth.js)
+                            const expiry = Date.now() + SESSION_DURATION_MS;
+
+                            localStorage.setItem('adminToken', token);
                             localStorage.setItem('admin_sys_id', user.user_id);
                             localStorage.setItem('admin_sys_email', user.email);
                             localStorage.setItem('admin_sys_role', 'ADMIN');
-                            localStorage.setItem('token', body.token);
+                            localStorage.setItem('admin_sys_token', token);
+                            localStorage.setItem('admin_sys_expiry', expiry.toString());
+                            localStorage.setItem('token', token);
 
                             setTimeout(() => { window.location.href = 'admin-dashboard.html'; }, 800);
                         }

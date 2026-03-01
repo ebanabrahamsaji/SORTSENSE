@@ -70,25 +70,95 @@ async function fetchCenters() {
 
 async function fetchRequests() {
     const tbody = document.getElementById('adminSwTableBody');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Loading...</td></tr>';
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;"><i class="ri-loader-4-line ri-spin" style="font-size:1.2rem; color:#6366f1;"></i><br><span style="color:#94a3b8; font-size:0.9rem;">Loading special waste...</span></td></tr>';
+
+    const token = localStorage.getItem('admin_sys_token') || localStorage.getItem('adminToken');
+
     try {
-        const res = await fetch('/api/special-waste/all');
-        allRequests = await res.json();
+        const res = await fetch('/api/special-waste/all', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!res.ok) {
+            if (res.status === 401) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#f59e0b;"><i class="ri-time-line"></i> Session expired. Please <a href="login.html?role=admin" style="color:#6366f1;">login</a> again.</td></tr>';
+                return;
+            }
+            throw new Error(`Error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        // Support both plain array and structured JSON for max compatibility
+        allRequests = Array.isArray(data) ? data : (data.data || []);
         renderTable();
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">Failed to load.</td></tr>';
+        console.error("Special Waste Load Error:", error);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:20px;"><i class="ri-error-warning-line"></i> Failed to load data. <button onclick="fetchRequests()" style="background:none; border:none; color:#6366f1; cursor:pointer; text-decoration:underline;">Retry</button></td></tr>';
     }
 }
 
 async function fetchRegularRequests() {
     const tbody = document.getElementById('adminRegTableBody');
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Loading...</td></tr>';
+    if (!tbody) return;
+
+    // Show loading state gracefully
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;"><i class="ri-loader-4-line ri-spin" style="font-size:1.2rem; color:#6366f1;"></i><br><span style="color:#94a3b8; font-size:0.9rem;">Fetching regular pickups...</span></td></tr>';
+
+    const token = localStorage.getItem('admin_sys_token') || localStorage.getItem('adminToken');
+
     try {
-        const res = await fetch('/api/pickup/admin/all');
-        regRequests = await res.json();
+        // Required Fix 1, 2, 3: Correct route, include auth, and handle session properly
+        const response = await fetch('/api/pickup/all', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            credentials: 'same-origin'
+        });
+
+        // Required Fix 4: Handle non-200 responses
+        if (!response.ok) {
+            if (response.status === 401) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#f59e0b;"><i class="ri-lock-2-line"></i> Session expired. Please <a href="login.html?role=admin" style="color:#6366f1; text-decoration:underline;">login</a> and retry.</td></tr>';
+                return;
+            }
+            throw new Error(`HTTP_${response.status}`);
+        }
+
+        // Required Fix 5: Prevent parsing crashes (Check for empty/bad content)
+        const text = await response.text();
+        if (!text) throw new Error("Empty response from server");
+
+        const data = JSON.parse(text);
+
+        // Required Fix 6: Support array response
+        if (Array.isArray(data)) {
+            regRequests = data;
+        } else if (data && data.data && Array.isArray(data.data)) {
+            regRequests = data.data;
+        } else {
+            console.warn("Unexpected data format:", data);
+            regRequests = [];
+        }
+
         renderRegularTable();
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:red;">Failed to load.</td></tr>';
+        console.error("Regular Pickup Load Error:", error);
+        // Required Fix: Show error with retry button, preserve ID
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; color:#ef4444; padding:20px;">
+                    <i class="ri-error-warning-line"></i> Failed to load regular pickup data.<br>
+                    <button onclick="fetchRegularRequests()" style="margin-top:12px; background:#475569; border:none; border-radius:6px; color:white; padding:6px 16px; cursor:pointer; font-size:0.85rem; font-weight:500; transition:background 0.2s;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#475569'">Retry</button>
+                </td>
+            </tr>`;
     }
 }
 

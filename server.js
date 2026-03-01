@@ -1,6 +1,6 @@
+import './config.loader.js';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
@@ -23,8 +23,8 @@ import { runCenterAutomation } from './services/centerAutomationService.js';
 import { trackCenterActivity } from './middleware/activityMiddleware.js';
 
 // Configuration
-dotenv.config();
 const app = express();
+
 const PORT = process.env.PORT || 8000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -398,7 +398,11 @@ const startServer = () => {
         // Start Python AI Service
         console.log("🐍 Starting Python AI Service...");
         import('child_process').then(({ spawn }) => {
-            const pythonProcess = spawn('python', ['ml/api.py'], { stdio: 'inherit' });
+            const pythonProcess = spawn('python', ['ml/api.py'], {
+                stdio: 'ignore',
+                detached: true
+            });
+            pythonProcess.unref(); // Let Node exit independently of the Python process
 
             pythonProcess.on('error', (err) => {
                 console.error("❌ Failed to start Python AI Service:", err);

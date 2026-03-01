@@ -26,6 +26,8 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage: storage, fileFilter: fileFilter });
 
+import { verifyToken } from '../middleware/systemMiddleware.js';
+
 router.post('/create', (req, res, next) => {
     upload.single('image')(req, res, (err) => {
         if (err) return res.status(400).json({ message: err.message });
@@ -33,8 +35,8 @@ router.post('/create', (req, res, next) => {
     });
 }, createRequest);
 router.get('/my-requests', getUserRequests);
-router.get('/all', getAllRequests);
-router.get('/center-requests', getCenterRequests);
+router.get('/all', verifyToken, getAllRequests);
+router.get('/center-requests', verifyToken, getCenterRequests);
 router.post('/update-status', updateStatus);
 router.post('/update-details', updateRequestDetails);
 

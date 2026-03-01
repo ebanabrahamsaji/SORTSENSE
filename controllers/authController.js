@@ -1,6 +1,10 @@
 import bcrypt from 'bcrypt';
 import db from '../db.js';
 import { transporter } from '../email.js';
+import jwt from 'jsonwebtoken';
+
+const rawSecret = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = rawSecret.trim().replace(/^"|"$/g, '');
 
 // Register User
 export const registerUser = async (req, res) => {
@@ -58,7 +62,7 @@ export const registerUser = async (req, res) => {
             console.error("❌ Failed to send welcome email:", emailErr);
         }
 
-        res.status(201).json({ message: 'User registered successfully.', userId: result.insertId });
+        res.status(201).json({ success: true, message: 'User registered successfully.', userId: result.insertId });
 
     } catch (error) {
         console.error(error);
@@ -120,10 +124,10 @@ export const loginUser = async (req, res) => {
         // Reset failed attempts on success
         await db.query("UPDATE tbl_users SET failed_login_attempts = 0, last_active = NOW() WHERE user_id = ?", [user.user_id]);
 
-        // --- Center Status Automation ---
+        // --- Center Status Automation (Item 1 & 2 Sync) ---
         if (user.role === 'CENTER' && user.center_id) {
             await db.query(
-                "UPDATE tbl_collection_centers SET center_status = 'online', last_active_time = NOW(), offline_since = NULL WHERE center_id = ?",
+                "UPDATE tbl_collection_centers SET is_online = 1, last_seen = NOW(), center_status = 'online', last_active_time = NOW() WHERE center_id = ?",
                 [user.center_id]
             ).catch(err => console.error("Center status update error:", err));
         }
@@ -135,7 +139,21 @@ export const loginUser = async (req, res) => {
         // Ensure role exists in response
         if (!userInfo.role) userInfo.role = 'USER';
 
-        res.json({ message: 'Login successful.', user: userInfo });
+        // Generate JWT Token
+        const token = jwt.sign(
+            {
+                id: user.center_id || user.user_id,
+                user_id: user.user_id,
+                email: user.email,
+                name: user.name || user.center_name || user.username,
+                role: userInfo.role,
+                center_id: user.center_id
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({ message: 'Login successful.', token, user: userInfo });
 
     } catch (error) {
         console.error("Login Error:", error);
@@ -393,27 +411,34 @@ export const uploadAvatar = (req, res) => {
 export const updateProfile = async (req, res) => {
     const { email, fullname, phone, city, state, zip, country, profilePicture } = req.body;
 
-    console.log("updateProfile Request Body:", req.body); // DEBUG LOG
-
     if (!email) {
-        return res.status(400).json({ message: 'Email is required.' });
+        return res.status(400).json({ message: 'Email or Username is required.' });
     }
 
     try {
-        await db.query(
+        // 1. Try updating tbl_users first
+        let [result] = await db.query(
             `UPDATE tbl_users SET 
                 name = ?, phone = ?, city = ?, state = ?, zip = ?, country = ?, profile_picture = ?
-             WHERE email = ?`,
-            [fullname, phone, city, state, zip, country, profilePicture, email]
+             WHERE email = ? OR name = ?`,
+            [fullname, phone, city, state, zip, country, profilePicture, email, email]
         );
 
-        const [users] = await db.query('SELECT * FROM tbl_users WHERE email = ?', [email]);
-        if (users.length === 0) return res.status(404).json({ message: 'User not found' });
+        // 2. If no user updated, try update tbl_collection_centers
+        if (result.affectedRows === 0) {
+            [result] = await db.query(
+                `UPDATE tbl_collection_centers SET 
+                    center_name = ?, phone = ?, address = ?
+                 WHERE email = ? OR username = ?`,
+                [fullname, phone, city + " " + state + " " + country, email, email]
+            );
+        }
 
-        const user = users[0];
-        const { password_hash, ...userInfo } = user;
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: 'Account not found.' });
+        }
 
-        res.json({ message: 'Profile updated successfully', user: userInfo });
+        res.json({ message: 'Profile updated successfully' });
     } catch (error) {
         console.error("Profile Update Error:", error);
         res.status(500).json({ message: 'Failed to update profile.' });
@@ -429,26 +454,39 @@ export const getProfile = async (req, res) => {
     }
 
     try {
-        let query = 'SELECT * FROM tbl_users WHERE ';
-        let param = '';
+        // 1. Check tbl_users
+        let queryUsers = 'SELECT * FROM tbl_users WHERE ';
+        let param = userId || email;
+        let field = userId ? 'user_id' : (email.includes('@') ? 'email' : 'name');
 
-        if (userId) {
-            query += 'user_id = ?';
-            param = userId;
-        } else {
-            query += 'email = ?';
-            param = email;
+        const [users] = await db.query(`${queryUsers} ${field} = ?`, [param]);
+
+        if (users.length > 0) {
+            const { password_hash, ...userInfo } = users[0];
+            return res.json({ user: userInfo });
         }
 
-        const [users] = await db.query(query, [param]);
+        // 2. Check tbl_collection_centers
+        let queryCenters = 'SELECT * FROM tbl_collection_centers WHERE ';
+        let centerField = userId ? 'center_id' : (email.includes('@') ? 'email' : 'username');
 
-        if (users.length === 0) {
-            return res.status(404).json({ message: 'User not found.' });
+        const [centers] = await db.query(`${queryCenters} ${centerField} = ?`, [param]);
+
+        if (centers.length > 0) {
+            const center = centers[0];
+            return res.json({
+                user: {
+                    id: center.center_id,
+                    user_id: center.center_id,
+                    name: center.center_name,
+                    email: center.email || center.username,
+                    phone: center.phone,
+                    role: 'CENTER'
+                }
+            });
         }
 
-        const { password_hash, ...userInfo } = users[0];
-
-        res.json({ user: userInfo });
+        res.status(404).json({ message: 'Account not found.' });
     } catch (error) {
         console.error("Get Profile Error:", error);
         res.status(500).json({ message: 'Failed to fetch profile.' });
@@ -464,23 +502,35 @@ export const changePassword = async (req, res) => {
     }
 
     try {
-        // 1. Get User
-        const [users] = await db.query('SELECT * FROM tbl_users WHERE user_id = ?', [userId]);
-        if (users.length === 0) return res.status(404).json({ message: 'User not found.' });
+        // 1. Try to find in Users
+        let [users] = await db.query('SELECT * FROM tbl_users WHERE user_id = ?', [userId]);
+        let account = users[0];
+        let table = 'tbl_users';
+        let idColumn = 'user_id';
 
-        const user = users[0];
+        // 2. If not found, try to find in Collection Centers
+        if (!account) {
+            const [centers] = await db.query('SELECT * FROM tbl_collection_centers WHERE center_id = ?', [userId]);
+            if (centers.length > 0) {
+                account = centers[0];
+                table = 'tbl_collection_centers';
+                idColumn = 'center_id';
+            }
+        }
 
-        // 2. Verify Old Password
-        const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!account) return res.status(404).json({ message: 'Account not found.' });
+
+        // 3. Verify Old Password
+        const isMatch = await bcrypt.compare(currentPassword, account.password_hash);
         if (!isMatch) {
             return res.status(401).json({ message: 'Current password is incorrect.' });
         }
 
-        // 3. Hash New Password
+        // 4. Hash New Password
         const newHash = await bcrypt.hash(newPassword, 10);
 
-        // 4. Update
-        await db.query('UPDATE tbl_users SET password_hash = ? WHERE user_id = ?', [newHash, userId]);
+        // 5. Update
+        await db.query(`UPDATE ${table} SET password_hash = ? WHERE ${idColumn} = ?`, [newHash, userId]);
 
         res.json({ message: 'Password changed successfully.' });
 

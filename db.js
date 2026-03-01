@@ -17,7 +17,8 @@ const dbConfig = {
 const mockData = {
     users: [
         { user_id: 1, name: 'Admin Demo', email: 'admin@sortsense.com', role: 'ADMIN', status: 'active' },
-        { user_id: 2, name: 'John User', email: 'user@sortsense.com', role: 'USER', status: 'active', eco_points: 120, total_scans: 5 }
+        { user_id: 2, name: 'John User', email: 'user@sortsense.com', role: 'USER', status: 'active', eco_points: 120, total_scans: 5 },
+        { user_id: 3, name: 'HKS Manager', email: 'hks@sortsense.com', role: 'CENTER', status: 'active', center_id: 25 }
     ],
     categories: [
         { category_id: 1, category_name: 'Plastic', description: 'All types of rigid and flexible plastics.' },
@@ -46,10 +47,10 @@ const mockData = {
         { center_id: 5, center_name: 'Glass Reuse Center', type: 'Glass', latitude: 10.010000, longitude: 76.320000, address: 'Kakkanad, Kochi', status: 'OPEN', available_slots: 2, max_slots: 10, is_primary: false },
         { center_id: 6, center_name: 'HazSafe Medical Disposal', type: 'Hazardous', latitude: 10.050000, longitude: 76.350000, address: 'Kalamassery, Kochi', status: 'OPEN', available_slots: 20, max_slots: 50, is_primary: false },
         { center_id: 7, center_name: 'Trivandrum Smart Dump', type: 'General', latitude: 8.524139, longitude: 76.936638, address: 'Palayam, Trivandrum', status: 'OPEN', available_slots: 30, max_slots: 40, is_primary: false },
-        { center_id: 8, center_name: 'Kottayam Eco-Collection Hub', type: 'General', latitude: 9.591566, longitude: 76.522156, address: 'Kottayam Town, Kerala', status: 'OPEN', available_slots: 10, max_slots: 20, is_primary: false },
-        { center_id: 9, center_name: 'Kottayam Medical College', type: 'Hazardous', latitude: 9.619056, longitude: 76.554032, address: 'Gandhinagar, Kottayam', status: 'OPEN', available_slots: 4, max_slots: 10, is_primary: false },
-        { center_id: 10, center_name: 'Erumely E-Waste Drop', type: 'E-waste', latitude: 9.479500, longitude: 76.786500, address: 'Erumely Town', status: 'OPEN', available_slots: 8, max_slots: 10, is_primary: false },
-        { center_id: 11, center_name: 'KSEB Section Office', type: 'KSEB', latitude: 9.580000, longitude: 76.520000, address: 'Kottayam', status: 'OPEN', available_slots: 12, max_slots: 15, is_primary: false },
+        { center_id: 8, center_name: 'Kottayam Eco-Collection Hub', type: 'General', address: 'Kottayam Town, Kerala', status: 'OPEN', center_status: 'online', available_slots: 10, max_slots: 20, is_primary: false },
+        { center_id: 9, center_name: 'Kottayam Medical College', type: 'Hazardous', address: 'Gandhinagar, Kottayam', status: 'OPEN', center_status: 'online', available_slots: 4, max_slots: 10, is_primary: false },
+        { center_id: 10, center_name: 'Erumely E-Waste Drop', type: 'E-waste', address: 'Erumely Town', status: 'OPEN', center_status: 'online', available_slots: 8, max_slots: 10, is_primary: false },
+        { center_id: 11, center_name: 'KSEB Section Office', type: 'KSEB', address: 'Kottayam', status: 'OPEN', center_status: 'online', available_slots: 12, max_slots: 15, is_primary: false },
         { center_id: 12, center_name: 'Rahul Scrap & Electronics', type: 'Scrap', latitude: 10.030000, longitude: 76.310000, address: 'Edappally', status: 'OPEN', available_slots: 6, max_slots: 10, is_primary: false },
         { center_id: 13, center_name: 'City Mobile & Laptop Care', type: 'Electronics', latitude: 9.970000, longitude: 76.280000, address: 'MG Road, Kochi', status: 'OPEN', available_slots: 0, max_slots: 5, is_primary: false }, // Full example
         { center_id: 14, center_name: 'Town Scrap Yard', type: 'Scrap', latitude: 9.940000, longitude: 76.260000, address: 'Vyttila, Kochi', status: 'OPEN', available_slots: 8, max_slots: 15, is_primary: false },
@@ -87,7 +88,10 @@ const mockData = {
         { history_id: 2, user_id: 2, activity_type: 'SEARCH', details: { query: 'battery disposal' }, created_at: new Date(Date.now() - 172800000) },
         { history_id: 3, user_id: 1, activity_type: 'SCAN', details: { category: 'Glass Jar', confidence: 95 }, created_at: new Date() }
     ],
-    marketplace_messages: []
+    marketplace_messages: [],
+    center_messages: [],
+    center_notifications: [],
+    admin_notifications: []
 };
 
 class MockPool {
@@ -359,7 +363,10 @@ class MockPool {
 
         // 14. Special Waste: SELECT
         if (lowerSql.includes('from tbl_special_waste_requests r')) {
-            const results = mockData.special_waste.map(req => {
+            const centerIdPart = lowerSql.match(/where r\.center_id\s*=\s*\?/);
+            const centerId = centerIdPart ? params[0] : null;
+
+            let results = mockData.special_waste.map(req => {
                 const user = mockData.users.find(u => u.user_id == req.user_id) || { name: 'Demo User', email: 'demo@example.com' };
                 const center = mockData.collection_centers.find(c => c.center_id == req.center_id);
                 return {
@@ -367,20 +374,58 @@ class MockPool {
                     user_name: user.name,
                     email: user.email,
                     center_name: center ? center.center_name : null,
-                    assignment_status: req.assignment_status || (req.center_id ? 'assigned' : 'unassigned')
+                    assignment_status: req.assignment_status || (req.center_id ? 'assigned' : 'unassigned'),
+                    // Map fields for center dashboard if needed
+                    waste_type: req.category,
+                    quantity: req.quantity_value,
+                    unit: req.quantity_unit,
+                    assigned_date: req.created_at
                 };
             });
+
+            if (centerId) {
+                results = results.filter(r => r.center_id == centerId && r.status !== 'Rejected');
+            }
+
             return [results];
         }
 
-        // 14. Special Waste: UPDATE
+        // 14b. Special Waste: INSERT
+        if (lowerSql.includes('insert into tbl_special_waste_requests')) {
+            const newReq = {
+                request_id: mockData.special_waste.length + 101,
+                user_id: params[0],
+                category: params[1],
+                quantity_value: params[2],
+                quantity_unit: params[3],
+                preferred_date: params[4],
+                location: params[5],
+                description: params[6],
+                image_url: params[7],
+                status: 'Pending',
+                assignment_status: 'unassigned',
+                created_at: new Date()
+            };
+            mockData.special_waste.push(newReq);
+            return [{ insertId: newReq.request_id }];
+        }
+
+        // 14c. Special Waste: UPDATE
         if (lowerSql.includes('update tbl_special_waste_requests')) {
             const requestId = params[params.length - 1];
             const request = mockData.special_waste.find(r => r.request_id == requestId);
             if (request) {
+                // Status is usually the first param
                 request.status = params[0];
-                request.admin_notes = params[1];
-                if (params.length > 3) request.center_id = params[2];
+                // admin_notes is usually second
+                if (params.length > 1) request.admin_notes = params[1];
+
+                // If query has center_id (assignment flow)
+                if (lowerSql.includes('center_id = ?')) {
+                    // In updateStatus, centerId is the 3rd param (index 2)
+                    request.center_id = params[2];
+                    request.assignment_status = 'assigned';
+                }
                 return [{ affectedRows: 1 }];
             }
             return [{ affectedRows: 0 }];
@@ -526,9 +571,66 @@ class MockPool {
             return [{ affectedRows: 0 }];
         }
 
-        // 25. Admin Notifications: INSERT/SELECT (silently succeed)
-        if (lowerSql.includes('tbl_admin_notifications') || lowerSql.includes('tbl_center_notifications')) {
-            return [{ insertId: Math.floor(Math.random() * 9000) + 1000, affectedRows: 1 }];
+        // 25. Admin/Center Notifications: Mock Handlers
+        if (lowerSql.includes('insert into tbl_center_notifications')) {
+            const nextId = mockData.center_notifications.length + 1;
+            mockData.center_notifications.push({
+                id: nextId, center_id: params[0], type: params[1], title: params[2], message: params[3], is_read: false, created_at: new Date()
+            });
+            return [{ insertId: nextId }];
+        }
+        if (lowerSql.includes('insert into tbl_admin_notifications')) {
+            const nextId = mockData.admin_notifications.length + 1;
+            mockData.admin_notifications.push({
+                id: nextId, type: params[0], title: params[1], message: params[2], reference_id: params[3], is_read: false, created_at: new Date()
+            });
+            return [{ insertId: nextId }];
+        }
+        if (lowerSql.includes('from tbl_center_notifications') || lowerSql.includes('from tbl_admin_notifications')) {
+            const table = lowerSql.includes('admin') ? mockData.admin_notifications : mockData.center_notifications;
+            return [table];
+        }
+
+        // 26. Center Messaging: Mock Handlers
+        if (lowerSql.includes('insert into tbl_center_messages')) {
+            const nextId = mockData.center_messages.length + 1;
+            mockData.center_messages.push({
+                message_id: nextId,
+                center_id: params[0],
+                sender_id: params[1],
+                sender_role: params[2],
+                sender_name: params[3],
+                receiver_id: params[4],
+                receiver_role: params[5],
+                message_text: params[6],
+                delivery_status: params[7],
+                is_read: false,
+                created_at: new Date(),
+                sent_time: new Date()
+            });
+            return [{ insertId: nextId }];
+        }
+        if (lowerSql.includes('from tbl_center_messages')) {
+            const centerId = params[0];
+            const msgs = mockData.center_messages.filter(m => m.center_id == centerId);
+            return [msgs];
+        }
+        if (lowerSql.includes('update tbl_center_messages')) {
+            const centerId = params[0];
+            const receiverRole = lowerSql.includes('receiver_role = ?') ? params[1] : (lowerSql.includes("receiver_role = 'CENTER'") ? 'CENTER' : 'ADMIN');
+            mockData.center_messages.forEach(m => {
+                if (m.center_id == centerId && m.receiver_role === receiverRole) {
+                    if (lowerSql.includes('is_read = 1')) {
+                        m.is_read = true;
+                        m.delivery_status = 'read';
+                        m.read_time = new Date();
+                    } else if (lowerSql.includes('delivery_status = \'delivered\'')) {
+                        m.delivery_status = 'delivered';
+                        m.delivered_time = new Date();
+                    }
+                }
+            });
+            return [{ affectedRows: 1 }];
         }
 
         // Default empty
@@ -604,6 +706,7 @@ const smartPool = {
         await migrate("tbl_users", "streak INT DEFAULT 0");
         await migrate("tbl_users", "carbon_saved_kg DECIMAL(10,2) DEFAULT 0");
         await migrate("tbl_users", "leaderboard_rank INT DEFAULT 0");
+        await migrate("tbl_users", "center_id INT NULL");
 
         // 2. Center Table Migrations
         await migrate("tbl_collection_centers", "status VARCHAR(10) DEFAULT 'OPEN'");
@@ -685,6 +788,43 @@ const smartPool = {
             console.log("✅ User History Table verified");
         } catch (err) {
             console.error("❌ User History Table Migration Error:", err);
+        }
+
+        // 7. Center Messaging & Admin Notifications
+        try {
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS tbl_center_messages (
+                    message_id INT AUTO_INCREMENT PRIMARY KEY,
+                    center_id INT NOT NULL,
+                    sender_id INT NOT NULL,
+                    sender_role VARCHAR(20) NOT NULL,
+                    sender_name VARCHAR(255),
+                    receiver_id INT NOT NULL,
+                    receiver_role VARCHAR(20) NOT NULL,
+                    message_text TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_read BOOLEAN DEFAULT FALSE,
+                    delivery_status VARCHAR(20) DEFAULT 'sent',
+                    sent_time TIMESTAMP NULL,
+                    delivered_time TIMESTAMP NULL,
+                    read_time TIMESTAMP NULL,
+                    FOREIGN KEY (center_id) REFERENCES tbl_collection_centers(center_id) ON DELETE CASCADE
+                )
+            `);
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS tbl_admin_notifications (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    type VARCHAR(50) NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    message TEXT NOT NULL,
+                    reference_id INT,
+                    is_read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            console.log("✅ Messaging Tables verified");
+        } catch (err) {
+            console.error("❌ Messaging Migration Error:", err);
         }
 
         conn.release();

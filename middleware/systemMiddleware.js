@@ -3,8 +3,15 @@ import jwt from 'jsonwebtoken';
 import db from '../db.js';
 import crypto from 'crypto';
 import * as SessionService from '../services/sessionService.js';
+import dotenv from 'dotenv';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
+// Ensure env vars are loaded BEFORE initializing constants
+dotenv.config();
+
+// Robustly extract secret: strip any accidental quotes from .env
+const rawSecret = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = rawSecret.trim().replace(/^"|"$/g, '');
+
 
 // --- Helper: Generate Integrity Hash ---
 const generateHash = (data) => {
@@ -14,7 +21,7 @@ const generateHash = (data) => {
 // --- Service: Central Audit Logger ---
 export const logEvent = async (eventType, actor, target, payload, req = null, severity = 'INFO') => {
     try {
-        const actorId = actor ? actor.id : null;
+        const actorId = actor ? (actor.id || actor.user_id) : null;
         const actorRole = actor ? actor.role : 'SYSTEM';
         const targetRes = target.resource;
         const targetId = target.id;
@@ -39,41 +46,63 @@ export const logEvent = async (eventType, actor, target, payload, req = null, se
 
 // --- Middleware: Verify Authenticated ---
 export const verifyToken = async (req, res, next) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Extract the raw Authorization header value (check multiple variants)
+    const authHeader = req.header('Authorization') || req.headers['authorization'] || '';
 
-    if (!token) {
-        return res.status(401).json({ message: "Access Denied. No token provided." });
+    // Strip "Bearer " prefix, trim whitespace, and strip any accidental JSON quotes
+    let token = authHeader.replace(/^Bearer\s+/i, '').trim().replace(/^"|"$/g, '');
+
+    // 🔍 DEBUG LOG REQUIREMENT 1: Token received
+    const tokenPreview = token && token.length > 20 ? token.substring(0, 20) + '...' : `[val=${token}]`;
+    console.log(`[verifyToken] DEBUG: Receiving token for ${req.method} ${req.originalUrl}. Preview: ${tokenPreview}`);
+
+    if (!token || token === 'null' || token === 'undefined') {
+        console.warn(`[verifyToken] ❌ REJECTION: No token provided on ${req.method} ${req.originalUrl}`);
+        return res.status(401).json({ success: false, message: "Session expired. Please log in again." });
     }
 
+    const dotCount = (token.match(/\./g) || []).length;
+    // Sanity check: a JWT MUST have exactly 2 dots (3 parts)
+    if (dotCount !== 2) {
+        console.error(`[verifyToken] ❌ REJECTION: Token is NOT a JWT (dots=${dotCount}). Path: ${req.originalUrl}`);
+        return res.status(401).json({ success: false, message: "Invalid session format. Please log in again." });
+    }
+
+    // Step 1: Verify JWT signature & expiry
+    let verified;
     try {
-        // 1. Verify JWT Structure and Signature
-        const verified = jwt.verify(token, JWT_SECRET);
-
-        // 2. Validate Session in DB (Stability Mode: Soft Check)
-        const session = await SessionService.validateSession(token);
-
-        if (!session) {
-            console.warn("⚠️ STABILITY MODE: Session not found in DB, but JWT is valid. Allowing fallback.");
-            // Log this as a warning event
-            logEvent('SESSION_FALLBACK', { id: verified.id, role: verified.role }, { resource: req.originalUrl, id: 'N/A' }, { token_jti: verified.jti }, req, 'WARNING');
-
-            // Create a mock session object for the request
-            req.user = verified;
-            req.sessionId = verified.jti || 'fallback_session';
-        } else {
-            // 3. Bind user to request
-            req.user = verified; // { id, role, email, jti }
-            req.sessionId = session.session_id;
-        }
-
-        next();
+        verified = jwt.verify(token, JWT_SECRET);
     } catch (e) {
+        const reason = e.name === 'TokenExpiredError' ? 'EXPIRED' : 'INVALID_SIGNATURE';
+        console.warn(`[verifyToken] ❌ REJECTION: JWT ${reason} on ${req.originalUrl}. Error: ${e.message}`);
+
         if (e.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: "Access token expired.", code: 'TOKEN_EXPIRED' });
+            return res.status(401).json({ success: false, message: "Session expired. Please log in again.", code: 'TOKEN_EXPIRED' });
         }
-        console.error("Auth Error:", e.message);
-        res.status(401).json({ message: "Invalid Token" });
+        return res.status(401).json({ success: false, message: "Session invalid. Please log in again." });
     }
+
+    // 🔍 DEBUG LOG REQUIREMENT 2: Decoded user
+    console.log(`[verifyToken] ✅ ACCEPTED: id=${verified.id || verified.user_id}, role=${verified.role}, name=${verified.name}`);
+
+    // Step 2: Attach user to request immediately — DB failure cannot block this
+    req.user = verified;
+    req.sessionId = verified.jti || 'jwt_only';
+
+    // Step 3: Non-blocking session DB check
+    try {
+        // Only attempt if SessionService and validateSession are defined
+        if (SessionService && typeof SessionService.validateSession === 'function') {
+            const session = await SessionService.validateSession(token);
+            if (session) {
+                req.sessionId = session.session_id;
+            }
+        }
+    } catch (dbErr) {
+        console.warn(`[verifyToken] ⚠️ Session DB check failed (non-fatal): ${dbErr.message}`);
+    }
+
+    next();
 };
 
 // --- Middleware: RBAC ---

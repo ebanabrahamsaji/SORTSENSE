@@ -1,6 +1,33 @@
 // Use relative paths for better reliability across different hostnames/ports
 const API_BASE_URL = '';
 
+/**
+ * getAdminToken — Safely retrieves the admin JWT from localStorage.
+ * Validates the value looks like a real JWT (3 dot-separated Base64 parts).
+ * Returns the token string, or null if nothing valid is found.
+ */
+function getAdminToken() {
+    const isJwt = (val) => {
+        if (!val || typeof val !== 'string') return false;
+        const parts = val.split('.');
+        return parts.length === 3 && parts[0].length > 0 && parts[1].length > 0;
+    };
+
+    // Priority: AdminAuth service → primary key → legacy key
+    const candidates = [
+        window.AdminAuth && window.AdminAuth.getSession ? (() => { const s = window.AdminAuth.getSession(); return s && s.token; })() : null,
+        localStorage.getItem('admin_sys_token'),
+        localStorage.getItem('adminToken'),
+    ];
+
+    for (const val of candidates) {
+        if (isJwt(val)) return val;
+    }
+
+    console.warn('[getAdminToken] No valid JWT found in localStorage. Admin may not be logged in.');
+    return null;
+}
+
 // --- STABLE MODE: GLOBAL GUARDS (Item 9 & Patch) ---
 const STABLE = {
     isActive: () => document.hasFocus(),
@@ -41,6 +68,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (messageCenterId) {
         setTimeout(() => openMessageModal(messageCenterId), 300);
     }
+
+    // Auto-refresh center status every 30 seconds (Requirement 8)
+    setInterval(() => {
+        if (STABLE.isActive()) {
+            fetchCenterStatus();
+            fetchAndAnimateStats();
+            fetchSystemHealth();
+        }
+    }, 30000);
 });
 
 async function fetchAndAnimateStats() {
@@ -178,7 +214,9 @@ function setupInteractions() {
             sendBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Sending...';
 
             try {
-                const token = localStorage.getItem('adminToken') || localStorage.getItem('admin_sys_token');
+                const token = getAdminToken();
+                if (!token) throw new Error("Authentication session expired. Please reload.");
+
                 const response = await fetch(`${API_BASE_URL}/api/messages/send`, {
                     method: 'POST',
                     headers: {
@@ -188,15 +226,22 @@ function setupInteractions() {
                     body: JSON.stringify({ center_id: centerId, messageText })
                 });
 
+                if (response.status === 401) throw new Error("Session expired. Please log in again.");
+
                 const result = await response.json();
                 if (result.success) {
                     document.getElementById('msgContent').value = '';
-                    const historyRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    const historyData = await historyRes.json();
-                    if (historyData && historyData.data) renderChatHistory(historyData.data);
                     showToast('Message sent successfully', 'success');
+
+                    // Reload chat immediately so admin sees their sent message without closing
+                    try {
+                        const currentToken = getAdminToken();
+                        const hRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
+                            headers: { 'Authorization': `Bearer ${currentToken}` }
+                        });
+                        const hData = await hRes.json();
+                        if (hData.success) renderChatHistory(hData.data || []);
+                    } catch (_) { /* non-critical — toast already shown */ }
                 } else {
                     throw new Error(result.error || 'Failed to send message');
                 }
@@ -221,39 +266,99 @@ async function openMessageModal(centerId) {
 
     if (!modal) return;
 
-    modal.style.display = 'flex';
+    // Reset and show
     msgIdInput.value = centerId;
-    title.textContent = 'Loading...';
+    document.getElementById('msgContent').value = '';
+    title.textContent = 'Loading secure chat...';
     statusText.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Initializing...';
-    history.innerHTML = '<div style="text-align: center; color: #64748b; padding-top: 80px;"><i class="ri-loader-4-line ri-spin"></i><br>Loading secure chat...</div>';
+    history.innerHTML = '<div style="text-align: center; color: #64748b; padding-top: 80px;"><i class="ri-loader-4-line ri-spin"></i><br>Connecting...</div>';
+
+    showModal('messageCenterModal');
 
     try {
-        const res = await fetch(`${API_BASE_URL}/api/centers`);
-        const centers = await res.json();
-        const center = centers.find(c => c.center_id == centerId);
+        const token = getAdminToken();
 
-        if (center) {
-            title.textContent = `Message ${center.center_name}`;
-            const liveStatus = center.center_status || 'offline';
-            let sColor = '#ef4444';
-            let sText = 'Closed (Offline)';
-
-            if (liveStatus === 'online') { sColor = '#10b981'; sText = 'Open (Online)'; }
-            else if (liveStatus === 'idle') { sColor = '#f59e0b'; sText = 'Idle'; }
-
-            statusText.innerHTML = `<span style="color:${sColor}; font-weight:600;"><i class="ri-checkbox-circle-fill"></i> ${sText}</span>`;
+        if (!token) {
+            history.innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Session lost. Please reload the dashboard.</div>';
+            statusText.textContent = "Error";
+            return;
         }
 
-        const token = localStorage.getItem('adminToken') || localStorage.getItem('admin_sys_token');
-        const hRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const hData = await hRes.json();
-        renderChatHistory(hData.data || []);
+        // Helper to load content with timeout
+        const refreshChat = async (isSilent = false) => {
+            const controller = new AbortController();
+            const tId = setTimeout(() => controller.abort(), 8000);
+
+            try {
+                // Update local session expiry to prevent watchdog logout while active
+                if (localStorage.getItem('admin_sys_expiry')) {
+                    const NEW_EXPIRY = Date.now() + (8 * 60 * 60 * 1000); // 8h
+                    localStorage.setItem('admin_sys_expiry', NEW_EXPIRY.toString());
+                }
+
+                const currentToken = getAdminToken();
+                if (!currentToken) { throw new Error('UNAUTHORIZED'); }
+                const hRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
+                    headers: { 'Authorization': `Bearer ${currentToken}` },
+                    signal: controller.signal
+                });
+                clearTimeout(tId);
+
+                if (hRes.status === 401) throw new Error("UNAUTHORIZED");
+
+                const hData = await hRes.json();
+                if (hData.success) {
+                    renderChatHistory(hData.data || []);
+                }
+            } catch (e) {
+                clearTimeout(tId);
+                if (e.message === "UNAUTHORIZED") {
+                    history.innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Session expired. Log in again.</div>';
+                    if (window.chatInterval) { clearInterval(window.chatInterval); window.chatInterval = null; }
+                } else if (!isSilent) {
+                    history.innerHTML = '<div style="text-align: center; color: #ef4444; padding-top:80px;">Failed to load chat thread.</div>';
+                }
+            }
+        };
+
+        // Fetch Center Details
+        fetch(`${API_BASE_URL}/api/centers`)
+            .then(res => res.json())
+            .then(centers => {
+                const center = Array.isArray(centers) ? centers.find(c => c.center_id == centerId) : null;
+                if (center) {
+                    title.textContent = `Message ${center.center_name}`;
+                    const liveStatus = center.live_status || 'CLOSED';
+                    let sText = (liveStatus === 'OPEN') ? 'Open (Online)' : (liveStatus === 'IDLE' ? 'Idle' : 'Closed (Offline)');
+                    let sColor = (liveStatus === 'OPEN') ? '#10b981' : (liveStatus === 'IDLE' ? '#f59e0b' : '#ef4444');
+                    statusText.innerHTML = `<span style="color:${sColor}; font-weight:600;"><i class="ri-checkbox-circle-fill"></i> ${sText}</span>`;
+                } else {
+                    title.textContent = "Message Center";
+                    statusText.textContent = "ID: " + centerId;
+                }
+            }).catch(() => {
+                title.textContent = "Message Center";
+                statusText.textContent = "Center details unavailable";
+            });
+
+        // Initial Load
+        await refreshChat(false);
+
+        // --- BACKGROUND POLLING ---
+        if (window.chatInterval) clearInterval(window.chatInterval);
+        window.chatInterval = setInterval(() => {
+            // Only poll if modal is visible
+            const m = document.getElementById('messageCenterModal');
+            if (m && m.style.display === 'flex') {
+                refreshChat(true);
+            } else {
+                clearInterval(window.chatInterval);
+            }
+        }, 5000);
 
     } catch (e) {
         console.error("Messaging Modal Error:", e);
-        history.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444;">Failed to load chat history.</div>';
+        history.innerHTML = '<div style="padding: 2rem; text-align: center; color: #ef4444;">Failed to initialize secure chat.</div>';
     }
 }
 
@@ -269,13 +374,14 @@ function renderChatHistory(messages) {
     const html = messages.map(m => {
         const isSelf = m.senderRole === 'ADMIN';
         const align = isSelf ? 'flex-end' : 'flex-start';
-        const bg = isSelf ? '#6366f1' : 'rgba(255,255,255,0.05)';
+        const bg = isSelf ? '#6366f1' : 'rgba(255,255,255,0.08)';
+        const border = isSelf ? 'none' : '1px solid rgba(255,255,255,0.1)';
         return `
             <div style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px;">
-                <div style="background: ${bg}; color: white; padding: 8px 14px; border-radius: 12px; font-size: 0.9rem;">
+                <div style="background: ${bg}; border: ${border}; color: white; padding: 10px 14px; border-radius: 12px; font-size: 0.9rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                     ${m.messageText}
                 </div>
-                <div style="font-size: 0.7rem; color: #64748b; align-self: ${align};">
+                <div style="font-size: 0.7rem; color: #94a3b8; align-self: ${align}; margin: 0 4px;">
                     ${STABLE.s(m.senderName, "System")} • ${new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
             </div>
@@ -296,7 +402,9 @@ async function fetchCenterStatus() {
     if (!tableBody) return;
 
     try {
-        const response = await fetch(`${API_BASE_URL}/api/centers`);
+        const response = await fetch(`${API_BASE_URL}/api/centers?_t=${Date.now()}`, {
+            cache: 'no-store'
+        });
         const centers = await response.json();
 
         if (!Array.isArray(centers) || centers.length === 0) {
@@ -305,11 +413,13 @@ async function fetchCenterStatus() {
         }
 
         const html = centers.map(center => {
-            const liveStatus = center.center_status || 'offline';
-            let sText = 'Closed';
+            const liveStatus = center.live_status || 'CLOSED';
+            let sText = liveStatus;
             let sColor = '#ef4444';
-            if (liveStatus === 'online') { sText = 'Open'; sColor = '#10b981'; }
-            else if (liveStatus === 'idle') { sText = 'Idle'; sColor = '#f59e0b'; }
+            let sIcon = '🔴';
+
+            if (liveStatus === 'OPEN') { sColor = '#10b981'; sIcon = '🟢'; }
+            else if (liveStatus === 'IDLE') { sColor = '#f59e0b'; sIcon = '🟡'; }
 
             const usage = center.max_slots - center.available_slots;
             const percent = (usage / center.max_slots) * 100;
@@ -321,7 +431,7 @@ async function fetchCenterStatus() {
                         <div style="font-weight: 600; color: white;">${STABLE.s(center.center_name, "Center")}</div>
                         <div style="font-size: 0.75rem; color: #94a3b8;">Score: ${perfScore}%</div>
                     </td>
-                    <td><span class="status-badge" style="background:${sColor}20; color:${sColor}">${sText}</span></td>
+                    <td><span class="status-badge" style="background:${sColor}20; color:${sColor}; white-space: nowrap;">${sIcon} ${sText}</span></td>
                     <td style="width:180px;">
                         <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:4px;">
                             <span>${center.available_slots} / ${center.max_slots} Left</span>
@@ -446,6 +556,40 @@ function showSection(sectionId) {
         if (navLink && navLink.parentElement) navLink.parentElement.classList.add('active');
     }
 }
+
+// Modal Helpers
+function showModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Prevent scroll
+    }
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = ''; // Restore scroll
+
+        // Cleanup messaging specific interval if it was this modal
+        if (id === 'messageCenterModal' && window.chatInterval) {
+            clearInterval(window.chatInterval);
+            window.chatInterval = null;
+        }
+    }
+}
+
+// Make available globally
+window.showModal = showModal;
+window.closeModal = closeModal;
+
+// Global modal click listener (Fix for "Cannot Close" & "Popup Freeze")
+window.addEventListener('click', (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains('modal-overlay')) {
+        closeModal(e.target.id);
+    }
+});
 
 // Add navigation handler to DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {

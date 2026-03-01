@@ -1406,7 +1406,7 @@
 
                 <div style="text-align:right; gap: 12px; display: flex; justify-content: flex-end; margin-top: 2rem;">
                     <button type="button" onclick="closeModal('addUserModal')" class="btn btn-outline"
-                        style="border:1px solid #475569; color:white;">Cancel</button>
+                        style="border:1px solid rgba(255,255,255,0.1); color:white; background:rgba(255,255,255,0.05);">Cancel</button>
                     <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem;"><i
                             class="ri-check-line" style="margin-right: 6px;"></i> Create User</button>
                 </div>
@@ -1450,7 +1450,7 @@
                 </div>
                 <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
                     <button type="button" onclick="closeModal('addCategoryModal')" class="btn btn-outline"
-                        style="border:1px solid #475569; color:white;">Cancel</button>
+                        style="border:1px solid rgba(255,255,255,0.1); color:white; background:rgba(255,255,255,0.05);">Cancel</button>
                     <button type="submit" class="btn btn-primary">Add Category</button>
                 </div>
             </form>
@@ -1510,7 +1510,7 @@
                 </div>
                 <div style="text-align:right; gap: 10px; display: flex; justify-content: flex-end;">
                     <button type="button" onclick="closeModal('exportReportsModal')" class="btn btn-outline"
-                        style="border:1px solid #475569; color:white;">Cancel</button>
+                        style="border:1px solid rgba(255,255,255,0.1); color:white; background:rgba(255,255,255,0.05);">Cancel</button>
                     <button type="submit" class="btn btn-primary"><i class="ri-download-line"></i> Generate &
                         Download</button>
                 </div>
@@ -1556,7 +1556,7 @@
                 </div>
                 <div style="text-align:right; gap: 12px; display: flex; justify-content: flex-end; margin-top: 1.5rem;">
                     <button type="button" onclick="closeModal('messageCenterModal')" class="btn btn-outline"
-                        style="border:1px solid #475569; color:white;">Close</button>
+                        style="border:1px solid rgba(255,255,255,0.1); color:white; background:rgba(255,255,255,0.05);">Close</button>
                     <button type="submit" id="msgSendBtn" class="btn btn-primary"
                         style="padding: 0.75rem 1.5rem; background: #10b981; border-color: #10b981;">
                         <i class="ri-send-plane-fill" style="margin-right: 6px;"></i> Send Message
@@ -1574,8 +1574,24 @@
     <script src="../js/config.js"></script>
     <script src="../js/auth.js"></script>
     <script src="../js/admin-auth.js"></script>
-    <script src="../js/admin-dashboard.js"></script>
+    <script src="../js/admin-dashboard.js?v=2"></script>
     <script>
+        // ── AUTH DIAGNOSTIC (temporary — remove after fix confirmed) ──────────
+        (function diagAuthTokens() {
+            const keys = [
+                'admin_sys_token', 'adminToken', 'token',
+                'admin_sys_id', 'admin_sys_role', 'admin_sys_expiry', 'adminUser'
+            ];
+            console.group('[AdminDiag] localStorage Auth State');
+            keys.forEach(k => {
+                const v = localStorage.getItem(k);
+                const isJwt = v && v.split('.').length === 3;
+                console.log(`%c ${k}: %c${v ? (isJwt ? '✅ JWT' : '⚠️ NOT A JWT: ' + v) : '❌ null'}`,
+                    'font-weight:bold', 'color:' + (isJwt ? 'green' : (v ? 'orange' : 'red')));
+            });
+            console.groupEnd();
+        })();
+
         // On load: update admin name from localStorage, ensure correct section visible
         document.addEventListener('DOMContentLoaded', function () {
             // --- Update admin header name from localStorage ---

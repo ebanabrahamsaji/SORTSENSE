@@ -16,7 +16,7 @@
 
     // ── Constants ────────────────────────────────────────────────────────────
     const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;   // 8 hours
-    const ACTIVITY_EXTEND_MS = 30 * 60 * 1000;        // extend on activity if <30 min left
+    const ACTIVITY_EXTEND_MS = 7 * 60 * 60 * 1000;    // extend if less than 7 hours left (almost always)
     const LOGIN_PAGE = 'login.html';
     const LOGIN_QUERY = '?role=admin';
     const DASHBOARD_PAGE = 'admin-dashboard.html';
@@ -71,6 +71,9 @@
             role: localStorage.getItem(KEYS.role),
             name: localStorage.getItem(KEYS.name),
             expiry: parseInt(localStorage.getItem(KEYS.expiry) || '0', 10),
+            // Only use admin-specific token keys — never fall back to the generic 'token' key
+            // which might contain a regular user token
+            token: localStorage.getItem(KEYS.token) || localStorage.getItem('adminToken')
         };
     }
 
@@ -247,7 +250,13 @@
          * If admin is already logged in → bounce them straight to dashboard.
          */
         guardLogin() {
-            if (_isValid()) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roleParam = (urlParams.get('role') || '').toLowerCase();
+
+            // Only bounce if the user explicitly requested the admin login role.
+            // If they just clicked "Login" generally (no param), let them see the page
+            // so they can choose a different role/account if desired.
+            if (_isValid() && roleParam === 'admin') {
                 _log('Guard (login): already authenticated — bouncing to dashboard.');
                 _redirectToDashboard();
                 return false;

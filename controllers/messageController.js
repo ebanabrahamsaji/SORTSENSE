@@ -16,7 +16,7 @@ export const sendMessage = async (req, res) => {
             return res.status(400).json({ success: false, error: "Message content required" });
         }
 
-        const senderId = user.id || user.user_id;
+        const senderId = user.id || user.user_id || user.center_id;
 
         // --- ABUSE WORD DETECTION ---
         const lowerMsg = messageText.toLowerCase();
@@ -32,17 +32,31 @@ export const sendMessage = async (req, res) => {
         }
         // ----------------------------
 
-        const senderRole = user.role;
+        const senderRole = (user.role || '').toUpperCase();
+        console.log(`[sendMessage] DEBUG: Sender id=${senderId}, role=${senderRole}. Body center_id=${center_id}`);
+
         let senderName = "Administrator";
         let receiverId = center_id;
         let receiverRole = "CENTER";
         let targetCenterId = center_id;
 
         if (senderRole === 'CENTER') {
-            senderName = user.username || 'Center';
-            receiverId = 1; // Assuming Admin ID is 1 or constant
+            senderName = user.name || user.username || 'Center';
             receiverRole = 'ADMIN';
             targetCenterId = senderId;
+
+
+            // Dynamically resolve the admin's user_id — do NOT hardcode
+            try {
+                const [adminRows] = await db.query(
+                    "SELECT user_id FROM tbl_users WHERE role = 'ADMIN' ORDER BY user_id ASC LIMIT 1"
+                );
+                receiverId = adminRows.length > 0 ? adminRows[0].user_id : 1;
+            } catch (e) {
+                console.error('[sendMessage] Failed to resolve admin ID, falling back to 1:', e.message);
+                receiverId = 1;
+            }
+            console.log(`[sendMessage] CENTER reply → targetCenterId=${targetCenterId}, receiverId=${receiverId}`);
         } else if (senderRole === 'ADMIN') {
             if (!targetCenterId) {
                 return res.status(400).json({ success: false, error: "Target center_id required for admin" });
@@ -51,6 +65,7 @@ export const sendMessage = async (req, res) => {
             senderName = "Administrator";
             receiverId = targetCenterId;
             receiverRole = 'CENTER';
+            console.log(`[sendMessage] ADMIN → center_id=${targetCenterId}, senderId=${senderId}`);
         } else {
             return res.status(403).json({ success: false, error: "Invalid role for messaging" });
         }
@@ -109,21 +124,28 @@ export const sendMessage = async (req, res) => {
  */
 export const getCenterMessages = async (req, res) => {
     const { centerId } = req.params;
-    const user = req.user;
+    const user = req.user || {};
 
     // Security: Center can only see its own conversation.
-    const currentId = user.id || user.user_id;
-    if (user.role === 'CENTER' && currentId != centerId) {
+    const currentId = user.id || user.user_id || user.center_id;
+    const role = (user.role || '').toUpperCase();
+
+    // 🔍 DEBUG LOG REQUIREMENT 5/6: Track IDs
+    console.log(`[getCenterMessages] DEBUG: Processing fetch for Center ${centerId}. Authenticated User: id=${currentId}, role=${role}`);
+
+    if (role === 'CENTER' && String(currentId) !== String(centerId)) {
+        console.warn(`[getCenterMessages] ❌ REJECTION: Unauthorized center ID mismatch. currentId=${currentId} !== centerId=${centerId}`);
         return res.status(403).json({ success: false, error: "Unauthorized access: You can only view your own messages." });
     }
 
     try {
-        // Mark pending messages as delivered when center fetches them (Part 4 logic)
+        // Mark pending messages as delivered when center fetches them
         await db.query(`
             UPDATE tbl_center_messages 
             SET delivery_status = 'delivered', delivered_time = NOW() 
             WHERE center_id = ? AND receiver_role = 'CENTER' AND delivery_status = 'pending'
         `, [centerId]);
+
 
         const [rows] = await db.query(`
             SELECT 
@@ -145,10 +167,10 @@ export const getCenterMessages = async (req, res) => {
             ORDER BY created_at ASC
         `, [centerId]);
 
+        console.log(`[getCenterMessages] centerId=${centerId} → ${rows.length} messages returned.`);
         res.json({ success: true, data: rows });
     } catch (error) {
         console.error("Get Center Messages Error:", error);
-        // PART 1 FIX: Always return valid JSON and a success structure even on error
         res.json({ success: true, data: [], error: "History temporarily unavailable" });
     }
 };
@@ -161,8 +183,12 @@ export const getAdminMessages = async (req, res) => {
     const { centerId } = req.params;
     const user = req.user;
 
+    // Diagnostic: log what the middleware passed through
+    console.log(`[getAdminMessages] User: ${JSON.stringify({ id: user?.id, role: user?.role })} | CenterId: ${centerId}`);
+
     // Security: Admin can see all center conversations.
-    if (user.role !== 'ADMIN') {
+    if (!user || !user.role || user.role.toUpperCase() !== 'ADMIN') {
+        console.warn(`[getAdminMessages] ❌ Role mismatch. Expected ADMIN, got: '${user?.role}'`);
         return res.status(403).json({ success: false, error: "Unauthorized access: Admin only." });
     }
 

@@ -107,10 +107,10 @@ export const getAllRequests = async (req, res) => {
             LEFT JOIN tbl_collection_centers cc ON r.center_id = cc.center_id
             ORDER BY r.created_at DESC
         `);
-        res.json(rows);
+        res.json({ success: true, data: rows });
     } catch (error) {
         console.error("Fetch All Error:", error);
-        res.status(500).json({ message: 'Error fetching requests.' });
+        res.status(500).json({ success: false, message: 'Error fetching requests.' });
     }
 };
 
@@ -130,9 +130,9 @@ export const updateStatus = async (req, res) => {
         if (centerId) {
             updateQuery += ', center_id = ?, assignment_status = "assigned"';
             params.push(centerId);
-        } else if (status === 'Approved' || status === 'Scheduled') {
-            // If Approved/Scheduled but no centerId somehow, but we usually require it in frontend
-            // We set it to unassigned explicitly if centerId is missing for these states
+        } else if (status === 'Approved') {
+            // Requirement 1: If Approved, we must have an assignment_status. 
+            // If No centerId provided yet, mark as unassigned but set status correctly.
             updateQuery += ', assignment_status = "unassigned"';
         }
 
@@ -185,24 +185,54 @@ export const updateStatus = async (req, res) => {
 
 // Get Center Requests (Assigned Only)
 export const getCenterRequests = async (req, res) => {
-    const { centerId } = req.query;
-    if (!centerId) return res.status(400).json({ message: "Center ID required" });
+    // 🛡️ SECURITY FIX: Use id from authenticated token, NOT query parameter
+    const centerId = req.user ? req.user.id : null;
+
+    if (!centerId) {
+        console.warn('[getCenterRequests] Unauthorized access attempt or missing center ID in token');
+        return res.status(401).json({ message: 'Authentication required.' });
+    }
+
+    // 🔍 DEBUG — verify session center_id
+    console.log(`[getCenterRequests] Fetching Approved Special Waste for centerId (from token): ${centerId}`);
 
     try {
-        // Only show Approved, Scheduled, Completed. No Pending (Admin review) or Rejected (Dead).
+        // 🎯 FIX: Fetch ONLY Approved requests for this center (Requirement 2)
+        // 🎯 FIX: Include Role-Based Visibility / Assignment Meta (Requirement 3)
+        // We join with tbl_collection_centers to identify if this is a Primary or Secondary assignment
         const [rows] = await db.query(`
-            SELECT r.*, u.name as user_name, u.email, u.phone 
-            FROM tbl_special_waste_requests r 
-            JOIN tbl_users u ON r.user_id = u.user_id 
-            WHERE r.center_id = ? AND r.status IN ('Approved', 'Scheduled', 'Completed')
+            SELECT
+                r.request_id,
+                r.category       AS waste_type,
+                r.quantity_value AS quantity,
+                r.quantity_unit  AS unit,
+                r.location,
+                r.status,
+                r.created_at     AS assigned_date,
+                r.admin_notes,
+                r.description,
+                r.preferred_date,
+                u.name           AS user_name,
+                u.email,
+                u.phone,
+                cc.is_primary    AS assigned_type_is_primary,
+                CASE WHEN cc.is_primary = 1 THEN 'Primary' ELSE 'Secondary' END AS assigned_type
+            FROM tbl_special_waste_requests r
+            JOIN tbl_users u ON r.user_id = u.user_id
+            JOIN tbl_collection_centers cc ON r.center_id = cc.center_id
+            WHERE r.center_id = ?
+              AND r.status = 'Approved'
             ORDER BY r.created_at DESC
         `, [centerId]);
-        res.json(rows);
+
+        console.log(`[getCenterRequests] Success: Found ${rows?.length || 0} approved requests for center ${centerId}`);
+        res.json(Array.isArray(rows) ? rows : []);
+
     } catch (error) {
-        console.error("Get Center Requests Error:", error);
-        res.status(500).json({ message: 'Error fetching requests.' });
+        console.error('Get Center Special Waste Error:', error);
+        res.status(500).json({ message: 'Error fetching center requests.', error: error.message });
     }
-};
+}
 
 // Helper: Notification
 async function sendNotification(email, name, status, category, notes) {

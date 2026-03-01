@@ -2,6 +2,10 @@ import db from '../db.js';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { transporter } from '../email.js';
+import jwt from 'jsonwebtoken';
+
+const rawSecret = process.env.JWT_SECRET || 'fallback_secret';
+const JWT_SECRET = rawSecret.trim().replace(/^"|"$/g, '');
 
 // Get Nearby Collection Centers
 // Uses Haversine formula in SQL for accurate distance calculation
@@ -9,12 +13,27 @@ export const getCollectionCenters = async (req, res) => {
     const { category, lat, lng } = req.query;
 
     try {
-        let query = "";
+        // If center inactive for more than 5 minutes, set is_online = 0
+        await db.query(`
+            UPDATE tbl_collection_centers 
+            SET is_online = 0, center_status = 'CLOSED', offline_since = NOW()
+            WHERE is_online = 1 AND (last_seen < NOW() - INTERVAL 5 MINUTE OR last_seen IS NULL)
+        `).catch(e => console.error("Auto-offline update error:", e));
+
         let params = [];
         let whereClauses = [];
 
         // Base Query Selection
-        let selectClause = "SELECT cc.*";
+        let selectClause = `
+            SELECT cc.*,
+            CASE
+                WHEN cc.is_online = 0 THEN 'CLOSED'
+                WHEN cc.last_seen IS NULL THEN 'CLOSED'
+                WHEN TIMESTAMPDIFF(SECOND, cc.last_seen, NOW()) <= 60 THEN 'OPEN'
+                WHEN TIMESTAMPDIFF(SECOND, cc.last_seen, NOW()) <= 300 THEN 'IDLE'
+                ELSE 'CLOSED'
+            END AS live_status
+        `;
 
         // Haversine Distance Calculation (if lat/lng provided)
         if (lat && lng) {
@@ -28,14 +47,10 @@ export const getCollectionCenters = async (req, res) => {
             selectClause += ", NULL as distance";
         }
 
-        query = `${selectClause} FROM tbl_collection_centers cc`;
+        let query = `${selectClause} FROM tbl_collection_centers cc`;
 
         // Category Filtering
-        // We join with the accepted categories table if a category is specified
         if (category && category !== 'all' && category !== 'undefined') {
-            query = `${selectClause} FROM tbl_collection_centers cc`; // Reset base without WHERE yet
-
-            // LEFT JOIN to allow filtering by category but also keeping center info for check
             query += ` 
             LEFT JOIN tbl_accepted_categories ac ON cc.center_id = ac.center_id
             LEFT JOIN tbl_categories cat ON ac.category_id = cat.category_id`;
@@ -51,7 +66,12 @@ export const getCollectionCenters = async (req, res) => {
         }
 
         // Add DISTINCT to main select to avoid duplicates from joins
-        query = query.replace('SELECT cc.*', 'SELECT DISTINCT cc.*');
+        if (query.includes('SELECT cc.*')) {
+            query = query.replace('SELECT cc.*', 'SELECT DISTINCT cc.*');
+        } else {
+            // Fallback for the multi-line version
+            query = query.replace(/SELECT\s+cc\.\*/i, 'SELECT DISTINCT cc.*');
+        }
 
         // Sorting
         // Primary centers first, then Distance or Name
@@ -97,7 +117,17 @@ export const getCollectionCenters = async (req, res) => {
 export const getCenterById = async (req, res) => {
     const { id } = req.params;
     try {
-        const [rows] = await db.query("SELECT * FROM tbl_collection_centers WHERE center_id = ?", [id]);
+        const [rows] = await db.query(`
+            SELECT *,
+            CASE
+                WHEN is_online = 0 THEN 'CLOSED'
+                WHEN TIMESTAMPDIFF(SECOND, last_seen, NOW()) <= 60 THEN 'OPEN'
+                WHEN TIMESTAMPDIFF(SECOND, last_seen, NOW()) <= 300 THEN 'IDLE'
+                ELSE 'CLOSED'
+            END AS live_status
+            FROM tbl_collection_centers 
+            WHERE center_id = ?
+        `, [id]);
         if (rows.length === 0) return res.status(404).json({ message: "Center not found" });
 
         const center = rows[0];
@@ -267,17 +297,27 @@ export const getCenterNotifications = async (req, res) => {
     const { id: centerId } = req.params;
     try {
         const [rows] = await db.query(
-            "SELECT * FROM tbl_center_notifications WHERE center_id = ? ORDER BY created_at DESC LIMIT 50",
+            `SELECT id, type, title, message, is_read, created_at
+             FROM tbl_center_notifications
+             WHERE center_id = ?
+             ORDER BY created_at DESC
+             LIMIT 50`,
             [centerId]
         );
         const [unread] = await db.query(
             "SELECT COUNT(*) as c FROM tbl_center_notifications WHERE center_id = ? AND is_read = 0",
             [centerId]
         );
-        res.json({ success: true, notifications: rows, unreadCount: unread[0].c });
+        // Always return a stable structure — never 500
+        res.json({
+            success: true,
+            notifications: Array.isArray(rows) ? rows : [],
+            unreadCount: unread[0]?.c ?? 0
+        });
     } catch (error) {
         console.error("Get Center Notifications Error:", error);
-        res.status(500).json({ success: false, message: "Error fetching notifications" });
+        // Return empty — never break the bell
+        res.json({ success: true, notifications: [], unreadCount: 0 });
     }
 };
 
@@ -319,13 +359,14 @@ export const registerCenter = async (req, res) => {
 
     try {
         // Check uniqueness for username and email in tbl_collection_centers
-        const [existing] = await db.query(
-            "SELECT * FROM tbl_collection_centers WHERE username = ? OR email = ?",
-            [username, email]
-        );
+        const [existingUser] = await db.query("SELECT * FROM tbl_collection_centers WHERE username = ?", [username]);
+        if (existingUser.length > 0) {
+            return res.status(409).json({ success: false, message: "Username already registered. Please login or choose another." });
+        }
 
-        if (existing.length > 0) {
-            return res.status(409).json({ message: "Center already registered with this username or email." });
+        const [existingEmail] = await db.query("SELECT * FROM tbl_collection_centers WHERE email = ?", [email]);
+        if (existingEmail.length > 0) {
+            return res.status(409).json({ success: false, message: "Email already registered. Please login or use 'forgot password'." });
         }
 
         // Hash password securely
@@ -367,24 +408,38 @@ export const centerLogin = async (req, res) => {
         );
 
         if (rows.length === 0) {
-            return res.status(401).json({ message: "Invalid username or password" });
+            return res.status(401).json({ message: "No center account found with that username/email." });
         }
 
         const center = rows[0];
         const isMatch = await bcrypt.compare(password, center.password_hash);
 
         if (!isMatch) {
-            return res.status(401).json({ message: "Invalid username or password" });
+            return res.status(401).json({ message: "Incorrect password. Please try again." });
         }
 
-        // Update center status to 'online' on successful login
-        await db.query(
-            "UPDATE tbl_collection_centers SET center_status = 'online', last_active_at = NOW(), offline_since = NULL WHERE center_id = ?",
-            [center.center_id]
-        );
+        // Update center status for live tracking (Requirement: is_online=1, last_seen=NOW())
+        await db.query(`
+            UPDATE tbl_collection_centers 
+            SET is_online = 1, 
+                last_seen = NOW(),
+                last_active_time = NOW(),
+                center_status = 'online',
+                offline_since = NULL
+            WHERE center_id = ?
+        `, [center.center_id]).catch(err => console.error("Center login status update error:", err));
 
-        // Create a mock token for session handling (consistent with frontend requirements)
-        const token = crypto.randomBytes(32).toString('hex');
+        // Create a proper JWT Token (replacing mock hex token)
+        const token = jwt.sign(
+            {
+                id: center.center_id,
+                role: 'CENTER',
+                email: center.email || center.username,
+                name: center.center_name || center.username
+            },
+            JWT_SECRET,
+            { expiresIn: '168h' } // Increased to 7 days for stable dashboard monitoring
+        );
 
         // Omit password hash for safety
         const { password_hash, ...centerInfo } = center;
@@ -394,7 +449,8 @@ export const centerLogin = async (req, res) => {
             token,
             center: {
                 ...centerInfo,
-                id: center.center_id // Helper for frontend mapping
+                id: center.center_id,
+                center_id: center.center_id // Explicitly both
             }
         });
 
@@ -413,5 +469,39 @@ export const createCenterNotification = async (centerId, type, title, message) =
         );
     } catch (e) {
         console.error("Create Center Notification Error:", e);
+    }
+};
+
+// Center Heartbeat (Item 2)
+export const centerHeartbeat = async (req, res) => {
+    const { centerId } = req.body;
+    if (!centerId) return res.status(400).json({ message: "Center ID required" });
+
+    try {
+        await db.query(
+            "UPDATE tbl_collection_centers SET last_seen = NOW(), last_active_time = NOW(), is_online = 1, center_status = 'online' WHERE center_id = ?",
+            [centerId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Heartbeat Error:", error);
+        res.status(500).json({ message: "Heartbeat failed" });
+    }
+};
+
+// Center Logout (Item 4)
+export const centerLogout = async (req, res) => {
+    const { centerId } = req.body;
+    if (!centerId) return res.status(400).json({ message: "Center ID required" });
+
+    try {
+        await db.query(
+            "UPDATE tbl_collection_centers SET is_online = 0 WHERE center_id = ?",
+            [centerId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Logout Error:", error);
+        res.status(500).json({ message: "Logout status update failed" });
     }
 };
