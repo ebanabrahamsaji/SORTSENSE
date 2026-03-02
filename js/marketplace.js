@@ -222,6 +222,126 @@ function formatRelativeTime(date) {
 }
 
 // ── Actions ───────────────────────────────────────────
+window.openAddItem = function () {
+    const modal = document.getElementById('addItemModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Reset form
+        document.getElementById('marketplaceForm').reset();
+        document.getElementById('mpUploadPreviewImg').style.display = 'none';
+        document.getElementById('mpUploadInner').style.display = 'flex';
+        document.getElementById('mpUploadZone').classList.remove('has-image');
+        document.getElementById('itemImage').value = '';
+        window.updateMPPreview();
+    }
+};
+
+window.closeAddItem = function () {
+    const modal = document.getElementById('addItemModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.updateMPPreview = function () {
+    const title = document.getElementById('itemTitle')?.value || 'Item Title';
+    const cat = document.getElementById('itemCategory')?.value || 'Plastic';
+    const desc = document.getElementById('mpDesc')?.value || 'Item description will appear here...';
+    let img = document.getElementById('itemImage')?.value || document.getElementById('mpUploadPreviewImg')?.src || '';
+    if (!img || img === window.location.href) {
+        img = getCategoryPlaceholder(cat);
+    }
+
+    // Update chars count
+    const charCount = document.getElementById('charCount');
+    if (charCount) charCount.innerText = `${desc.length}/200`;
+
+    const previewContainer = document.getElementById('mpLivePreview');
+    if (!previewContainer) return;
+
+    const catKey = cat.toLowerCase().replace(/[^a-z]/g, '');
+    const userName = localStorage.getItem('userName') || 'You';
+    const avatar = userName.charAt(0).toUpperCase();
+
+    previewContainer.innerHTML = `
+        <div class="mp-card" style="box-shadow: 0 4px 20px rgba(0,0,0,0.5); pointer-events: none;">
+            <div class="mp-card-img">
+                <img src="${img}" alt="Preview" onerror="this.onerror=null;this.src='${getCategoryPlaceholder(cat)}'">
+                <span class="mp-badge ${catKey}">${cat}</span>
+            </div>
+            <div class="mp-card-body">
+                <h3>${title}</h3>
+                <p>${desc}</p>
+                <div class="mp-card-meta">
+                    <div class="mp-avatar">${avatar}</div>
+                    <span class="mp-owner-name">${userName} · Just now</span>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+window.addItem = async function () {
+    const userId = getActiveUserId();
+    if (!userId) {
+        if (window.showToast) window.showToast('Please log in to post an item.', 'error');
+        return;
+    }
+
+    const title = document.getElementById('itemTitle').value.trim();
+    const category = document.getElementById('itemCategory').value;
+    const description = document.getElementById('mpDesc').value.trim();
+    let image_url = document.getElementById('itemImage').value.trim();
+
+    // Fall back to preview img if external URL is empty but file was uploaded
+    if (!image_url) {
+        const previewSrc = document.getElementById('mpUploadPreviewImg').src;
+        if (previewSrc && previewSrc !== window.location.href) {
+            image_url = previewSrc;
+        }
+    }
+
+    if (!title || !category || !description) {
+        if (window.showToast) window.showToast('Please fill in all required fields.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('submitPostBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Posting...';
+    }
+
+    try {
+        const res = await fetch('/api/marketplace', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, title, description, category, image_url })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            window.closeAddItem();
+            if (window.showToast) window.showToast('Item posted successfully!', 'success');
+            // Refresh market
+            loadMarketplace();
+        } else {
+            console.error(data.errors || data.message);
+            throw new Error(data.message || (data.errors ? data.errors[0].message : 'Failed to post item'));
+        }
+    } catch (err) {
+        if (window.showToast) {
+            window.showToast(err.message, 'error', 'Error');
+        } else {
+            alert(err.message);
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Post Item Now</span> <i class="ri-send-plane-fill"></i>';
+        }
+    }
+};
+
 window.toggleSave = async function (btn, itemId) {
     const icon = btn.querySelector('i');
     const isSaved = icon.classList.contains('ri-heart-fill');

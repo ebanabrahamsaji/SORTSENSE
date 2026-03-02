@@ -19,6 +19,7 @@ import centerRoutes from './routes/centerRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import specialWasteRoutes from './routes/specialWasteRoutes.js';
 import messageRoutes from './routes/messageRoutes.js';
+import userCenterMessageRoutes from './routes/userCenterMessageRoutes.js';
 import { runCenterAutomation } from './services/centerAutomationService.js';
 import { trackCenterActivity } from './middleware/activityMiddleware.js';
 
@@ -105,6 +106,7 @@ app.use('/api/centers', centerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/special-waste', specialWasteRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/user-center', userCenterMessageRoutes);
 
 // Feature 1: Chatbot Route
 import chatbotRoutes from './routes/chatbotRoutes.js';
@@ -122,11 +124,12 @@ app.get('/api/reports', async (req, res) => {
     if (!userId) return res.status(400).json({ message: "userId required" });
     try {
         const query = `
-            SELECT r.*, c.center_name, rep.report_id
+            SELECT r.*, c.center_name, MAX(rep.report_id) as report_id
             FROM tbl_pickup_requests r
             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
             LEFT JOIN tbl_reports rep ON r.request_id = rep.request_id AND rep.report_type = 'SINGLE'
             WHERE r.user_id = ?
+            GROUP BY r.request_id
             ORDER BY r.created_at DESC
             LIMIT 10
         `;

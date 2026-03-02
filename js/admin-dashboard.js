@@ -61,6 +61,15 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchAndAnimateStats();
     fetchSystemHealth();
     initAdminNotifications();
+    updateProfileHeader();
+
+    // Visibility guard — ensure correct section is shown on load
+    const allSections = document.querySelectorAll('.admin-section');
+    if (allSections.length) {
+        allSections.forEach(s => s.style.display = 'none');
+        const first = document.getElementById('dashboardSection');
+        if (first) first.style.display = 'block';
+    }
 
     // Check for message parameter in URL on load
     const urlParams = new URLSearchParams(window.location.search);
@@ -196,64 +205,83 @@ function setupInteractions() {
 
     if (btnAddUser) btnAddUser.onclick = () => showModal('addUserModal');
     if (btnAddCategory) btnAddCategory.onclick = () => showModal('addCategoryModal');
-    if (btnExportReports) btnExportReports.onclick = () => showModal('exportReportsModal');
 
-    // Messaging Form
-    const sendMessageForm = document.getElementById('sendMessageForm');
-    if (sendMessageForm) {
-        sendMessageForm.onsubmit = async (e) => {
-            e.preventDefault();
-            const centerId = document.getElementById('msgCenterId').value;
-            const messageText = document.getElementById('msgContent').value;
-            const sendBtn = document.getElementById('msgSendBtn');
-
-            if (!messageText.trim()) return;
-
-            sendBtn.disabled = true;
-            const originalHtml = sendBtn.innerHTML;
-            sendBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Sending...';
-
-            try {
-                const token = getAdminToken();
-                if (!token) throw new Error("Authentication session expired. Please reload.");
-
-                const response = await fetch(`${API_BASE_URL}/api/messages/send`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ center_id: centerId, messageText })
-                });
-
-                if (response.status === 401) throw new Error("Session expired. Please log in again.");
-
-                const result = await response.json();
-                if (result.success) {
-                    document.getElementById('msgContent').value = '';
-                    showToast('Message sent successfully', 'success');
-
-                    // Reload chat immediately so admin sees their sent message without closing
-                    try {
-                        const currentToken = getAdminToken();
-                        const hRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
-                            headers: { 'Authorization': `Bearer ${currentToken}` }
-                        });
-                        const hData = await hRes.json();
-                        if (hData.success) renderChatHistory(hData.data || []);
-                    } catch (_) { /* non-critical — toast already shown */ }
-                } else {
-                    throw new Error(result.error || 'Failed to send message');
-                }
-            } catch (error) {
-                console.error("Send Error:", error);
-                showToast(error.message || 'Network issue', 'error');
-            } finally {
-                sendBtn.disabled = false;
-                sendBtn.innerHTML = originalHtml;
-            }
+    // Quick Action: Export Reports — goes to reports section
+    if (btnExportReports) {
+        btnExportReports.onclick = () => {
+            window.showSection('reportsSection');
+            const nav = document.getElementById('reportsNav');
+            if (nav) nav.parentElement.classList.add('active');
+            fetchReportRecords();
         };
     }
+}
+
+function updateProfileHeader() {
+    const adminRaw = localStorage.getItem('admin_sys_name') || localStorage.getItem('adminUser');
+    if (adminRaw) {
+        const name = adminRaw.length < 30 ? adminRaw : 'Admin';
+        const nameEl = document.getElementById('adminHeaderName');
+        const avatarEl = document.getElementById('adminHeaderAvatar');
+        if (nameEl) nameEl.textContent = name;
+        if (avatarEl) avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6366f1&color=fff`;
+    }
+}
+// Messaging Form
+const sendMessageForm = document.getElementById('sendMessageForm');
+if (sendMessageForm) {
+    sendMessageForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const centerId = document.getElementById('msgCenterId').value;
+        const messageText = document.getElementById('msgContent').value;
+        const sendBtn = document.getElementById('msgSendBtn');
+
+        if (!messageText.trim()) return;
+
+        sendBtn.disabled = true;
+        const originalHtml = sendBtn.innerHTML;
+        sendBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Sending...';
+
+        try {
+            const token = getAdminToken();
+            if (!token) throw new Error("Authentication session expired. Please reload.");
+
+            const response = await fetch(`${API_BASE_URL}/api/messages/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ center_id: centerId, messageText })
+            });
+
+            if (response.status === 401) throw new Error("Session expired. Please log in again.");
+
+            const result = await response.json();
+            if (result.success) {
+                document.getElementById('msgContent').value = '';
+                showToast('Message sent successfully', 'success');
+
+                // Reload chat immediately so admin sees their sent message without closing
+                try {
+                    const currentToken = getAdminToken();
+                    const hRes = await fetch(`${API_BASE_URL}/api/messages/admin/${centerId}`, {
+                        headers: { 'Authorization': `Bearer ${currentToken}` }
+                    });
+                    const hData = await hRes.json();
+                    if (hData.success) renderChatHistory(hData.data || []);
+                } catch (_) { /* non-critical — toast already shown */ }
+            } else {
+                throw new Error(result.error || 'Failed to send message');
+            }
+        } catch (error) {
+            console.error("Send Error:", error);
+            showToast(error.message || 'Network issue', 'error');
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = originalHtml;
+        }
+    };
 }
 
 // --- Admin Messaging System ---
@@ -1228,6 +1256,16 @@ if (systemSettingsNav) {
     };
 }
 
+// Support for quick action export button
+const btnExportReports = document.getElementById('btnExportReports');
+if (btnExportReports) {
+    btnExportReports.onclick = () => {
+        window.showSection('reportsSection');
+        if (reportsNav) reportsNav.parentElement.classList.add('active');
+        fetchReportRecords();
+    };
+}
+
 // Handle Report Type Toggle
 const reportTypeSelect = document.getElementById('reportType');
 if (reportTypeSelect) {
@@ -1299,26 +1337,55 @@ async function fetchReportRecords() {
 
 // Download Report (Admin Actions)
 window.downloadAdminReport = async function (requestId) {
+    if (!requestId) {
+        showToast('Invalid Request ID.', 'error');
+        return;
+    }
+
     try {
-        showToast('Processing report...', 'info');
+        showToast('Preparing your report...', 'info');
+
+        // Get admin ID with fallback to legacy 'adminUser'
+        const adminId = localStorage.getItem('admin_sys_id') || localStorage.getItem('adminUser') || '0';
+
         const response = await fetch(`/api/reports/request/${requestId}`, {
-            headers: { 'admin-id': localStorage.getItem('admin_sys_id') }
+            headers: {
+                'admin-id': adminId,
+                'Accept': 'application/pdf'
+            }
         });
 
-        if (!response.ok) throw new Error('Generation failed');
+        if (!response.ok) {
+            let errorMessage = 'Generation failed';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.message || errorData.error || errorMessage;
+            } catch (e) { /* use default error message */ }
+            throw new Error(errorMessage);
+        }
 
         const blob = await response.blob();
+        if (!blob || blob.size === 0) throw new Error('Received empty report data');
+
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
+        a.style.display = 'none';
         a.href = url;
-        a.download = `SortSense_Official_Report_${requestId}.pdf`;
+        a.download = `SortSense_Report_#${requestId}_${new Date().getTime()}.pdf`;
+
         document.body.appendChild(a);
         a.click();
-        window.URL.revokeObjectURL(url);
 
-        showToast('PDF downloaded successfully.', 'success');
+        // Clean up
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 100);
+
+        showToast('Report downloaded successfully.', 'success');
     } catch (error) {
-        showToast('Failed to generate PDF.', 'error');
+        console.error('[Reports] Download Error:', error);
+        showToast(`Failed to download report: ${error.message}`, 'error');
     }
 };
 
@@ -1331,11 +1398,47 @@ if (document.getElementById('btnGenerateReport')) {
         const userId = document.getElementById('reportUserId').value;
 
         if (type === 'summary') {
-            let url = `/api/reports/summary?fromDate=${from}&toDate=${to}`;
-            if (userId) url += `&userId=${userId}`;
+            try {
+                showToast('Generating Summary PDF...', 'info');
 
-            showToast('Generating Summary PDF...', 'info');
-            window.location.href = url; // Browser handles PDF stream
+                // Build query params
+                const params = new URLSearchParams();
+                if (from) params.append('fromDate', from);
+                if (to) params.append('toDate', to);
+                if (userId) params.append('userId', userId);
+
+                const adminId = localStorage.getItem('admin_sys_id') || localStorage.getItem('adminUser') || '0';
+                params.append('adminId', adminId);
+
+                const response = await fetch(`/api/reports/summary?${params.toString()}`);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'No data found for the selected date range.');
+                    }
+                    throw new Error('Failed to generate summary report');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `SortSense_Summary_Report_${new Date().getTime()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+
+                showToast('Summary report downloaded successfully.', 'success');
+            } catch (error) {
+                console.error('[Reports] Summary Error:', error);
+                showToast(error.message, 'error');
+            }
         } else {
             showToast('Please select a specific record from the table below for individual reports.', 'warning');
         }

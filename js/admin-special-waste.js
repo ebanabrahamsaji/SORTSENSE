@@ -252,7 +252,7 @@ function renderRegularTable(query = '') {
 
         if (query) {
             const term = query.toLowerCase();
-            const text = `${req.user_name} ${req.waste_type} ${req.center_name || ''}`.toLowerCase();
+            const text = `${req.user_name} ${req.waste_type} ${req.center_name || ''} ${req.user_location || ''}`.toLowerCase();
             if (!text.includes(term)) return false;
         }
 

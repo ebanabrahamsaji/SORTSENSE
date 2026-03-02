@@ -409,7 +409,7 @@ export const uploadAvatar = (req, res) => {
 
 // Update Profile Handler
 export const updateProfile = async (req, res) => {
-    const { email, fullname, phone, city, state, zip, country, profilePicture } = req.body;
+    const { email, fullname, phone, city, state, zip, country, profilePicture, location } = req.body;
 
     if (!email) {
         return res.status(400).json({ message: 'Email or Username is required.' });
@@ -419,18 +419,18 @@ export const updateProfile = async (req, res) => {
         // 1. Try updating tbl_users first
         let [result] = await db.query(
             `UPDATE tbl_users SET 
-                name = ?, phone = ?, city = ?, state = ?, zip = ?, country = ?, profile_picture = ?
+                name = ?, phone = ?, city = ?, state = ?, zip = ?, country = ?, profile_picture = ?, location = ?
              WHERE email = ? OR name = ?`,
-            [fullname, phone, city, state, zip, country, profilePicture, email, email]
+            [fullname, phone, city, state, zip, country, profilePicture, location || city || null, email, email]
         );
 
         // 2. If no user updated, try update tbl_collection_centers
         if (result.affectedRows === 0) {
             [result] = await db.query(
                 `UPDATE tbl_collection_centers SET 
-                    center_name = ?, phone = ?, address = ?
+                    center_name = ?, phone = ?, address = ?, location = ?
                  WHERE email = ? OR username = ?`,
-                [fullname, phone, city + " " + state + " " + country, email, email]
+                [fullname, phone, city + " " + state + " " + country, location || city || null, email, email]
             );
         }
 
@@ -444,6 +444,7 @@ export const updateProfile = async (req, res) => {
         res.status(500).json({ message: 'Failed to update profile.' });
     }
 };
+
 
 // Get Profile Handler
 export const getProfile = async (req, res) => {

@@ -176,10 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof initGamification === 'function') {
         initGamification();
     }
-
-    // 9. Load Dashboard Reports
-    loadDashboardReports();
 });
+
 
 function displayDailyTip() {
     const tips = [
@@ -1090,10 +1088,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const statusClass = req.status.toLowerCase();
             let statusBadgeInfo = { text: req.status, color: '#fff', bg: 'rgba(255,255,255,0.1)' };
 
-            if (statusClass === 'pending') {
-                statusBadgeInfo = { text: t('status_pending'), color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)' };
+            if (statusClass === 'scheduled') {
+                statusBadgeInfo = { text: 'Scheduled', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)' };
             } else if (statusClass === 'approved') {
-                statusBadgeInfo = { text: t('status_approved'), color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.15)' };
+                statusBadgeInfo = { text: 'Approved', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.15)' };
             } else if (statusClass === 'rejected') {
                 statusBadgeInfo = { text: 'Rejected', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' };
             }
@@ -1101,10 +1099,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const statusLabel = statusBadgeInfo.text;
 
             // --- Status Stepper Visualization ---
-            const steps = ['Requested', 'Scheduled', 'Collected', 'Completed'];
+            const steps = ['Scheduled', 'Approved', 'Collected', 'Completed'];
             let currentStepIdx = 0;
             let isRejected = false;
 
+            if (req.status === 'Scheduled') currentStepIdx = 0;
             if (req.status === 'Approved') currentStepIdx = 1;
             if (req.status === 'Collected') currentStepIdx = 2;
             if (req.status === 'Completed') currentStepIdx = 3;
@@ -1172,7 +1171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </span>
                     <div style="display:flex; align-items:center; gap:0.5rem;">
                         <strong style="font-size:0.9rem; margin-right:0.5rem;">${item.quantity} kg</strong>
-                        ${req.status === 'Pending' ?
+                        ${req.status === 'Scheduled' ?
                         `<i class="ri-close-circle-line" onclick="deletePickupItem(${req.request_id}, ${item.item_id})" style="color:#ef4444; cursor:pointer; font-size:1.1rem; opacity:0.8; transition:0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8" title="Remove Item"></i>`
                         : ''}
                     </div>
@@ -1198,23 +1197,29 @@ document.addEventListener('DOMContentLoaded', () => {
              <option value="Hazardous" data-i18n="hazardous" style="background-color: #1f2937; color: white;">Hazardous</option>
         `;
 
-            if (req.status === 'Pending' || req.status === 'Rejected') {
+            if (req.status === 'Scheduled' || req.status === 'Rejected') {
                 actionsHtml = `
                     <div class="pickup-actions" style="display:flex; gap:1rem; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem; margin-top:1rem;">
                         <button onclick="deletePickup(${req.request_id})" class="btn-action-delete" style="color:#ef4444; background:rgba(239,68,68,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
                             <i class="ri-delete-bin-2-line"></i> ${req.status === 'Rejected' ? 'Clear Request' : t('delete_request')}
                         </button>
+                        <button onclick="openUserCenterChat(${req.request_id}, '${req.center_name || 'Center'}')" class="btn-action-chat" style="color:#3b82f6; background:rgba(59,130,246,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
+                           <i class="ri-message-3-line"></i> Chat
+                        </button>
                         <div style="flex:1;"></div>
-                        ${req.status === 'Pending' ? `
+                        ${req.status === 'Scheduled' ? `
                         <button onclick="toggleAddForm(${req.request_id})" class="btn-action-add" style="color:#10b981; background:rgba(16,185,129,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
                            <i class="ri-add-circle-line"></i> ${t('add_more_items')}
                         </button>` : ''}
                     </div>
             `;
-            } else if (req.status === 'Approved') {
+            } else if (req.status === 'Approved' || req.status === 'In_Transit') {
                 // Show Add Item but Logic creates NEW request
                 actionsHtml = `
                 <div class="pickup-actions" style="display:flex; gap:1rem; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem; margin-top:1rem;">
+                        <button onclick="openUserCenterChat(${req.request_id}, '${req.center_name || 'Center'}')" class="btn-action-chat" style="color:#3b82f6; background:rgba(59,130,246,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
+                           <i class="ri-message-3-line"></i> Message Center
+                        </button>
                         <div style="flex:1;"></div>
                         <button onclick="toggleAddForm(${req.request_id})" class="btn-action-add" style="color:#10b981; background:rgba(16,185,129,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
                            <i class="ri-add-circle-line"></i> New Item
@@ -1238,6 +1243,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Extract Time Slot from Address if present (Fallback) or use direct field
             const slotMatch = req.address && req.address.includes('SLOT:') ? req.address.split('SLOT:')[1].trim() : (req.timeSlot || req.time_slot || "");
 
+            const cleanAddress = (req.address || "").split(' || SLOT:')[0];
+            const mapUrl = (req.latitude && req.longitude)
+                ? `https://www.google.com/maps/search/?api=1&query=${req.latitude},${req.longitude}`
+                : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`;
+
             card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
                 <div style="font-size:0.8rem; color:rgba(255,255,255,0.5);">
@@ -1250,6 +1260,24 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             ${stepperHtml}
+
+            <!-- Location & Center Verification info -->
+            <div style="margin: 1rem 0; padding: 0.8rem; background:rgba(255,255,255,0.03); border-radius:10px; border-left:3px solid #60a5fa; font-size:0.85rem;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="flex:1;">
+                        <div style="color:rgba(255,255,255,0.4); font-size:0.7rem; text-transform:uppercase; margin-bottom:2px;">Your Pickup Location</div>
+                        <div style="color:white; line-height:1.2;">${cleanAddress || 'Address not stored'}</div>
+                    </div>
+                     <a href="${mapUrl}" target="_blank" style="color:#60a5fa; text-decoration:none; margin-left:10px; font-size:1.1rem;" title="View on Map">
+                        <i class="ri-map-pin-line"></i>
+                    </a>
+                </div>
+                <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed rgba(255,255,255,0.1);">
+                    <div style="color:rgba(255,255,255,0.4); font-size:0.7rem; text-transform:uppercase; margin-bottom:2px;">Assigned Center</div>
+                    <div style="color:white; font-weight:600;">${req.center_name || 'Finding Nearest...'}</div>
+                    <div style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-top:1px;">${req.center_address || ''}</div>
+                </div>
+            </div>
 
             <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:0.75rem; display:flex; flex-direction:column; gap:0.25rem;">
                 ${itemsHtml}
@@ -2036,9 +2064,11 @@ window.toggleRewardLog = function () {
         }
     }
 }
-async function loadDashboardReports() {
+
+
+window.loadFullReports = async function () {
     const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
-    const tbody = document.getElementById('dashboardReportsBody');
+    const tbody = document.getElementById('fullReportsBody');
     if (!tbody || !userId) return;
 
     try {
@@ -2067,7 +2097,13 @@ async function loadDashboardReports() {
                         ${r.status.toUpperCase()}
                     </span>
                 </td>
-                <td style="padding:15px; text-align:right;">
+                <td style="padding:15px; text-align:right; display:flex; justify-content:flex-end; gap:8px;">
+                    ${r.status === 'Approved' && r.center_id ? `
+                        <button onclick="openUserCenterChat(${r.request_id}, '${r.center_name || 'Center'}')" 
+                            style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.2); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
+                            <i class="ri-message-3-line"></i> Message Center
+                        </button>
+                    ` : ''}
                     <button class="download-pdf-btn" onclick="downloadReportPDF(${r.report_id || 'null'}, ${r.request_id})" 
                         style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.2); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
                         <i class="ri-file-pdf-line"></i> Download PDF
@@ -2078,7 +2114,7 @@ async function loadDashboardReports() {
         });
 
     } catch (err) {
-        console.error("Load Dashboard Reports Error:", err);
+        console.error("Load Full Reports Error:", err);
         tbody.innerHTML = `<tr><td colspan="6" style="padding:40px; text-align:center; color:#ef4444;">Failed to load reports.</td></tr>`;
     }
 }
@@ -2118,3 +2154,113 @@ window.downloadReportPDF = async function (reportId, requestId) {
         window.showError(err.message);
     }
 }
+
+// --- User-Center Direct Messaging ---
+let currentChatRequestId = null;
+let chatRefreshInterval = null;
+
+window.openUserCenterChat = function (requestId, centerName) {
+    currentChatRequestId = requestId;
+    document.getElementById('chatCenterName').textContent = centerName;
+    document.getElementById('userCenterChatModal').style.display = 'flex';
+    document.getElementById('userCenterChatMessages').innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Loading messages...</div>';
+
+    // Non-silent load
+    loadUserCenterMessages();
+
+    // Poll for new messages every 5 seconds while open
+    if (chatRefreshInterval) clearInterval(chatRefreshInterval);
+    chatRefreshInterval = setInterval(loadUserCenterMessages, 5000);
+};
+
+window.closeUserCenterChat = function () {
+    document.getElementById('userCenterChatModal').style.display = 'none';
+    if (chatRefreshInterval) clearInterval(chatRefreshInterval);
+    currentChatRequestId = null;
+};
+
+async function loadUserCenterMessages() {
+    if (!currentChatRequestId) return;
+    try {
+        const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+        const res = await fetch(`/api/messages/user-center/history/${currentChatRequestId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const body = await res.json();
+        const rows = body.data || body.messages || [];
+
+        const container = document.getElementById('userCenterChatMessages');
+        if (rows.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">No messages yet. Send a message to start the conversation!</div>';
+            return;
+        }
+
+        const currentUserId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+
+        container.innerHTML = rows.map(m => {
+            const isMe = String(m.senderId || m.sender_id) === String(currentUserId) && (m.senderRole || m.sender_role) === 'user';
+            const align = isMe ? 'flex-end' : 'flex-start';
+            const bg = isMe ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'rgba(255,255,255,0.08)';
+            const border = isMe ? 'none' : '1px solid rgba(255,255,255,0.1)';
+            const senderNameLabel = isMe ? 'You' : (m.senderName || 'Center');
+            const time = new Date(m.timestamp || m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            return `
+                <div style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; align-items: ${align}; margin-bottom: 4px;">
+                    <span style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 2px; padding: 0 4px;">${senderNameLabel}</span>
+                    <div style="background: ${bg}; color: white; padding: 10px 15px; border-radius: 14px; border-bottom-${isMe ? 'right' : 'left'}-radius: 2px; font-size: 0.9rem; line-height: 1.4; border: ${border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        ${m.messageText || m.message}
+                    </div>
+                    <span style="font-size: 0.65rem; color: #64748b; margin-top: 2px; padding: 0 4px;">${time}</span>
+                </div>
+            `;
+        }).join('');
+
+        container.scrollTop = container.scrollHeight;
+    } catch (err) {
+        console.error('Chat load error:', err);
+    }
+}
+
+window.sendUserCenterChatMessage = async function () {
+    const input = document.getElementById('userCenterChatMessageInput');
+    const msg = input.value.trim();
+    if (!msg || !currentChatRequestId) return;
+
+    const btn = document.getElementById('sendUserCenterChatBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
+
+    try {
+        const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+        const res = await fetch('/api/messages/user-center/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                requestId: currentChatRequestId,
+                message: msg
+            })
+        });
+
+        if (res.ok) {
+            input.value = '';
+            loadUserCenterMessages();
+        } else {
+            const data = await res.json();
+            alert(data.message || 'Failed to send');
+        }
+    } catch (err) {
+        console.error('Send error:', err);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+};
+
+// Handle Enter key in user chat
+document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && document.activeElement.id === 'userCenterChatMessageInput') {
+        sendUserCenterChatMessage();
+    }
+});

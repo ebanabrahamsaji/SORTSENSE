@@ -245,3 +245,152 @@ export const markMessagesRead = async (req, res) => {
         return res.json({ success: true, message: "Mark read skipped" }); // Non-critical failure
     }
 };
+
+/**
+ * User <-> Center Messaging (Specific to Pickup Request)
+ * POST /api/messages/user-center/send
+ */
+export const sendUserCenterMessage = async (req, res) => {
+    try {
+        const { requestId, message } = req.body;
+        const user = req.user;
+
+        if (!requestId || !message || !message.trim()) {
+            return res.status(400).json({ success: false, error: "Request ID and message text are required." });
+        }
+
+        // 1. Verify pickup request exists and get involved parties
+        const [pickup] = await db.query(
+            "SELECT user_id, center_id, status FROM tbl_pickup_requests WHERE request_id = ?",
+            [requestId]
+        );
+
+        if (pickup.length === 0) {
+            return res.status(404).json({ success: false, error: "Pickup request not found." });
+        }
+
+        const { user_id: requestUserId, center_id: requestCenterId, status } = pickup[0];
+
+        // 2. Security: Only the involved user and the involved center can message
+        const senderId = user.id || user.user_id || user.center_id;
+        const senderRole = user.role.toLowerCase(); // 'user', 'center', or 'admin'
+
+        let receiverId, receiverRole;
+
+        if (senderRole === 'user' || senderRole === 'admin') {
+            // If admin is messaging, they act as the system/user proxy or just admin
+            // But User-Center channel is primarily for the specific user. 
+            // If sender is the requester:
+            if (String(senderId) !== String(requestUserId) && senderRole !== 'admin') {
+                return res.status(403).json({ success: false, error: "Unauthorized: You are not part of this request." });
+            }
+            receiverId = requestCenterId;
+            receiverRole = 'center';
+        } else if (senderRole === 'center') {
+            if (String(senderId) !== String(requestCenterId)) {
+                return res.status(403).json({ success: false, error: "Unauthorized: Your center is not assigned to this request." });
+            }
+            receiverId = requestUserId;
+            receiverRole = 'user';
+        } else {
+            return res.status(403).json({ success: false, error: "Invalid role for this channel." });
+        }
+
+        // 3. Save Message
+        await db.query(`
+            INSERT INTO tbl_user_center_messages 
+            (sender_id, sender_role, receiver_id, receiver_role, request_id, message)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `, [senderId, senderRole, receiverId, receiverRole, requestId, message]);
+
+        // 4. Notifications
+        try {
+            if (senderRole === 'center') {
+                await db.query(
+                    "INSERT INTO tbl_notifications (user_id, title, message, type) VALUES (?, ?, ?, ?)",
+                    [receiverId, "New Message from Center", `The collection center sent you a message regarding request #${requestId}.`, 'INFO']
+                );
+            } else {
+                await db.query(
+                    "INSERT INTO tbl_center_notifications (center_id, type, title, message) VALUES (?, ?, ?, ?)",
+                    [receiverId, 'MESSAGE', `Message for Pickup #${requestId}`, `A user sent a message regarding their pickup request.`]
+                );
+            }
+        } catch (notifErr) {
+            console.error("[UserCenterMessage] Notif Error:", notifErr);
+        }
+
+        res.json({ success: true, message: "Message sent successfully." });
+
+    } catch (error) {
+        console.error("sendUserCenterMessage Error:", error);
+        res.status(500).json({ success: false, error: "Server error while sending message." });
+    }
+};
+
+/**
+ * Get Conversation History for User-Center Channel
+ * GET /api/messages/user-center/history/:requestId
+ */
+export const getUserCenterMessages = async (req, res) => {
+    const { requestId } = req.params;
+    const user = req.user;
+
+    try {
+        // 1. Verify pickup request and parties
+        const [pickup] = await db.query(
+            "SELECT user_id, center_id FROM tbl_pickup_requests WHERE request_id = ?",
+            [requestId]
+        );
+
+        if (pickup.length === 0) {
+            return res.status(404).json({ success: false, error: "Pickup request not found." });
+        }
+
+        const { user_id: requestUserId, center_id: requestCenterId } = pickup[0];
+
+        // 2. Security Check
+        const currentId = user.id || user.user_id || user.center_id;
+        const role = user.role.toLowerCase();
+
+        if (role === 'user' && String(currentId) !== String(requestUserId)) {
+            return res.status(403).json({ success: false, error: "Access denied." });
+        }
+        if (role === 'center' && String(currentId) !== String(requestCenterId)) {
+            return res.status(403).json({ success: false, error: "Access denied." });
+        }
+
+        // 3. Fetch History with populated names
+        const [rows] = await db.query(`
+            SELECT 
+                m.message_id as id,
+                m.sender_id as senderId,
+                m.sender_role as senderRole,
+                m.receiver_id as receiverId,
+                m.receiver_role as receiverRole,
+                m.message as messageText,
+                m.created_at as timestamp,
+                m.is_read as isRead,
+                u.name as userName,
+                c.center_name as centerName
+            FROM tbl_user_center_messages m
+            LEFT JOIN tbl_users u ON (m.sender_role = 'user' AND m.sender_id = u.user_id) OR (m.receiver_role = 'user' AND m.receiver_id = u.user_id)
+            LEFT JOIN tbl_collection_centers c ON (m.sender_role = 'center' AND m.sender_id = c.center_id) OR (m.receiver_role = 'center' AND m.receiver_id = c.center_id)
+            WHERE m.request_id = ?
+            ORDER BY m.created_at ASC
+        `, [requestId]);
+
+        // Standardize returning name as senderName/receiverName
+        const formatted = rows.map(r => ({
+            ...r,
+            senderName: r.senderRole === 'user' ? r.userName : r.centerName,
+            receiverName: r.receiverRole === 'user' ? r.userName : r.centerName,
+            message: r.messageText // Fallback for some frontend versions
+        }));
+
+        res.json({ success: true, data: formatted });
+    } catch (error) {
+        console.error("getUserCenterMessages Error:", error);
+        res.status(500).json({ success: false, data: [], error: "History unavailable" });
+    }
+};

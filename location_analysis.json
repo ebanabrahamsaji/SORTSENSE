@@ -1,0 +1,142 @@
+{
+  "kanjirapalyCenters": [
+    {
+      "center_id": 646,
+      "center_name": "HKS Kanjirapally (Secondary)",
+      "location": "Kochi",
+      "address": "Kanjirapally"
+    },
+    {
+      "center_id": 647,
+      "center_name": "Kanjirapally Scrap Merchants",
+      "location": "Kochi",
+      "address": "Kanjirapally Town"
+    },
+    {
+      "center_id": 690,
+      "center_name": "HKS Kanjirapally",
+      "location": "Kochi",
+      "address": "Town Hall Rd, Kanjirapally, Kerala"
+    },
+    {
+      "center_id": 698,
+      "center_name": "scrap mercant kanjirapally",
+      "location": "Kochi",
+      "address": "Kanjirapally"
+    }
+  ],
+  "users": [
+    {
+      "user_id": 4,
+      "name": "User",
+      "location": "Kochi",
+      "city": null
+    },
+    {
+      "user_id": 7,
+      "name": "melbin",
+      "location": null,
+      "city": ""
+    },
+    {
+      "user_id": 9,
+      "name": "Thomson",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 10,
+      "name": "Amal",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 12,
+      "name": "Sharon",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 13,
+      "name": "Albin",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 17,
+      "name": "Don",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 18,
+      "name": "Mathew",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 22,
+      "name": "Kevin",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 25,
+      "name": "EBAN ABRAHAM SAJI",
+      "location": null,
+      "city": null
+    },
+    {
+      "user_id": 26,
+      "name": "EBAN ABRAHAM SAJI",
+      "location": null,
+      "city": null
+    }
+  ],
+  "allRequests": [
+    {
+      "request_id": 61,
+      "user_id": 26,
+      "center_id": 690,
+      "address": "kanjirapally || SLOT:Morning",
+      "status": "Approved",
+      "user_name": "EBAN ABRAHAM SAJI",
+      "user_location": null,
+      "center_name": "HKS Kanjirapally",
+      "center_location": "Kochi"
+    },
+    {
+      "request_id": 59,
+      "user_id": 7,
+      "center_id": 647,
+      "address": "kanjirapally || SLOT:Morning",
+      "status": "Approved",
+      "user_name": "melbin",
+      "user_location": null,
+      "center_name": "Kanjirapally Scrap Merchants",
+      "center_location": "Kochi"
+    },
+    {
+      "request_id": 54,
+      "user_id": 10,
+      "center_id": 647,
+      "address": null,
+      "status": "Rejected",
+      "user_name": "Amal",
+      "user_location": null,
+      "center_name": "Kanjirapally Scrap Merchants",
+      "center_location": "Kochi"
+    },
+    {
+      "request_id": 49,
+      "user_id": 9,
+      "center_id": 648,
+      "address": null,
+      "status": "Completed",
+      "user_name": "Thomson",
+      "user_location": null,
+      "center_name": "Amal Jyothi E-Waste Center",
+      "center_location": "Kochi"
+    }
+  ]
+}

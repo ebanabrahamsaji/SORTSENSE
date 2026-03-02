@@ -12,7 +12,7 @@ export const createPickupRequest = async (req, res) => {
     try {
         // Fallback Logic if Location is Missing
         if (!lat || !lng) {
-            console.log(`⚠️ No location provided for User ${userId}.Attempting fallback...`);
+            console.log(`⚠️ No location provided for User ${userId}. Attempting fallback...`);
 
             // Try last known location from waste records
             const [history] = await db.query(
@@ -25,7 +25,7 @@ export const createPickupRequest = async (req, res) => {
                 if (parts.length === 2) {
                     lat = parseFloat(parts[0].trim());
                     lng = parseFloat(parts[1].trim());
-                    console.log(`✅ Used Last Known Location: ${lat}, ${lng} `);
+                    console.log(`✅ Used Last Known Location: ${lat}, ${lng}`);
                 }
             }
         }
@@ -43,22 +43,22 @@ export const createPickupRequest = async (req, res) => {
         const defaultLng = 76.2673;
 
         const findCenterQuery = `
-            SELECT DISTINCT cc.center_id, cc.center_name,
-    (6371 * acos(
-        cos(radians(?)) * cos(radians(cc.latitude)) *
-        cos(radians(cc.longitude) - radians(?)) +
-        sin(radians(?)) * sin(radians(cc.latitude))
-    )) AS distance
+            SELECT DISTINCT cc.center_id, cc.center_name, 
+            (6371 * acos(
+                cos(radians(?)) * cos(radians(cc.latitude)) * 
+                cos(radians(cc.longitude) - radians(?)) + 
+                sin(radians(?)) * sin(radians(cc.latitude))
+            )) AS distance
             FROM tbl_collection_centers cc
             LEFT JOIN tbl_accepted_categories ac ON cc.center_id = ac.center_id
             LEFT JOIN tbl_categories cat ON ac.category_id = cat.category_id
-WHERE(cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.type LIKE '%Haritha%')
+            WHERE (cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.type LIKE '%Haritha%')
             AND cc.status = 'OPEN' AND cc.available_slots > 0
             ORDER BY distance ASC
             LIMIT 1
-    `;
+        `;
 
-        const searchType = `% ${primaryType}% `;
+        const searchType = `%${primaryType}%`;
         const [centers] = await db.query(findCenterQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat, searchType, searchType]);
 
         if (centers.length > 0) {
@@ -66,16 +66,16 @@ WHERE(cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.t
         } else {
             // Fallback: If no specific center found, try finding ANY nearest center (General HKS)
             const fallbackQuery = `
-                SELECT center_id, center_name,
-    (6371 * acos(
-        cos(radians(?)) * cos(radians(latitude)) *
-        cos(radians(longitude) - radians(?)) +
-        sin(radians(?)) * sin(radians(latitude))
-    )) AS distance
+                SELECT center_id, center_name, 
+                (6371 * acos(
+                    cos(radians(?)) * cos(radians(latitude)) * 
+                    cos(radians(longitude) - radians(?)) + 
+                    sin(radians(?)) * sin(radians(latitude))
+                )) AS distance
                 FROM tbl_collection_centers
                 WHERE status = 'OPEN' AND available_slots > 0
                 ORDER BY distance ASC LIMIT 1
-    `;
+            `;
             const [fallbackCenters] = await db.query(fallbackQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat]);
             if (fallbackCenters.length > 0) nearestCenter = fallbackCenters[0];
         }
@@ -92,7 +92,7 @@ WHERE(cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.t
 
         if (centerStatusArr.length > 0) {
             const cStatus = centerStatusArr[0];
-            // console.log(`[Pickup] Center ${ nearestCenter.center_id } Status: `, cStatus); // Debug
+            // console.log(`[Pickup] Center ${nearestCenter.center_id} Status:`, cStatus); // Debug
 
             if (cStatus.status === 'CLOSED' || cStatus.available_slots <= 0) {
                 return res.status(409).json({ // 409 Conflict
@@ -106,9 +106,9 @@ WHERE(cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.t
             await db.query(`
                 UPDATE tbl_collection_centers 
                 SET available_slots = available_slots - 1,
-    status = CASE WHEN available_slots = 0 THEN 'CLOSED' ELSE status END
+                    status = CASE WHEN available_slots = 0 THEN 'CLOSED' ELSE status END
                 WHERE center_id = ? AND available_slots > 0
-    `, [nearestCenter.center_id]);
+            `, [nearestCenter.center_id]);
         }
         // --------------------------
         // --------------------------
@@ -136,8 +136,8 @@ WHERE(cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.t
 
         // B. Insert Request
         const insertQuery = `
-            INSERT INTO tbl_pickup_requests(user_id, center_id, waste_type, quantity, status, latitude, longitude, address, assigned_time)
-VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address, assigned_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
 
         const [result] = await db.query(insertQuery, [userId, nearestCenter.center_id, wasteType, quantity, status, lat, lng, address || null]);
@@ -168,7 +168,7 @@ VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW())
             category: 'Pick-up',
             weight: quantity,
             quantity: types.length,
-            location: `${lat}, ${lng} `,
+            location: `${lat}, ${lng}`,
             scanMethod: 'PICKUP',
             pickupId: requestId,
             status: 'Pending'
@@ -179,20 +179,13 @@ VALUES(?, ?, ?, ?, ?, ?, ?, ?, NOW())
             // 1. Notify Admin
             await db.query(
                 "INSERT INTO tbl_admin_notifications (type, title, message, reference_id) VALUES (?, ?, ?, ?)",
-                ['WASTE', 'New Pickup Request', `User ${userId} requested a pickup for ${wasteType}(${quantity}kg).`, requestId]
+                ['WASTE', 'New Pickup Request', `User ${userId} requested a pickup for ${wasteType} (${quantity}kg).`, requestId]
             );
 
-            // 2. Notify Center — include full details for dashboard bell
-            const centerMsg = [
-                `🆕 New pickup request #${requestId} assigned.`,
-                `Type: ${wasteType} `,
-                `Qty: ${quantity} kg`,
-                address ? `Location: ${address} ` : (lat && lng ? `GPS: ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)} ` : '')
-            ].filter(Boolean).join(' | ');
-
+            // 2. Notify Center
             await db.query(
                 "INSERT INTO tbl_center_notifications (center_id, type, title, message) VALUES (?, ?, ?, ?)",
-                [nearestCenter.center_id, 'PICKUP', `New Pickup #${requestId} `, centerMsg]
+                [nearestCenter.center_id, 'PICKUP', 'New Pickup assigned', `New request #${requestId} for ${wasteType} assigned to your center.`]
             );
         } catch (e) { console.error("Notif Error:", e); }
 
@@ -226,7 +219,7 @@ export const getUserRequests = async (req, res) => {
             FROM tbl_pickup_requests r
             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
             WHERE r.user_id = ?
-    ORDER BY r.created_at DESC
+            ORDER BY r.created_at DESC
         `;
 
         const [requests] = await db.query(query, [userId]);
@@ -245,63 +238,116 @@ export const getUserRequests = async (req, res) => {
 };
 
 // 3. Get Requests for COLLECTION CENTER (Dashboard)
+// Location-based filtering: centers only see requests where user.location matches center.location
+// Fallback: also matches if the request address contains the center's location keyword
 export const getCenterRequests = async (req, res) => {
     const { centerId } = req.query;
 
-    // centerId is required — centers only see their own data
+    // centerId is required — centers only see their own scoped data
     if (!centerId) {
         return res.json([]); // Safe empty array, not an error page
     }
 
-    // 🔍 DEBUG — remove after confirming data link
-    console.log(`[getCenterRequests] centerId = ${centerId} `);
-
     try {
-        // ACTIVE: Everything that is NOT a terminal state
-        // Terminal statuses: Completed, Rejected, Cancelled
-        // Active statuses include: Pending, Approved, Scheduled, In_Transit,
-        //                          Aggregation_Pending, Ready_For_Dispatch, Auto_Rescheduled, Collected
+        // 1. Look up this center's registered location
+        const [centerRows] = await db.query(
+            "SELECT location FROM tbl_collection_centers WHERE center_id = ?",
+            [centerId]
+        );
+        const centerLocation = (centerRows[0] && centerRows[0].location) ? centerRows[0].location.trim() : null;
+
+        // If center has no location set, fall back to center_id-only matching
+        if (!centerLocation) {
+            const fallbackActive = `
+                SELECT r.*,
+                       u.name  AS user_name,
+                       u.email AS user_email,
+                       u.phone AS user_phone,
+                       u.location AS user_location
+                FROM tbl_pickup_requests r
+                JOIN tbl_users u ON r.user_id = u.user_id
+                WHERE r.center_id = ?
+                  AND r.status NOT IN ('Completed', 'Rejected', 'Cancelled')
+                ORDER BY r.is_urgent DESC, r.created_at ASC
+            `;
+            const fallbackHistory = `
+                SELECT r.*,
+                       u.name  AS user_name,
+                       u.email AS user_email,
+                       u.phone AS user_phone,
+                       u.location AS user_location
+                FROM tbl_pickup_requests r
+                JOIN tbl_users u ON r.user_id = u.user_id
+                WHERE r.center_id = ?
+                  AND r.status IN ('Completed', 'Rejected', 'Cancelled')
+                ORDER BY r.created_at DESC
+                LIMIT 50
+            `;
+            const [a, h] = await Promise.all([
+                db.query(fallbackActive, [centerId]).then(r => r[0]),
+                db.query(fallbackHistory, [centerId]).then(r => r[0])
+            ]);
+            return res.json([...(a || []), ...(h || [])]);
+        }
+
+        // 2. Location-based matching:
+        //    A) user.location matches center.location (case-insensitive, trimmed)
+        //    B) OR request.address contains center.location (for legacy requests where user.location is null)
+        //    C) OR request was directly assigned to this center (center_id match)
+        const locationPattern = `%${centerLocation}%`;
+
         const activeQuery = `
             SELECT r.*,
-    u.name  AS user_name,
-        u.email AS user_email,
-            u.phone AS user_phone
+                   u.name  AS user_name,
+                   u.email AS user_email,
+                   u.phone AS user_phone,
+                   u.location AS user_location
             FROM tbl_pickup_requests r
             JOIN tbl_users u ON r.user_id = u.user_id
-            WHERE r.center_id = ?
-    AND r.status NOT IN('Completed', 'Rejected', 'Cancelled')
-            ORDER BY r.created_at DESC
-    `;
+            WHERE (
+                LOWER(TRIM(COALESCE(u.location, ''))) = LOWER(?)
+                OR LOWER(r.address) LIKE LOWER(?)
+                OR r.center_id = ?
+            )
+              AND r.status NOT IN ('Completed', 'Rejected', 'Cancelled')
+            ORDER BY r.is_urgent DESC, r.created_at ASC
+        `;
 
+        // 3. History (limited to 50 rows for performance)
         const historyQuery = `
             SELECT r.*,
-    u.name  AS user_name,
-        u.email AS user_email,
-            u.phone AS user_phone
+                   u.name  AS user_name,
+                   u.email AS user_email,
+                   u.phone AS user_phone,
+                   u.location AS user_location
             FROM tbl_pickup_requests r
             JOIN tbl_users u ON r.user_id = u.user_id
-            WHERE r.center_id = ?
-    AND r.status IN('Completed', 'Rejected', 'Cancelled')
+            WHERE (
+                LOWER(TRIM(COALESCE(u.location, ''))) = LOWER(?)
+                OR LOWER(r.address) LIKE LOWER(?)
+                OR r.center_id = ?
+            )
+              AND r.status IN ('Completed', 'Rejected', 'Cancelled')
             ORDER BY r.created_at DESC
             LIMIT 50
-    `;
+        `;
+
+        const params = [centerLocation, locationPattern, centerId];
 
         const [activeReqs, historyReqs] = await Promise.all([
-            db.query(activeQuery, [centerId]).then(r => r[0]),
-            db.query(historyQuery, [centerId]).then(r => r[0])
+            db.query(activeQuery, params).then(r => r[0]),
+            db.query(historyQuery, params).then(r => r[0])
         ]);
-
-        // 🔍 DEBUG
-        console.log(`[getCenterRequests] active = ${activeReqs?.length ?? 0}, history = ${historyReqs?.length ?? 0} `);
 
         const allRequests = [...(activeReqs || []), ...(historyReqs || [])];
         res.json(allRequests);
 
     } catch (error) {
-        console.error('Get Center Requests Error:', error);
+        console.error("Get Center Requests Error:", error);
         res.json([]);
     }
 };
+
 
 // getAllPickupRequests is defined and exported at the bottom of this file (Admin/Reports).
 
@@ -405,11 +451,11 @@ export const updatePickupStatus = async (req, res) => {
             } else if (status === 'Rejected') {
                 notifTitle = "Pickup Rejected ❌";
                 notifMsg = `Your request #${requestId} was rejected.`;
-                if (rejectionReason) notifMsg += ` Reason: ${rejectionReason} `;
+                if (rejectionReason) notifMsg += ` Reason: ${rejectionReason}`;
                 notifType = "ERROR";
             } else if (status === 'Completed') {
                 notifTitle = "Process Completed 🎉";
-                notifMsg = `Request #${requestId} has been successfully processed.Thank you for recycling!`;
+                notifMsg = `Request #${requestId} has been successfully processed. Thank you for recycling!`;
                 notifType = "SUCCESS";
             }
 
@@ -424,12 +470,12 @@ export const updatePickupStatus = async (req, res) => {
             if (status === 'Completed' || status === 'Rejected') {
                 await db.query(
                     "INSERT INTO tbl_center_notifications (center_id, type, title, message) VALUES (?, ?, ?, ?)",
-                    [centerId, 'PICKUP', `Request ${status} `, `Request #${requestId} for ${wasteType} marked as ${status}.`]
+                    [centerId, 'PICKUP', `Request ${status}`, `Request #${requestId} for ${wasteType} marked as ${status}.`]
                 );
             }
         }
         // --- End Notification Logic ---
-        res.json({ message: `Request ${requestId} updated to ${status} ` });
+        res.json({ message: `Request ${requestId} updated to ${status}` });
     } catch (error) {
         console.error("Update Status Error:", error);
         res.status(500).json({ message: "Error updating status." });
@@ -456,7 +502,7 @@ export const deletePickupRequest = async (req, res) => {
 
         if (!allowedDeleteStatuses.includes(request.status.toLowerCase())) {
             return res.status(400).json({
-                message: `Cannot delete request in '${request.status}' status.Only Pending or Rejected requests can be deleted.`
+                message: `Cannot delete request in '${request.status}' status. Only Pending or Rejected requests can be deleted.`
             });
         }
 
@@ -499,9 +545,9 @@ export const addItemToRequest = async (req, res) => {
 
             // 1. Create New Request
             const insertQuery = `
-                INSERT INTO tbl_pickup_requests(user_id, center_id, waste_type, quantity, status, latitude, longitude, address)
-VALUES(?, ?, ?, ?, 'Pending', ?, ?, ?)
-    `;
+                INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address)
+                VALUES (?, ?, ?, ?, 'Pending', ?, ?, ?)
+            `;
             const [result] = await db.query(insertQuery, [request.user_id, request.center_id, wasteType, quantity, request.latitude, request.longitude, request.address]);
             const newRequestId = result.insertId;
 
@@ -527,11 +573,11 @@ VALUES(?, ?, ?, ?, 'Pending', ?, ?, ?)
             // Sync Summary
             await db.query(`
                 UPDATE tbl_pickup_requests
-SET
-quantity = (SELECT SUM(quantity) FROM tbl_pickup_items WHERE request_id = ?),
-waste_type = (SELECT GROUP_CONCAT(waste_type SEPARATOR ', ') FROM tbl_pickup_items WHERE request_id = ?)
+                SET 
+                quantity = (SELECT SUM(quantity) FROM tbl_pickup_items WHERE request_id = ?),
+                waste_type = (SELECT GROUP_CONCAT(waste_type SEPARATOR ', ') FROM tbl_pickup_items WHERE request_id = ?)
                 WHERE request_id = ?
-    `, [requestId, requestId, requestId]);
+            `, [requestId, requestId, requestId]);
 
             return res.json({ message: "Item added to pending request." });
         } else {
@@ -575,11 +621,11 @@ export const deleteItemFromRequest = async (req, res) => {
             // Update Summary
             await db.query(`
                 UPDATE tbl_pickup_requests
-SET
-quantity = (SELECT SUM(quantity) FROM tbl_pickup_items WHERE request_id = ?),
-waste_type = (SELECT GROUP_CONCAT(waste_type SEPARATOR ', ') FROM tbl_pickup_items WHERE request_id = ?)
+                SET 
+                quantity = (SELECT SUM(quantity) FROM tbl_pickup_items WHERE request_id = ?),
+                waste_type = (SELECT GROUP_CONCAT(waste_type SEPARATOR ', ') FROM tbl_pickup_items WHERE request_id = ?)
                 WHERE request_id = ?
-    `, [requestId, requestId, requestId]);
+            `, [requestId, requestId, requestId]);
 
             return res.json({ message: "Item deleted successfully." });
         }
@@ -602,7 +648,7 @@ export const clearCenterHistory = async (req, res) => {
         // Ensure we only delete finalized statuses
         const findQuery = `
             SELECT request_id FROM tbl_pickup_requests 
-            WHERE status IN('Completed', 'Rejected', 'Cancelled')
+            WHERE status IN ('Completed', 'Rejected', 'Cancelled')
         `;
         const [rows] = await db.query(findQuery);
 
@@ -614,10 +660,10 @@ export const clearCenterHistory = async (req, res) => {
 
         if (ids.length > 0) {
             // 2. Delete Items first (Foreign Key Safety)
-            await db.query(`DELETE FROM tbl_pickup_items WHERE request_id IN(?)`, [ids]);
+            await db.query(`DELETE FROM tbl_pickup_items WHERE request_id IN (?)`, [ids]);
 
             // 3. Delete Requests
-            await db.query(`DELETE FROM tbl_pickup_requests WHERE request_id IN(?)`, [ids]);
+            await db.query(`DELETE FROM tbl_pickup_requests WHERE request_id IN (?)`, [ids]);
         }
 
         res.json({ message: `Successfully cleared ${ids.length} history records.` });
@@ -645,42 +691,84 @@ export const getPickupTrend = async (req, res) => {
         res.json({ today: 0, yesterday: 0, week: 0 });
     }
 };
-// 10. Get Center Active Request Count (fast poll — no join, no render cost)
+
+// 10. Get Center Active Count (lightweight poll for center dashboard)
 export const getCenterActiveCount = async (req, res) => {
     const { centerId } = req.query;
     if (!centerId) return res.json({ count: 0, latestId: 0 });
     try {
-        const [rows] = await db.query(
-            `SELECT COUNT(*) AS count, COALESCE(MAX(request_id), 0) AS latestId
-             FROM tbl_pickup_requests
-             WHERE center_id = ? AND status NOT IN('Completed', 'Rejected', 'Cancelled')`,
+        // Look up this center's registered location
+        const [centerRows] = await db.query(
+            "SELECT location FROM tbl_collection_centers WHERE center_id = ?",
             [centerId]
         );
+        const centerLocation = (centerRows[0] && centerRows[0].location) ? centerRows[0].location.trim() : null;
+
+        let rows;
+        if (!centerLocation) {
+            // No location — fall back to center_id only
+            [rows] = await db.query(
+                `SELECT COUNT(*) AS count, COALESCE(MAX(r.request_id), 0) AS latestId
+                 FROM tbl_pickup_requests r
+                 WHERE r.center_id = ?
+                   AND r.status NOT IN ('Completed', 'Rejected', 'Cancelled')`,
+                [centerId]
+            );
+        } else {
+            // Location-based + center_id + address fallback (consistent with getCenterRequests)
+            const locationPattern = `%${centerLocation}%`;
+            [rows] = await db.query(
+                `SELECT COUNT(*) AS count, COALESCE(MAX(r.request_id), 0) AS latestId
+                 FROM tbl_pickup_requests r
+                 JOIN tbl_users u ON r.user_id = u.user_id
+                 WHERE (
+                     LOWER(TRIM(COALESCE(u.location, ''))) = LOWER(?)
+                     OR LOWER(r.address) LIKE LOWER(?)
+                     OR r.center_id = ?
+                 )
+                   AND r.status NOT IN ('Completed', 'Rejected', 'Cancelled')`,
+                [centerLocation, locationPattern, centerId]
+            );
+        }
+
         res.json({ count: rows[0].count, latestId: rows[0].latestId });
     } catch (e) {
         res.json({ count: 0, latestId: 0 });
     }
 };
 
-// 11. Get All Pickup Requests (Admin/Reports)
+
+// 11. Get All Pickup Requests (Admin/Reports — NO location filtering)
 export const getAllPickupRequests = async (req, res) => {
     try {
-        const [rows] = await db.query(`
-            SELECT
-                r.*,
-                u.name as user_name,
-                u.email as user_email,
-                COALESCE(c.center_name, 'Unassigned') as center_name
+        const query = `
+            SELECT 
+                r.request_id,
+                r.status,
+                r.waste_type,
+                r.quantity,
+                r.address,
+                r.created_at,
+                r.estimated_pickup_time,
+                u.name  AS user_name,
+                u.email AS user_email,
+                u.location AS user_location,
+                COALESCE(c.center_name, 'Unassigned') AS center_name
             FROM tbl_pickup_requests r
-            JOIN tbl_users u ON r.user_id = u.user_id
+            INNER JOIN tbl_users u ON r.user_id = u.user_id
             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
             ORDER BY r.created_at DESC
             LIMIT 100
-        `);
-        // Required Fix 6: Ensure backend returns valid JSON array
+        `;
+        const [rows] = await db.query(query);
         res.json(rows);
     } catch (error) {
-        console.error("Fetch All Error:", error);
-        res.status(500).json({ status: 'error', message: 'Failed to fetch pickup requests' });
+        console.error('[getAllPickupRequests] DB Error:', error.message, error.code);
+        res.status(500).json({
+            message: 'Error fetching pickup requests.',
+            detail: error.message,
+            code: error.code
+        });
     }
 };
+

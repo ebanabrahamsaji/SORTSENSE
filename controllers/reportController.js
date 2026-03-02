@@ -3,6 +3,7 @@ import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,7 +54,12 @@ function calculateImpact(wasteType, quantity) {
  * Generate SHA-256 hash of report content
  */
 function generateHash(data) {
-    return crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');
+    try {
+        const str = JSON.stringify(data || {});
+        return crypto.createHash('sha256').update(str).digest('hex');
+    } catch (e) {
+        return crypto.createHash('sha256').update(String(Date.now())).digest('hex');
+    }
 }
 
 /**
@@ -224,12 +230,17 @@ export const generateRequestReport = async (req, res) => {
 
         // Log to DB
         try {
+            // Ensure adminId is a number or NULL for DB integrity
+            const numericAdminId = (adminId && !isNaN(adminId)) ? parseInt(adminId, 10) : null;
+
             await db.query(
                 `INSERT INTO tbl_reports (request_id, user_id, center_id, report_type, report_hash, impact_json, generated_by) 
                  VALUES (?, ?, ?, 'SINGLE', ?, ?, ?)`,
-                [requestId, data.user_id, data.center_id, reportHash, JSON.stringify(impact), adminId]
+                [requestId, data.user_id, data.center_id, reportHash, JSON.stringify(impact), numericAdminId]
             );
-        } catch (_) { /* Non-critical */ }
+        } catch (dbErr) {
+            console.warn('[Reports] Logging to DB failed (non-critical):', dbErr.message);
+        }
 
         // QR Code
         const verifyUrl = `${BASE_URL}/pages/verify-report.html?h=${reportHash}`;
@@ -314,7 +325,7 @@ export const generateRequestReport = async (req, res) => {
         const halfW = (pageW - 120) / 2;
 
         // User box
-        doc.rect(50, y, halfW, 64).fill('#f8fafc').stroke('#e2e8f0');
+        doc.rect(50, y, halfW, 64).fillAndStroke('#f8fafc', '#e2e8f0');
         doc.fillColor('#059669').font('Helvetica-Bold').fontSize(7.5).text('SENDER / USER', 60, y + 8);
         doc.fillColor('#64748b').font('Helvetica').text('Name:', 60, y + 22);
         doc.fillColor('#1e293b').font('Helvetica-Bold').text(data.user_name || '—', 100, y + 22);
@@ -325,10 +336,11 @@ export const generateRequestReport = async (req, res) => {
 
         // Center box
         const centerX = 65 + halfW;
-        doc.rect(centerX, y, halfW, 64).fill('#f8fafc').stroke('#e2e8f0');
+        doc.rect(centerX, y, halfW, 64).fillAndStroke('#f8fafc', '#e2e8f0');
+
         doc.fillColor('#059669').font('Helvetica-Bold').fontSize(7.5).text('COLLECTOR / CENTER', centerX + 10, y + 8);
         doc.fillColor('#64748b').font('Helvetica').text('Center:', centerX + 10, y + 22);
-        doc.fillColor('#1e293b').font('Helvetica-Bold').text((data.center_name || '—').slice(0, 35), centerX + 50, y + 22);
+        doc.fillColor('#1e293b').font('Helvetica-Bold').text((data.center_name || 'Unassigned').slice(0, 35), centerX + 50, y + 22);
         doc.fillColor('#64748b').font('Helvetica').text('Type:', centerX + 10, y + 37);
         doc.fillColor('#1e293b').text(data.center_type || 'General', centerX + 50, y + 37);
         doc.fillColor('#64748b').text('Address:', centerX + 10, y + 51);
@@ -353,7 +365,7 @@ export const generateRequestReport = async (req, res) => {
         y += 8;
 
         // Green impact box
-        doc.rect(50, y, pageW - 100, 80).fill('#dcfce7').stroke('#86efac');
+        doc.rect(50, y, pageW - 100, 80).fillAndStroke('#dcfce7', '#86efac');
         doc.fillColor('#065f46').fontSize(8.5).font('Helvetica-Bold')
             .text('YOUR POSITIVE IMPACT ON THE ENVIRONMENT', 60, y + 10, { align: 'center', width: pageW - 120 });
 
@@ -386,7 +398,7 @@ export const generateRequestReport = async (req, res) => {
         y = drawSectionHeading(doc, 'Digital Verification & Integrity', y, '◆');
         y += 10;
 
-        doc.rect(50, y, pageW - 100, 54).fill('#f8fafc').stroke('#e2e8f0');
+        doc.rect(50, y, pageW - 100, 54).fillAndStroke('#f8fafc', '#e2e8f0');
         doc.fillColor('#059669').fontSize(7.5).font('Helvetica-Bold').text('✔ DIGITALLY VERIFIED', 65, y + 8);
         doc.fillColor('#475569').fontSize(7).font('Helvetica').text(`SHA-256 Report Hash:`, 65, y + 22);
         doc.fillColor('#64748b').font('Helvetica').text(reportHash, 65, y + 33, { width: pageW - 175 });
@@ -507,13 +519,16 @@ export const generateSummaryReport = async (req, res) => {
 
         // Log
         try {
+            const numericAdminId = (adminId && !isNaN(adminId)) ? parseInt(adminId, 10) : null;
             await db.query(
                 `INSERT INTO tbl_reports (user_id, report_type, report_hash, impact_json, filters_json, generated_by) 
                  VALUES (?, 'SUMMARY', ?, ?, ?, ?)`,
-                [adminId || rows[0].user_id, reportHash, JSON.stringify(totalImpact),
-                JSON.stringify({ fromDate, toDate, centerId, userId, category, status }), adminId]
+                [numericAdminId || rows[0].user_id, reportHash, JSON.stringify(totalImpact),
+                JSON.stringify({ fromDate, toDate, centerId, userId, category, status }), numericAdminId]
             );
-        } catch (_) { /* Non-critical */ }
+        } catch (dbErr) {
+            console.warn('[Reports] Logging summary failed:', dbErr.message);
+        }
 
         const doc = new PDFDocument({ margin: 0, size: 'A4', info: { Title: 'SortSense Summary Report', Author: 'SortSense System' } });
         res.setHeader('Content-Type', 'application/pdf');
@@ -540,7 +555,7 @@ export const generateSummaryReport = async (req, res) => {
 
         // ── AGGREGATED STATS BOX ─────────────────────────────────────────
         let y = 160;
-        doc.rect(50, y, pageW - 100, 72).fill('#f1f5f9').stroke('#e2e8f0');
+        doc.rect(50, y, pageW - 100, 72).fillAndStroke('#f1f5f9', '#e2e8f0');
 
         const metricW = (pageW - 120) / 4;
         const metrics = [
@@ -561,7 +576,7 @@ export const generateSummaryReport = async (req, res) => {
         y = drawSectionHeading(doc, 'Your Environmental Impact', y, '❤');
         y += 8;
 
-        doc.rect(50, y, pageW - 100, 52).fill('#dcfce7').stroke('#86efac');
+        doc.rect(50, y, pageW - 100, 52).fillAndStroke('#dcfce7', '#86efac');
         doc.fillColor('#065f46').font('Helvetica-Bold').fontSize(7.5).text('TOTAL ENVIRONMENTAL CONTRIBUTION', 60, y + 8, { align: 'center', width: pageW - 120 });
 
         const iW = (pageW - 130) / 3;

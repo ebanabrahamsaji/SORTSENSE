@@ -90,6 +90,11 @@ const mockData = {
     ],
     marketplace_messages: [],
     center_messages: [],
+    user_center_messages: [],
+    pickup_requests: [
+        { request_id: 60, user_id: 2, waste_type: 'Plastic', quantity: 10.00, address: 'Kochi, Kerala', center_id: 2, status: 'Approved', created_at: new Date('2026-02-22T10:00:00') },
+        { request_id: 61, user_id: 2, waste_type: 'Paper', quantity: 5.50, address: 'Kochi, Kerala', center_id: 2, status: 'Approved', created_at: new Date('2026-02-23T11:00:00') }
+    ],
     center_notifications: [],
     admin_notifications: []
 };
@@ -480,7 +485,11 @@ class MockPool {
         if (lowerSql.includes('from tbl_pickup_requests')) {
             if (!mockData.pickup_requests) mockData.pickup_requests = [];
             const userId = params[0];
-            let results = mockData.pickup_requests.filter(p => p.user_id == userId);
+            let results = mockData.pickup_requests.filter(p => p.user_id == userId)
+                .map(p => {
+                    const center = mockData.collection_centers.find(c => c.center_id == p.center_id);
+                    return { ...p, center_name: center ? center.center_name : 'Processing...' };
+                });
 
             if (lowerSql.includes('sum(quantity)')) {
                 const total = results
@@ -631,6 +640,29 @@ class MockPool {
                 }
             });
             return [{ affectedRows: 1 }];
+        }
+
+        // --- User-Center Messaging: Mock Handlers ---
+        if (lowerSql.includes('insert into tbl_user_center_messages')) {
+            const nextId = mockData.user_center_messages.length + 1;
+            mockData.user_center_messages.push({
+                message_id: nextId,
+                sender_id: params[0],
+                sender_role: params[1],
+                receiver_id: params[2],
+                receiver_role: params[3],
+                request_id: params[4],
+                message: params[5],
+                is_read: false,
+                created_at: new Date()
+            });
+            return [{ insertId: nextId }];
+        }
+        if (lowerSql.includes('from tbl_user_center_messages')) {
+            const requestId = params[0];
+            const msgs = mockData.user_center_messages.filter(m => m.request_id == requestId);
+            // In live, we populate. In mock, we return simple rows.
+            return [msgs];
         }
 
         // Default empty
@@ -823,6 +855,24 @@ const smartPool = {
                 )
             `);
             console.log("✅ Messaging Tables verified");
+
+            // 8. User-Center Messaging Table
+            await conn.query(`
+                CREATE TABLE IF NOT EXISTS tbl_user_center_messages (
+                    message_id INT AUTO_INCREMENT PRIMARY KEY,
+                    sender_id INT NOT NULL,
+                    sender_role ENUM('user', 'center') NOT NULL,
+                    receiver_id INT NOT NULL,
+                    receiver_role ENUM('user', 'center') NOT NULL,
+                    request_id INT NOT NULL,
+                    message TEXT NOT NULL,
+                    is_read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX(request_id),
+                    FOREIGN KEY (request_id) REFERENCES tbl_pickup_requests(request_id) ON DELETE CASCADE
+                ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+            `);
+            console.log("✅ User-Center Messaging Table verified");
         } catch (err) {
             console.error("❌ Messaging Migration Error:", err);
         }

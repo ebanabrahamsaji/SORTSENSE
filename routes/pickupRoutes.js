@@ -1,5 +1,4 @@
 import express from 'express';
-import { verifyToken } from '../middleware/systemMiddleware.js';
 import {
     createPickupRequest, getUserRequests, getCenterRequests, updatePickupStatus, clearCenterHistory,
     getAllPickupRequests, getPickupTrend, getCenterActiveCount,
@@ -8,8 +7,7 @@ import {
 
 const router = express.Router();
 
-// Admin / Public Endpoints First (Match first)
-router.get('/admin/all', verifyToken, getAllPickupRequests);
+// Admin / Public Endpoints (match first)
 router.get('/all', getAllPickupRequests);
 router.get('/trend', getPickupTrend);
 
@@ -18,8 +16,8 @@ router.post('/request', createPickupRequest);
 router.get('/user/:userId', getUserRequests);
 
 // Center Endpoints
-router.get('/center/all', getCenterRequests);        // Full list (scoped to centerId)
-router.get('/center/count', getCenterActiveCount);   // Fast poll — count only
+router.get('/center/all', getCenterRequests);          // Full list (location-filtered)
+router.get('/center/count', getCenterActiveCount);     // Fast poll — count only
 router.delete('/center/history', clearCenterHistory);
 router.put('/:requestId/status', updatePickupStatus);
 

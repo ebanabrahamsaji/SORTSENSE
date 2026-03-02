@@ -46,6 +46,7 @@ function loadProfileData() {
     const stateInput = document.getElementById('state');
     const zipInput = document.getElementById('zip');
     const countryInput = document.getElementById('country');
+    const locationInput = document.getElementById('location');
     const headerName = document.getElementById('headerUserName');
 
     if (nameInput) nameInput.value = userName;
@@ -55,6 +56,7 @@ function loadProfileData() {
     if (stateInput) stateInput.value = localStorage.getItem('userState') || '';
     if (zipInput) zipInput.value = localStorage.getItem('userZip') || '';
     if (countryInput) countryInput.value = localStorage.getItem('userCountry') || '';
+    if (locationInput) locationInput.value = localStorage.getItem('userLocation') || '';
     if (headerName) headerName.textContent = userName;
 
     updateAvatarImages(userPicture, userName);
@@ -78,6 +80,7 @@ function loadProfileData() {
                     if (data.user.state) localStorage.setItem('userState', data.user.state);
                     if (data.user.zip) localStorage.setItem('userZip', data.user.zip);
                     if (data.user.country) localStorage.setItem('userCountry', data.user.country);
+                    if (data.user.location) localStorage.setItem('userLocation', data.user.location);
                     if (data.user.profile_picture) localStorage.setItem('userPicture', data.user.profile_picture);
 
                     // Update UI inputs with fresh data
@@ -88,6 +91,7 @@ function loadProfileData() {
                     if (stateInput) stateInput.value = data.user.state || '';
                     if (zipInput) zipInput.value = data.user.zip || '';
                     if (countryInput) countryInput.value = data.user.country || '';
+                    if (locationInput) locationInput.value = data.user.location || '';
 
                     // Update Header Name
                     if (headerName) headerName.textContent = data.user.name;
@@ -171,6 +175,7 @@ async function handleProfileUpdate(e) {
     const state = document.getElementById('state').value.trim();
     const zip = document.getElementById('zip').value.trim();
     const country = document.getElementById('country').value.trim();
+    const location = document.getElementById('location').value.trim();
 
     const saveBtn = document.querySelector('.save-btn');
 
@@ -203,7 +208,8 @@ async function handleProfileUpdate(e) {
                 state,
                 zip,
                 country,
-                profilePicture: currentProfilePictureUrl // Send the new URL
+                profilePicture: currentProfilePictureUrl,
+                location
             })
         });
 
@@ -217,6 +223,7 @@ async function handleProfileUpdate(e) {
             if (data.user.state) localStorage.setItem('userState', data.user.state);
             if (data.user.zip) localStorage.setItem('userZip', data.user.zip);
             if (data.user.country) localStorage.setItem('userCountry', data.user.country);
+            if (data.user.location) localStorage.setItem('userLocation', data.user.location);
 
             // Handle profile picture (DB uses snake_case)
             const pic = data.user.profile_picture || data.user.profilePicture;
