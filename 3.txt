@@ -1,0 +1,2 @@
+Testing POST /api/messages/user-center/send as user 25 to request 64
+200 {"success":true,"message":"Message sent successfully"}

@@ -727,467 +727,611 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* --- "Use My Location" Button Logic --- */
-    const useLocationBtn = document.getElementById('useUserLocationBtn');
-    const latInput = document.getElementById('pickupLat');
-    const lngInput = document.getElementById('pickupLng');
+    /* --- Granular Vertical Pickup Form Logic (Requirement Updates) --- */
+    const wasteTypeSelect = document.getElementById('pickupWasteType');
+    const timeSlotSelect = document.getElementById('pickupTimeSlot');
+    const quantityInput = document.getElementById('pickupQuantity');
+    const phoneInput = document.getElementById('pickupPhone');
+    const areaInput = document.getElementById('pickupAreaInput');
+    const centerSection = document.getElementById('centerSelectionSection');
+    const checklist = document.getElementById('centerChecklist');
+    const addressTextarea = document.getElementById('pickupFullAddress');
+    const submitBtn = document.getElementById('requestPickupBtn');
 
-    if (useLocationBtn) {
-        // Clear hidden coords if user types manually
-        const addressInput = document.getElementById('pickupAddress');
-        if (addressInput) {
-            addressInput.addEventListener('input', () => {
-                if (latInput) latInput.value = "";
-                if (lngInput) lngInput.value = "";
-                useLocationBtn.classList.remove('active');
-                const locationText = document.getElementById('locationText');
-                if (locationText) locationText.innerText = "Use GPS";
-            });
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    const step4 = document.getElementById('step4');
+    const step5 = document.getElementById('step5');
+    const step7 = document.getElementById('step7');
+
+    const AREA_COORDS = {
+        'kanjirapally': [9.5555, 76.7865],
+        'pala': [9.7118, 76.6800],
+        'kottayam': [9.5916, 76.5221],
+        'ernakulam': [9.9816, 76.2999],
+        'kochi': [9.9312, 76.2673],
+        'ponkunnam': [9.5583, 76.7583],
+        'mundakayam': [9.5397, 76.8847]
+    };
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+        if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    function checkStep1() {
+        // In the new layout, all rows are always visible.
+        // Just cascade down to validate and enable the button.
+        checkStep2();
+    }
+
+    function checkStep2() {
+        checkStep3();
+    }
+
+    function checkStep3() {
+        checkStep4();
+    }
+
+    function checkStep4() {
+        // Trigger center load whenever area has input
+        checkStep5();
+    }
+
+    function checkStep5() {
+        if (areaInput && wasteTypeSelect && wasteTypeSelect.value && areaInput.value.trim().length >= 2) {
+            loadAvailableCenters();
+        } else {
+            if (centerSection) centerSection.style.display = 'none';
+            if (checklist) checklist.innerHTML = '';
+            if (step7) step7.style.display = 'none';
         }
+        checkStep7();
+    }
 
-        useLocationBtn.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert("Geolocation is not supported by your browser.");
-                return;
+    function checkStep6() {
+        const selectedCenter = document.querySelector('input[name="assignedCenterId"]:checked');
+        if (selectedCenter) {
+            if (step7) step7.style.display = 'block';
+            updateCenterInfoPanel(selectedCenter.value);
+        } else {
+            if (step7) step7.style.display = 'none';
+        }
+        checkStep7();
+    }
+
+    function checkStep7() {
+        if (!addressTextarea || !submitBtn) return;
+        if (addressTextarea.value.trim().length > 5 && document.querySelector('input[name="assignedCenterId"]:checked')) {
+            submitBtn.disabled = false;
+        } else {
+            submitBtn.disabled = true;
+        }
+    }
+
+    if (wasteTypeSelect) wasteTypeSelect.addEventListener('change', checkStep1);
+    if (timeSlotSelect) timeSlotSelect.addEventListener('change', checkStep2);
+    if (quantityInput) quantityInput.addEventListener('input', checkStep3);
+    if (phoneInput) phoneInput.addEventListener('input', checkStep4);
+    if (areaInput) areaInput.addEventListener('input', checkStep5);
+    if (addressTextarea) addressTextarea.addEventListener('input', checkStep7);
+
+    async function loadAvailableCenters() {
+        if (!areaInput || !wasteTypeSelect || !checklist || !centerSection) return;
+        const locationInput = areaInput.value.toLowerCase().trim();
+        const wasteType = wasteTypeSelect.value;
+        const wasteTypeLower = wasteType.toLowerCase();
+
+        try {
+            const res = await fetch('/api/centers');
+            const centers = await res.json();
+
+            // Reference Coords for radius check
+            let refCoords = null;
+            for (const town in AREA_COORDS) {
+                if (locationInput.includes(town)) {
+                    refCoords = AREA_COORDS[town];
+                    break;
+                }
             }
 
-            useLocationBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Detecting...';
-            useLocationBtn.disabled = true;
+            // FILTER & SORT
+            // 1. Separate HKS first
+            // 2. Others within 10km if refCoords found, OR just by string match if not.
 
-            // Reset State
-            useLocationBtn.classList.remove('active', 'error');
+            const processed = centers.filter(c => {
+                if (c.status !== 'OPEN' || c.available_slots <= 0) return false;
 
-            navigator.geolocation.getCurrentPosition(
-                async (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lng = pos.coords.longitude;
+                // Priority Logic: Check if it's HKS first
+                const centerNameUpper = (c.center_name || "").toUpperCase();
+                const centerType = (c.type || "").toLowerCase();
+                const isHKS = centerNameUpper.includes('HKS') || centerType.includes('hks') || centerNameUpper.includes('HARITHA');
+                if (isHKS) c._isHKS = true;
 
-                    if (latInput) latInput.value = lat;
-                    if (lngInput) lngInput.value = lng;
+                // Waste category matching
 
-                    try {
-                        useLocationBtn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Fetching Address...';
-                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                        const data = await response.json();
+                // If type is missing, assume it's general/matches everything
+                let typeMatch = !centerType || centerType === 'general' || centerType.includes(wasteTypeLower);
 
-                        const addressInput = document.getElementById('pickupAddress');
-                        if (addressInput) addressInput.value = data.display_name || "";
+                // Specific mappings
+                if (wasteTypeLower === 'e-waste' && centerType.includes('ewaste')) typeMatch = true;
+                if (['plastic', 'metal', 'glass', 'paper'].includes(wasteTypeLower) && (centerType.includes('scrap') || centerType.includes('metal'))) typeMatch = true;
+                if (wasteTypeLower === 'organic' && (centerType.includes('compost') || centerType.includes('bio'))) typeMatch = true;
 
-                        let displayLoc = "Location Set";
-                        if (data.address) {
-                            // Try to find the most relevant part
-                            displayLoc = data.address.road || data.address.suburb || data.address.residential || data.address.neighbourhood || data.address.city || data.address.town || data.address.village;
+                if (!typeMatch) return false;
 
-                            // If still generic or empty, try display_name first part
-                            if (!displayLoc && data.display_name) {
-                                displayLoc = data.display_name.split(',')[0];
-                            }
-                            if (!displayLoc) displayLoc = "Unknown Loc";
-                        }
+                // Location Logic
+                if (isHKS) return true; // HKS always shows regardless of area
 
-                        // Truncate if too long
-                        if (displayLoc.length > 25) displayLoc = displayLoc.substring(0, 23) + '..';
+                // Others: Radius or String match
+                const cLoc = (c.location || c.address || "").toLowerCase();
+                const locationStringMatch = cLoc.includes(locationInput) || locationInput.includes(cLoc);
 
-                        useLocationBtn.innerHTML = `<i class="ri-map-pin-user-fill"></i> ${displayLoc}`;
-                        useLocationBtn.title = data.display_name || "Current Location";
+                if (refCoords) {
+                    const dist = getDistance(refCoords[0], refCoords[1], c.latitude, c.longitude);
+                    c._distance = dist;
+                    return dist <= 10 || locationStringMatch;
+                }
 
-                        useLocationBtn.classList.add('active');
-                        checkNearestCenter(lat, lng);
-                    } catch (error) {
-                        // Fallback
-                        useLocationBtn.innerHTML = `<i class="ri-map-pin-user-fill"></i> ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                        useLocationBtn.classList.add('active');
-                    }
+                return locationStringMatch;
+            }).sort((a, b) => {
+                // HKS first
+                if (a._isHKS && !b._isHKS) return -1;
+                if (!a._isHKS && b._isHKS) return 1;
+                // Then distance if available
+                if (a._distance !== undefined && b._distance !== undefined) return a._distance - b._distance;
+                // Stable sort fallback
+                return (a.center_name || "").localeCompare(b.center_name || "");
+            });
 
-                    useLocationBtn.disabled = false;
-                },
-                (err) => {
-                    console.error("Geo Error:", err);
-                    useLocationBtn.innerHTML = '<i class="ri-error-warning-line"></i> Failed';
-                    useLocationBtn.classList.add('error');
+            if (processed.length === 0) {
+                checklist.innerHTML = '<div style="color:#ef4444; font-size:0.85rem; padding:10px;">No centers available for this area and waste type.</div>';
+            } else {
+                checklist.innerHTML = processed.map(c => `
+                    <label class="center-option" style="display:flex; align-items:center; gap:12px; padding:12px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:10px; cursor:pointer;">
+                        <input type="radio" name="assignedCenterId" value="${c.center_id}" data-name="${c.center_name}" data-status="${c.status}" data-slots="${c.available_slots}" data-max="${c.max_slots || 100}" data-phone="${c.phone || 'Not available'}" style="accent-color:#10b981; width:18px; height:18px;">
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-weight:600; color:#fff; font-size:0.9rem;">${c.center_name}</span>
+                                ${c._isHKS ? '<span style="background:rgba(16,185,129,0.1); color:#10b981; font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700;">HKS Official</span>' : ''}
+                            </div>
+                            <small style="color:#94a3b8; font-size:0.75rem;">${c._isHKS ? 'Official HKS Collection Center' : (c.address || c.location)}</small>
+                            ${c._distance !== undefined && c._distance < 999 ? `<small style="color:#10b981; font-size:0.75rem;">${c._distance.toFixed(1)} km away</small>` : ''}
+                        </div>
+                    </label>
+                `).join('');
 
-                    setTimeout(() => {
-                        useLocationBtn.innerHTML = '<i class="ri-map-pin-line"></i> Use My Location';
-                        useLocationBtn.classList.remove('error');
-                        useLocationBtn.disabled = false;
-                    }, 2000);
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        });
-    }
-
-    // function initWasteChips() {
-    //     const chips = document.querySelectorAll('.waste-chip');
-    //     const hiddenInput = document.getElementById('pickupWasteType');
-
-    //     if (!hiddenInput) return;
-
-    //     chips.forEach(chip => {
-    //         chip.addEventListener('click', () => {
-    //             // 1. Toggle active class
-    //             chip.classList.toggle('active');
-
-    //             // 2. Gather all active values
-    //             const activeChips = Array.from(document.querySelectorAll('.waste-chip.active'));
-    //             const values = activeChips.map(c => c.getAttribute('data-value'));
-
-    //             // 3. Update hidden input with comma-separated string
-    //             hiddenInput.value = values.join(',');
-    //         });
-    //     });
-    // }
-
-    function checkPickupStatus() {
-        const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
-        if (!userId) return;
-
-        fetch(`/api/pickup/user/${userId}`)
-            .then(res => res.json())
-            .then(data => {
-                // data will be null if no active request, or the request object
-                updatePickupUI(data);
-            })
-            .catch(err => console.error("Status Check Error:", err));
-    }
-
-    function handlePickupRequest() {
-        const typeSelect = document.getElementById('pickupWasteType'); // Now a SELECT element
-        const quantityInput = document.getElementById('pickupQuantity');
-        const btn = document.getElementById('requestPickupBtn');
-
-        const wasteType = typeSelect.value;
-        const quantity = parseFloat(quantityInput.value);
-        const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
-
-        // 1. Validate Selection
-        if (!wasteType) {
-            window.showWarning("Please select a waste type.");
-            return;
-        }
-
-        // 2. Validate Quantity
-        if (!quantity || quantity <= 0) {
-            window.showWarning("Please enter a valid positive quantity in kg.");
-            return;
-        }
-
-        // 3. Organic Rule: Min 2kg if Organic is selected
-        if (wasteType === 'Organic' && quantity < 2) {
-            window.showWarning("Organic waste pickup requires a minimum of 2kg.");
-            return;
-        }
-
-        // 4. Validate Time Slot (New Requirement)
-        const timeSlotSelect = document.getElementById('pickupTimeSlot');
-        const timeSlot = timeSlotSelect ? timeSlotSelect.value : null;
-
-        if (!timeSlot) {
-            window.showWarning("Please select a preferred time slot.");
-            return;
-        }
-
-        if (!userId) {
-            window.showError("Please login first.");
-            return;
-        }
-
-        const originalText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Finding Center...';
-
-        // 4. Get Location & Submit (with Fallback)
-        const submitPickup = (lat, lng, manualAddress = null) => {
-            fetch('/api/pickup/request', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: userId,
-                    wasteType: wasteType,
-                    quantity: quantity,
-                    timeSlot: timeSlot, // New Field
-                    lat: lat,
-                    lng: lng,
-                    address: (manualAddress || (document.getElementById('pickupAddress') ? document.getElementById('pickupAddress').value : "")) + ` || SLOT:${timeSlot}` // Append to address for fallback storage
-                })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.requestId) {
-                        // Success
-                        clearPickupForm(); // Clear the form fields
-                        checkPickupStatus(); // Refresh UI immediately
-
-                        // Show SuccessMsg
-                        const successMsg = document.getElementById('pickupSuccessMsg');
-                        if (successMsg) {
-                            successMsg.style.display = 'flex';
-                            setTimeout(() => { successMsg.style.display = 'none'; }, 3000);
-                        }
-                    } else {
-                        // Handle Errors
-                        console.error("Pickup Request Failed:", data);
-                        const msg = data.message || "Failed to create request.";
-                        window.showError(msg);
-                    }
-                })
-                .catch(err => {
-                    console.error("Pickup Req Error:", err);
-                    window.showError("Server error. Please try again.");
-                })
-                .finally(() => {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
+                checklist.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.addEventListener('change', checkStep6);
                 });
-        };
-
-        const manualLat = document.getElementById('pickupLat') ? document.getElementById('pickupLat').value : null;
-        const manualLng = document.getElementById('pickupLng') ? document.getElementById('pickupLng').value : null;
-        const manualAddress = document.getElementById('pickupAddress') ? document.getElementById('pickupAddress').value : "";
-
-        if (manualLat && manualLng) {
-            console.log("Using GPS set location:", manualLat, manualLng);
-            submitPickup(parseFloat(manualLat), parseFloat(manualLng));
-        }
-        else if (manualAddress && manualAddress.trim().length > 0) {
-            // User typed an address manually but no coordinates
-            console.log("Using manually typed address:", manualAddress);
-            submitPickup(null, null, manualAddress);
-        }
-        else if (!navigator.geolocation) {
-            console.warn("Geolocation not supported. Proceeding with fallback.");
-            submitPickup(null, null);
-        } else {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    let fetchedAddress = "";
-                    try {
-                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                        const data = await response.json();
-                        fetchedAddress = data.display_name || "";
-                    } catch (e) {
-                        console.warn("Auto-geocoding address fetch failed:", e);
-                    }
-
-                    submitPickup(lat, lng, fetchedAddress);
-                },
-                (error) => {
-                    console.warn("Unable to retrieve location. Proceeding with fallback strategy.", error);
-                    submitPickup(null, null);
-                },
-                { timeout: 5000, enableHighAccuracy: true }
-            );
-        }
-
-        function resetBtn() {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
+            }
+            centerSection.style.display = 'block';
+        } catch (err) {
+            console.error("Error loading centers:", err);
         }
     }
 
-    function clearPickupForm() {
-        console.log("🧹 Clearing Pickup Form...");
-        const typeSelect = document.getElementById('pickupWasteType');
-        const slotSelect = document.getElementById('pickupTimeSlot');
-        const quantityInput = document.getElementById('pickupQuantity');
-        const addressInput = document.getElementById('pickupAddress');
-        const latInput = document.getElementById('pickupLat');
-        const lngInput = document.getElementById('pickupLng');
-        const useLocationBtn = document.getElementById('useUserLocationBtn');
+    function updateCenterInfoPanel(centerId) {
+        const selectedRadio = document.querySelector(`input[name="assignedCenterId"][value="${centerId}"]`);
+        if (!selectedRadio) return;
 
-        if (typeSelect) typeSelect.selectedIndex = 0;
-        if (slotSelect) slotSelect.selectedIndex = 0;
-        if (quantityInput) quantityInput.value = "";
-        if (addressInput) addressInput.value = "";
-        if (latInput) latInput.value = "";
-        if (lngInput) lngInput.value = "";
+        const name = selectedRadio.getAttribute('data-name');
+        const status = selectedRadio.getAttribute('data-status');
+        const slots = parseInt(selectedRadio.getAttribute('data-slots'));
+        const max = parseInt(selectedRadio.getAttribute('data-max'));
 
-        if (useLocationBtn) {
-            useLocationBtn.classList.remove('active');
-            useLocationBtn.innerHTML = '<i class="ri-map-pin-line"></i> Use GPS';
-            useLocationBtn.style.color = "";
-            useLocationBtn.style.background = "";
-        }
-
-        const infoDiv = document.getElementById('nearestCenterInfo');
-        if (infoDiv) {
-            infoDiv.style.display = 'none';
-            infoDiv.innerHTML = '';
-        }
-
-        // Reset Center availability text
+        const nameEl = document.getElementById("infoCenterName");
         const statusEl = document.getElementById("centerStatus");
         const slotsEl = document.getElementById("centerSlots");
         const loadEl = document.getElementById("centerLoad");
-        if (statusEl) statusEl.textContent = "--";
-        if (slotsEl) slotsEl.textContent = "--";
-        if (loadEl) loadEl.textContent = "--";
+        const phoneEl = document.getElementById("centerPhone");
+
+        if (nameEl) nameEl.textContent = name || '—';
+        if (statusEl) {
+            statusEl.textContent = status;
+            statusEl.className = `badge ci-value ${status.toLowerCase() === 'open' ? 'status-active' : 'status-inactive'}`;
+        }
+        if (slotsEl) slotsEl.textContent = `${slots}/${max}`;
+        if (loadEl && max > 0) {
+            const loadPercent = Math.round(((max - slots) / max) * 100);
+            loadEl.textContent = `${loadPercent}%`;
+        }
+        if (phoneEl) {
+            phoneEl.textContent = selectedRadio.getAttribute('data-phone');
+        }
+    }
+});
+
+// function initWasteChips() {
+//     const chips = document.querySelectorAll('.waste-chip');
+//     const hiddenInput = document.getElementById('pickupWasteType');
+
+//     if (!hiddenInput) return;
+
+//     chips.forEach(chip => {
+//         chip.addEventListener('click', () => {
+//             // 1. Toggle active class
+//             chip.classList.toggle('active');
+
+//             // 2. Gather all active values
+//             const activeChips = Array.from(document.querySelectorAll('.waste-chip.active'));
+//             const values = activeChips.map(c => c.getAttribute('data-value'));
+
+//             // 3. Update hidden input with comma-separated string
+//             hiddenInput.value = values.join(',');
+//         });
+//     });
+// }
+
+function checkPickupStatus() {
+    const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+    if (!userId) return;
+
+    fetch(`/api/pickup/user/${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            // data will be null if no active request, or the request object
+            updatePickupUI(data);
+        })
+        .catch(err => console.error("Status Check Error:", err));
+}
+
+function handlePickupRequest() {
+    const typeSelect = document.getElementById('pickupWasteType');
+    const quantityInput = document.getElementById('pickupQuantity');
+    const btn = document.getElementById('requestPickupBtn');
+    const timeSlotSelect = document.getElementById('pickupTimeSlot');
+    const phoneInput = document.getElementById('pickupPhone');
+    const addressTextarea = document.getElementById('pickupFullAddress');
+    const areaInput = document.getElementById('pickupAreaInput');
+
+    if (!typeSelect || !quantityInput || !btn) return;
+
+    const wasteType = typeSelect.value;
+    const quantity = parseFloat(quantityInput.value);
+    const timeSlot = timeSlotSelect ? timeSlotSelect.value : null;
+    const phone = phoneInput ? phoneInput.value : "";
+    const fullAddress = addressTextarea ? addressTextarea.value : "";
+    const selectedArea = areaInput ? areaInput.value : "";
+
+    const centerInput = document.querySelector('input[name="assignedCenterId"]:checked');
+    const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+
+    // 1. Validation
+    if (!wasteType) return window.showWarning("Please select a waste type.");
+    if (!quantity || quantity <= 0) return window.showWarning("Please enter a valid positive quantity.");
+    if (wasteType === 'Organic' && quantity < 2) return window.showWarning("Organic waste requires min 2kg.");
+    if (!timeSlot) return window.showWarning("Please select a preferred time slot.");
+    if (!/^\d{10}$/.test(phone)) return window.showWarning("Please enter a valid 10-digit phone number.");
+    if (!fullAddress || fullAddress.trim().length < 5) return window.showWarning("Please enter a complete pickup address.");
+    if (!selectedArea) return window.showWarning("Please enter a location/area.");
+    if (!centerInput) return window.showWarning("Please select a collection center.");
+
+    if (!userId) return window.showError("Please login first.");
+
+    const centerId = centerInput.value;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i> Submitting...';
+
+    // 2. Submit Request
+    fetch('/api/pickup/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            userId: userId,
+            wasteType: wasteType,
+            quantity: quantity,
+            timeSlot: timeSlot,
+            centerId: centerId,
+            address: `${fullAddress} [${selectedArea}] || SLOT:${timeSlot}`,
+            phone: phone
+        })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.requestId) {
+                clearPickupForm();
+                checkPickupStatus();
+                if (window.showSuccess) window.showSuccess("Pickup scheduled successfully!");
+
+                const successMsg = document.getElementById('pickupSuccessMsg');
+                if (successMsg) {
+                    successMsg.style.display = 'flex';
+                    setTimeout(() => { successMsg.style.display = 'none'; }, 3000);
+                }
+            } else {
+                window.showError(data.message || "Failed to create request.");
+            }
+        })
+        .catch(err => {
+            console.error("Pickup Req Error:", err);
+            window.showError("Server error. Please try again.");
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+}
+
+function clearPickupForm() {
+    console.log("🧹 Clearing Pickup Form...");
+    const typeSelect = document.getElementById('pickupWasteType');
+    const slotSelect = document.getElementById('pickupTimeSlot');
+    const quantityInput = document.getElementById('pickupQuantity');
+    const phoneInput = document.getElementById('pickupPhone');
+    const areaInput = document.getElementById('pickupAreaInput');
+    const fullAddress = document.getElementById('pickupFullAddress');
+    const btn = document.getElementById('requestPickupBtn');
+
+    if (typeSelect) typeSelect.selectedIndex = 0;
+    if (slotSelect) slotSelect.selectedIndex = 0;
+    if (quantityInput) quantityInput.value = "";
+    if (phoneInput) phoneInput.value = "";
+    if (areaInput) areaInput.value = "";
+    if (fullAddress) fullAddress.value = "";
+    if (btn) btn.disabled = true;
+
+    // Reset visibility
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    const step4 = document.getElementById('step4');
+    const step5 = document.getElementById('step5');
+    const step7 = document.getElementById('step7');
+    const centerSection = document.getElementById('centerSelectionSection');
+    const checklist = document.getElementById('centerChecklist');
+
+    // step2–step5 are always visible in the new layout; only hide progressive steps
+    if (step7) step7.style.display = 'none';
+    if (centerSection) centerSection.style.display = 'none';
+    if (checklist) checklist.innerHTML = '';
+
+    // Reset info panel
+    const nameEl = document.getElementById("infoCenterName");
+    const statusEl = document.getElementById("centerStatus");
+    const slotsEl = document.getElementById("centerSlots");
+    const loadEl = document.getElementById("centerLoad");
+    const phoneEl = document.getElementById("centerPhone");
+    if (nameEl) nameEl.textContent = "—";
+    if (statusEl) statusEl.textContent = "--";
+    if (slotsEl) slotsEl.textContent = "--";
+    if (loadEl) loadEl.textContent = "--";
+    if (phoneEl) phoneEl.textContent = "--";
+
+    window.forceShowPickupForm = false;
+}
+
+function updatePickupUI(data) {
+    const formWrapper = document.getElementById('pickupFormWrapper');
+    const mainFormCard = document.querySelector('.pickup-section > .pickup-card');
+    let infoContainer = document.getElementById('pickupInfoContainer');
+    const pickupSection = document.querySelector('.pickup-section');
+
+    // 1. Setup Container
+    if (!infoContainer && pickupSection) {
+        infoContainer = document.createElement('div');
+        infoContainer.id = 'pickupInfoContainer';
+        infoContainer.style.display = 'flex';
+        infoContainer.style.flexDirection = 'column';
+        infoContainer.style.gap = '1rem';
+        infoContainer.style.width = '100%';
+        pickupSection.appendChild(infoContainer);
     }
 
-    function updatePickupUI(data) {
-        const formWrapper = document.getElementById('pickupFormWrapper');
-        const mainFormCard = document.querySelector('.pickup-section > .pickup-card');
-        let infoContainer = document.getElementById('pickupInfoContainer');
-        const pickupSection = document.querySelector('.pickup-section');
+    // 2. Clear Previous content
+    if (infoContainer) infoContainer.innerHTML = '';
 
-        // 1. Setup Container
-        if (!infoContainer && pickupSection) {
-            infoContainer = document.createElement('div');
-            infoContainer.id = 'pickupInfoContainer';
-            infoContainer.style.display = 'flex';
-            infoContainer.style.flexDirection = 'column';
-            infoContainer.style.gap = '1rem';
-            infoContainer.style.width = '100%';
-            pickupSection.appendChild(infoContainer);
-        }
+    // 3. Check State
+    let requests = [];
+    if (Array.isArray(data)) {
+        requests = data;
+    } else if (data && !data.message) {
+        requests = [data];
+    }
 
-        // 2. Clear Previous content
-        if (infoContainer) infoContainer.innerHTML = '';
+    const activeRequests = requests.filter(r => r && r.status && r.status !== 'Completed' && r.status !== 'Cancelled');
 
-        // 3. Check State
-        let requests = [];
-        if (Array.isArray(data)) {
-            requests = data;
-        } else if (data && !data.message) {
-            requests = [data];
-        }
+    // Toggle Form vs Cards
+    const forceShow = window.forceShowPickupForm || false;
 
-        const activeRequests = requests.filter(r => r && r.status && r.status !== 'Completed' && r.status !== 'Cancelled');
+    if (activeRequests.length === 0) {
+        if (typeof window.checkPickupReminder === 'function') window.checkPickupReminder([]);
+        if (mainFormCard) mainFormCard.style.display = 'block';
+        if (formWrapper) formWrapper.style.display = 'flex';
+        if (infoContainer) infoContainer.style.display = 'none';
+        return;
+    } else {
+        if (typeof window.checkPickupReminder === 'function') window.checkPickupReminder(activeRequests);
 
-        // Toggle Form vs Cards
-        if (activeRequests.length === 0) {
-            if (typeof window.checkPickupReminder === 'function') window.checkPickupReminder([]);
+        if (forceShow) {
             if (mainFormCard) mainFormCard.style.display = 'block';
             if (formWrapper) formWrapper.style.display = 'flex';
-            if (infoContainer) infoContainer.style.display = 'none';
-            return;
         } else {
-            if (typeof window.checkPickupReminder === 'function') window.checkPickupReminder(activeRequests);
             if (mainFormCard) mainFormCard.style.display = 'none';
-            if (infoContainer) infoContainer.style.display = 'flex';
+        }
+        if (infoContainer) infoContainer.style.display = 'flex';
+    }
+
+    // Add "New Request" button if cards are shown and form is hidden
+    if (!forceShow && activeRequests.length > 0) {
+        const newReqBtn = document.createElement('button');
+        newReqBtn.innerHTML = '<i class="ri-add-line"></i> Schedule Another Pickup';
+        newReqBtn.style.cssText = `
+                align-self: flex-end;
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 12px;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 0 4px 12px rgba(16,185,129,0.2);
+                margin-bottom: 0.5rem;
+                font-size: 0.9rem;
+                transition: all 0.2s;
+            `;
+        newReqBtn.onclick = () => {
+            window.forceShowPickupForm = true;
+            updatePickupUI(requests);
+        };
+        infoContainer.appendChild(newReqBtn);
+    } else if (forceShow && activeRequests.length > 0) {
+        const cancelNewBtn = document.createElement('button');
+        cancelNewBtn.innerHTML = '<i class="ri-close-line"></i> Cancel New Schedule';
+        cancelNewBtn.style.cssText = `
+                align-self: flex-end;
+                background: rgba(255,255,255,0.05);
+                color: #94a3b8;
+                border: 1px solid rgba(255,255,255,0.1);
+                padding: 8px 16px;
+                border-radius: 10px;
+                font-weight: 600;
+                cursor: pointer;
+                margin-bottom: 0.5rem;
+                font-size: 0.85rem;
+            `;
+        cancelNewBtn.onclick = () => {
+            window.forceShowPickupForm = false;
+            updatePickupUI(requests);
+        };
+        infoContainer.appendChild(cancelNewBtn);
+    }
+
+    // 4. Render Cards
+    const t = (k) => typeof getTranslation === 'function' ? getTranslation(k) : k;
+
+
+    activeRequests.forEach(req => {
+        // Create Card
+        const card = document.createElement('div');
+        card.className = 'pickup-card';
+        card.style.background = 'rgba(255,255,255,0.05)';
+        card.style.border = '1px solid rgba(255,255,255,0.1)';
+        card.style.borderRadius = '12px';
+        card.style.padding = '1.5rem';
+        card.style.position = 'relative';
+
+        // Badge Logic
+        const statusClass = req.status.toLowerCase();
+        let statusBadgeInfo = { text: req.status, color: '#fff', bg: 'rgba(255,255,255,0.1)' };
+
+        if (statusClass === 'scheduled' || statusClass === 'pending') {
+            statusBadgeInfo = { text: statusClass === 'pending' ? 'Pending' : 'Scheduled', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)' };
+        } else if (statusClass === 'approved') {
+            statusBadgeInfo = { text: 'Approved', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.15)' };
+        } else if (statusClass === 'rejected') {
+            statusBadgeInfo = { text: 'Rejected', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' };
         }
 
-        // 4. Render Cards
-        const t = (k) => typeof getTranslation === 'function' ? getTranslation(k) : k;
+        const statusLabel = statusBadgeInfo.text;
 
+        // --- Status Stepper Visualization ---
+        const steps = ['Scheduled', 'Approved', 'Collected', 'Completed'];
+        let currentStepIdx = 0;
+        let isRejected = false;
 
-        activeRequests.forEach(req => {
-            // Create Card
-            const card = document.createElement('div');
-            card.className = 'pickup-card';
-            card.style.background = 'rgba(255,255,255,0.05)';
-            card.style.border = '1px solid rgba(255,255,255,0.1)';
-            card.style.borderRadius = '12px';
-            card.style.padding = '1.5rem';
-            card.style.position = 'relative';
+        if (req.status === 'Scheduled' || req.status === 'Pending') currentStepIdx = 0;
+        if (req.status === 'Approved') currentStepIdx = 1;
+        if (req.status === 'Collected') currentStepIdx = 2;
+        if (req.status === 'Completed') currentStepIdx = 3;
+        if (req.status === 'Rejected') {
+            isRejected = true;
+            currentStepIdx = -1; // No active positive step
+        }
 
-            // Badge Logic
-            const statusClass = req.status.toLowerCase();
-            let statusBadgeInfo = { text: req.status, color: '#fff', bg: 'rgba(255,255,255,0.1)' };
+        let stepperHtml = `<div class="stepper-wrapper ${isRejected ? 'rejected' : ''}">`;
 
-            if (statusClass === 'scheduled') {
-                statusBadgeInfo = { text: 'Scheduled', color: '#fbbf24', bg: 'rgba(245, 158, 11, 0.15)' };
-            } else if (statusClass === 'approved') {
-                statusBadgeInfo = { text: 'Approved', color: '#60a5fa', bg: 'rgba(59, 130, 246, 0.15)' };
-            } else if (statusClass === 'rejected') {
-                statusBadgeInfo = { text: 'Rejected', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' };
-            }
+        steps.forEach((step, index) => {
+            let stepClass = '';
+            let iconContent = index + 1;
 
-            const statusLabel = statusBadgeInfo.text;
-
-            // --- Status Stepper Visualization ---
-            const steps = ['Scheduled', 'Approved', 'Collected', 'Completed'];
-            let currentStepIdx = 0;
-            let isRejected = false;
-
-            if (req.status === 'Scheduled') currentStepIdx = 0;
-            if (req.status === 'Approved') currentStepIdx = 1;
-            if (req.status === 'Collected') currentStepIdx = 2;
-            if (req.status === 'Completed') currentStepIdx = 3;
-            if (req.status === 'Rejected') {
-                isRejected = true;
-                currentStepIdx = -1; // No active positive step
-            }
-
-            let stepperHtml = `<div class="stepper-wrapper ${isRejected ? 'rejected' : ''}">`;
-
-            steps.forEach((step, index) => {
-                let stepClass = '';
-                let iconContent = index + 1;
-
-                if (!isRejected) {
-                    if (index < currentStepIdx) {
-                        stepClass = 'completed';
-                        iconContent = '<i class="ri-check-line"></i>';
-                    } else if (index === currentStepIdx) {
-                        stepClass = 'active';
-                    }
-                } else {
-                    // If rejected, mark 'Requested' as error state (handled by CSS .rejected)
-                    if (index === 0) {
-                        stepClass = 'active';
-                        iconContent = '<i class="ri-close-line"></i>';
-                    }
+            if (!isRejected) {
+                if (index < currentStepIdx) {
+                    stepClass = 'completed';
+                    iconContent = '<i class="ri-check-line"></i>';
+                } else if (index === currentStepIdx) {
+                    stepClass = 'active';
                 }
+            } else {
+                // If rejected, mark 'Requested' as error state (handled by CSS .rejected)
+                if (index === 0) {
+                    stepClass = 'active';
+                    iconContent = '<i class="ri-close-line"></i>';
+                }
+            }
 
-                stepperHtml += `
+            stepperHtml += `
                     <div class="stepper-item ${stepClass}">
                         <div class="step-counter">${iconContent}</div>
                         <div class="step-name">${step}</div>
                     </div>
                 `;
-            });
-            stepperHtml += '</div>';
+        });
+        stepperHtml += '</div>';
 
-            // --- Extra Info Logic (ETA / Rejection Reason) ---
-            let extraInfoHtml = '';
-            if (req.status === 'Rejected' && req.rejection_reason) {
-                extraInfoHtml = `
+        // --- Extra Info Logic (ETA / Rejection Reason) ---
+        let extraInfoHtml = '';
+        if (req.status === 'Rejected' && req.rejection_reason) {
+            extraInfoHtml = `
                 <div style="margin-top:0.5rem; padding:0.5rem; background:rgba(239, 68, 68, 0.1); border-left:3px solid #ef4444; border-radius:4px;">
                     <strong style="color:#ef4444; font-size:0.8rem;">Reason:</strong> 
                     <span style="color:#fca5a5; font-size:0.85rem;">"${req.rejection_reason}"</span>
                 </div>
             `;
-            }
-            if (req.status === 'Approved' && req.estimated_pickup_time) {
-                extraInfoHtml = `
+        }
+        if (req.status === 'Approved' && req.estimated_pickup_time) {
+            extraInfoHtml = `
                  <div style="margin-top:0.5rem; padding:0.5rem; background:rgba(59, 130, 246, 0.1); border-left:3px solid #3b82f6; border-radius:4px;">
                     <strong style="color:#60a5fa; font-size:0.8rem;">ETA:</strong> 
                     <span style="color:#93c5fd; font-size:0.85rem;">${req.estimated_pickup_time}</span>
                 </div>
             `;
-            }
+        }
 
-            // Items List
-            let itemsHtml = '';
-            if (req.items && req.items.length > 0) {
-                itemsHtml = req.items.map(item => `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.25rem 0; border-bottom:1px solid rgba(255,255,255,0.05);">
-                    <span style="display:flex; align-items:center; gap:0.5rem; font-size:0.9rem;">
-                        <i class="ri-recycle-line" style="color:#10b981;"></i> ${t(item.waste_type)}
+        // Items List
+        let itemsHtml = '';
+        if (req.items && req.items.length > 0) {
+            itemsHtml = req.items.map(item => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0.8rem; background:rgba(255,255,255,0.02); border-radius:8px; margin-bottom:4px;">
+                    <span style="display:flex; align-items:center; gap:0.6rem; font-size:0.9rem; color:#e2e8f0;">
+                         <div style="width:28px; height:28px; background:rgba(16,185,129,0.1); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#10b981;">
+                            <i class="ri-recycle-line" style="font-size:1rem;"></i>
+                         </div>
+                         ${t(item.waste_type)}
                     </span>
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <strong style="font-size:0.9rem; margin-right:0.5rem;">${item.quantity} kg</strong>
+                    <div style="display:flex; align-items:center; gap:0.8rem;">
+                        <span style="font-size:0.9rem; font-weight:700; color:#10b981; background:rgba(16,185,129,0.1); padding:2px 8px; border-radius:6px; font-variant-numeric: tabular-nums;">
+                            ${parseFloat(item.quantity).toFixed(1)} <span style="font-size:0.75rem; opacity:0.8; font-weight:500;">KG</span>
+                        </span>
                         ${req.status === 'Scheduled' ?
-                        `<i class="ri-close-circle-line" onclick="deletePickupItem(${req.request_id}, ${item.item_id})" style="color:#ef4444; cursor:pointer; font-size:1.1rem; opacity:0.8; transition:0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8" title="Remove Item"></i>`
-                        : ''}
+                    `<button onclick="deletePickupItem(${req.request_id}, ${item.item_id})" style="background:rgba(239,68,68,0.1); border:none; color:#ef4444; width:28px; height:28px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'" title="Remove Item">
+                             <i class="ri-close-line" style="font-size:1.1rem;"></i>
+                         </button>`
+                    : ''}
                     </div>
                 </div>
             `).join('');
-            }
+        }
 
-            // Combine Items + Extra Info
-            if (extraInfoHtml) {
-                itemsHtml = extraInfoHtml + '<div style="margin-top:0.5rem;">' + itemsHtml + '</div>';
-            }
+        // Combine Items + Extra Info
+        if (extraInfoHtml) {
+            itemsHtml = extraInfoHtml + '<div style="margin-top:0.75rem;">' + itemsHtml + '</div>';
+        }
 
-            // Actions
-            let actionsHtml = '';
-            // Fixed: Use hardcoded options since the main SELECT was replaced by Chips
-            const typeOptions = `
+        // Actions
+        let actionsHtml = '';
+        // Fixed: Use hardcoded options since the main SELECT was replaced by Chips
+        const typeOptions = `
              <option value="Plastic" data-i18n="plastic" style="background-color: #1f2937; color: white;">Plastic</option>
              <option value="Paper" data-i18n="paper" style="background-color: #1f2937; color: white;">Paper</option>
              <option value="Organic" data-i18n="organic" style="background-color: #1f2937; color: white;">Organic</option>
@@ -1197,8 +1341,8 @@ document.addEventListener('DOMContentLoaded', () => {
              <option value="Hazardous" data-i18n="hazardous" style="background-color: #1f2937; color: white;">Hazardous</option>
         `;
 
-            if (req.status === 'Scheduled' || req.status === 'Rejected') {
-                actionsHtml = `
+        if (req.status === 'Scheduled' || req.status === 'Pending' || req.status === 'Rejected') {
+            actionsHtml = `
                     <div class="pickup-actions" style="display:flex; gap:1rem; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem; margin-top:1rem;">
                         <button onclick="deletePickup(${req.request_id})" class="btn-action-delete" style="color:#ef4444; background:rgba(239,68,68,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
                             <i class="ri-delete-bin-2-line"></i> ${req.status === 'Rejected' ? 'Clear Request' : t('delete_request')}
@@ -1207,15 +1351,15 @@ document.addEventListener('DOMContentLoaded', () => {
                            <i class="ri-message-3-line"></i> Chat
                         </button>
                         <div style="flex:1;"></div>
-                        ${req.status === 'Scheduled' ? `
+                        ${(req.status === 'Scheduled' || req.status === 'Pending') ? `
                         <button onclick="toggleAddForm(${req.request_id})" class="btn-action-add" style="color:#10b981; background:rgba(16,185,129,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
                            <i class="ri-add-circle-line"></i> ${t('add_more_items')}
                         </button>` : ''}
                     </div>
             `;
-            } else if (req.status === 'Approved' || req.status === 'In_Transit') {
-                // Show Add Item but Logic creates NEW request
-                actionsHtml = `
+        } else if (req.status === 'Approved' || req.status === 'In_Transit') {
+            // Show Add Item but Logic creates NEW request
+            actionsHtml = `
                 <div class="pickup-actions" style="display:flex; gap:1rem; align-items:center; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem; margin-top:1rem;">
                         <button onclick="openUserCenterChat(${req.request_id}, '${req.center_name || 'Center'}')" class="btn-action-chat" style="color:#3b82f6; background:rgba(59,130,246,0.1); padding:0.5rem 1rem; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; gap:0.5rem; transition:all 0.2s;">
                            <i class="ri-message-3-line"></i> Message Center
@@ -1226,11 +1370,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         </button>
                 </div>
             `;
-            }
+        }
 
-            // Add Form Section
-            // Styled to match the requested "Premium" horizontal layout
-            const addFormHtml = `
+        // Add Form Section
+        // Styled to match the requested "Premium" horizontal layout
+        const addFormHtml = `
              <div id="addItemForm-${req.request_id}" style="display:none; gap:10px; align-items:stretch; padding-top:1rem; margin-top:0.5rem; border-top:1px dashed rgba(255,255,255,0.1); animation: fadeIn 0.3s ease;">
                     <select id="addType-${req.request_id}" style="flex:1; background:#1e293b; border:1px solid rgba(255,255,255,0.1); color:white; padding:0 1rem; height:42px; border-radius:8px; outline:none; font-family:inherit;">
                         ${typeOptions}
@@ -1240,15 +1384,15 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-            // Extract Time Slot from Address if present (Fallback) or use direct field
-            const slotMatch = req.address && req.address.includes('SLOT:') ? req.address.split('SLOT:')[1].trim() : (req.timeSlot || req.time_slot || "");
+        // Extract Time Slot from Address if present (Fallback) or use direct field
+        const slotMatch = req.address && req.address.includes('SLOT:') ? req.address.split('SLOT:')[1].trim() : (req.timeSlot || req.time_slot || "");
 
-            const cleanAddress = (req.address || "").split(' || SLOT:')[0];
-            const mapUrl = (req.latitude && req.longitude)
-                ? `https://www.google.com/maps/search/?api=1&query=${req.latitude},${req.longitude}`
-                : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`;
+        const cleanAddress = (req.address || "").split(' || SLOT:')[0];
+        const mapUrl = (req.latitude && req.longitude)
+            ? `https://www.google.com/maps/search/?api=1&query=${req.latitude},${req.longitude}`
+            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanAddress)}`;
 
-            card.innerHTML = `
+        card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
                 <div style="font-size:0.8rem; color:rgba(255,255,255,0.5);">
                     Request #${req.request_id} &bull; ${new Date(req.created_at).toLocaleDateString()}
@@ -1275,15 +1419,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="margin-top:0.75rem; padding-top:0.75rem; border-top:1px dashed rgba(255,255,255,0.1);">
                     <div style="color:rgba(255,255,255,0.4); font-size:0.7rem; text-transform:uppercase; margin-bottom:2px;">Assigned Center</div>
                     <div style="color:white; font-weight:600;">${req.center_name || 'Finding Nearest...'}</div>
-                    <div style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-top:1px;">${req.center_address || ''}</div>
+                    <div style="color:rgba(255,255,255,0.5); font-size:0.75rem; margin-top:1px;">
+                        ${req.center_address || ''}
+                        ${req.center_phone ? `<br><span style="color:var(--primary-color);"><i class="ri-phone-line"></i> ${req.center_phone}</span>` : ''}
+                    </div>
                 </div>
             </div>
 
-            <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:0.75rem; display:flex; flex-direction:column; gap:0.25rem;">
+            <div style="background:rgba(0,0,0,0.3); border-radius:12px; padding:1rem; display:flex; flex-direction:column; gap:0.5rem; border:1px solid rgba(255,255,255,0.03);">
                 ${itemsHtml}
-                <div style="display:flex; justify-content:space-between; align-items:center; padding-top:0.5rem; margin-top:0.25rem; border-top:1px solid rgba(255,255,255,0.1); color:#10b981;">
-                    <span style="font-weight:600;">${t('total')}</span>
-                    <strong>${req.quantity} kg</strong>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 0.5rem 0 0.5rem; margin-top:0.25rem; border-top:1px solid rgba(255,255,255,0.08);">
+                    <span style="font-weight:600; color:#94a3b8; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">${t('total')}</span>
+                    <strong style="color:#10b981; font-size:1.1rem; filter: drop-shadow(0 0 8px rgba(16,185,129,0.3));">
+                        ${parseFloat(req.quantity || 0).toFixed(1)} <span style="font-size:0.85rem; font-weight:500; opacity:0.7;">kg</span>
+                    </strong>
                 </div>
             </div>
 
@@ -1291,94 +1440,94 @@ document.addEventListener('DOMContentLoaded', () => {
             ${addFormHtml}
         `;
 
-            infoContainer.appendChild(card);
-        });
+        infoContainer.appendChild(card);
+    });
 
-    }
+}
 
-    // Helper to toggle form
-    window.toggleAddForm = function (id) {
-        const el = document.getElementById(`addItemForm-${id}`);
-        if (el) el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
-    }
+// Helper to toggle form
+window.toggleAddForm = function (id) {
+    const el = document.getElementById(`addItemForm-${id}`);
+    if (el) el.style.display = el.style.display === 'flex' ? 'none' : 'flex';
+}
 
-    // --- Helper Functions for Pickup Features ---
+// --- Helper Functions for Pickup Features ---
 
-    window.deletePickup = function (id) {
-        showCustomConfirm(
-            "Delete Request",
-            "Are you sure you want to delete this pickup request?",
-            () => {
-                fetch(`/api/pickup/${id}`, { method: 'DELETE' })
-                    .then(async res => {
-                        const data = await res.json();
-                        if (res.ok) {
-                            checkPickupStatus();
-                            window.showToast("Request deleted successfully.", "success");
-                        } else {
-                            window.showToast(data.message || "Failed to delete request.", "error");
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        window.showToast("Error deleting request.", "error");
-                    });
-            }
-        );
-    };
-
-    window.deletePickupItem = function (requestId, itemId) {
-        showCustomConfirm(
-            "Remove Item",
-            "Are you sure you want to remove this item from your request?",
-            () => {
-                fetch(`/api/pickup/${requestId}/item/${itemId}`, { method: 'DELETE' })
-                    .then(async res => {
-                        const data = await res.json();
-                        if (res.ok) {
-                            checkPickupStatus();
-                            window.showToast("Item removed.", "success");
-                        } else {
-                            window.showToast(data.message || "Failed to delete item.", "error");
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        window.showToast("Error deleting item.", "error");
-                    });
-            }
-        );
-    };
-
-    window.submitAddItem = function (id) {
-        const type = document.getElementById(`addType-${id}`).value;
-        const qty = document.getElementById(`addQty-${id}`).value;
-
-        if (!qty || qty <= 0) {
-            window.showToast("Enter valid quantity.", "warning");
-            return;
+window.deletePickup = function (id) {
+    showCustomConfirm(
+        "Delete Request",
+        "Are you sure you want to delete this pickup request?",
+        () => {
+            fetch(`/api/pickup/${id}`, { method: 'DELETE' })
+                .then(async res => {
+                    const data = await res.json();
+                    if (res.ok) {
+                        checkPickupStatus();
+                        window.showToast("Request deleted successfully.", "success");
+                    } else {
+                        window.showToast(data.message || "Failed to delete request.", "error");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    window.showToast("Error deleting request.", "error");
+                });
         }
+    );
+};
 
-        fetch(`/api/pickup/${id}/add`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ wasteType: type, quantity: qty })
+window.deletePickupItem = function (requestId, itemId) {
+    showCustomConfirm(
+        "Remove Item",
+        "Are you sure you want to remove this item from your request?",
+        () => {
+            fetch(`/api/pickup/${requestId}/item/${itemId}`, { method: 'DELETE' })
+                .then(async res => {
+                    const data = await res.json();
+                    if (res.ok) {
+                        checkPickupStatus();
+                        window.showToast("Item removed.", "success");
+                    } else {
+                        window.showToast(data.message || "Failed to delete item.", "error");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    window.showToast("Error deleting item.", "error");
+                });
+        }
+    );
+};
+
+window.submitAddItem = function (id) {
+    const type = document.getElementById(`addType-${id}`).value;
+    const qty = document.getElementById(`addQty-${id}`).value;
+
+    if (!qty || qty <= 0) {
+        window.showToast("Enter valid quantity.", "warning");
+        return;
+    }
+
+    fetch(`/api/pickup/${id}/add`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wasteType: type, quantity: qty })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.message) {
+                checkPickupStatus();
+            } else {
+                window.showToast("Failed to add item.", "error");
+            }
         })
-            .then(res => res.json())
-            .then(data => {
-                if (data.message) {
-                    checkPickupStatus();
-                } else {
-                    window.showToast("Failed to add item.", "error");
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                window.showToast("Error adding item.", "error");
-            });
-    };
+        .catch(err => {
+            console.error(err);
+            window.showToast("Error adding item.", "error");
+        });
+};
 
-});
+
 
 /* --- Feature 1 & 3: Chatbot & Voice Search --- */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1661,6 +1810,9 @@ window.checkBadges = async function (uid) {
         }
     } catch (e) { /* silent fail */ }
 };
+
+// Global state for showing pickup form
+window.forceShowPickupForm = false;
 
 document.addEventListener("DOMContentLoaded", function () {
     // Navigation handled by inline script in dashboard.html for better section control
@@ -2195,23 +2347,47 @@ async function loadUserCenterMessages() {
             return;
         }
 
-        const currentUserId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+        const loggedInUserId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
 
         container.innerHTML = rows.map(m => {
-            const isMe = String(m.senderId || m.sender_id) === String(currentUserId) && (m.senderRole || m.sender_role) === 'user';
-            const align = isMe ? 'flex-end' : 'flex-start';
-            const bg = isMe ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'rgba(255,255,255,0.08)';
-            const border = isMe ? 'none' : '1px solid rgba(255,255,255,0.1)';
-            const senderNameLabel = isMe ? 'You' : (m.senderName || 'Center');
-            const time = new Date(m.timestamp || m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const senderId = m.sender_id || m.senderId;
+
+            const loggedInUsername = localStorage.getItem('app_user_name') || localStorage.getItem('userName') || 'User';
+            const centerName = document.getElementById('chatCenterName').textContent || 'Center';
+
+            let senderName;
+            let messageClass;
+            let align;
+            let bg;
+            let border;
+            let radius;
+
+            // Strict sender_id check as requested
+            if (String(senderId) === String(loggedInUserId)) {
+                senderName = loggedInUsername;
+                messageClass = "user-message";
+                align = 'flex-end';
+                bg = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+                border = 'none';
+                radius = '16px 16px 2px 16px';
+            } else {
+                senderName = centerName;
+                messageClass = "center-message";
+                align = 'flex-start';
+                bg = 'rgba(255,255,255,0.08)';
+                border = '1px solid rgba(255,255,255,0.1)';
+                radius = '16px 16px 16px 2px';
+            }
+
+            const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
             return `
-                <div style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; align-items: ${align}; margin-bottom: 4px;">
-                    <span style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 2px; padding: 0 4px;">${senderNameLabel}</span>
-                    <div style="background: ${bg}; color: white; padding: 10px 15px; border-radius: 14px; border-bottom-${isMe ? 'right' : 'left'}-radius: 2px; font-size: 0.9rem; line-height: 1.4; border: ${border}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        ${m.messageText || m.message}
+                <div class="${messageClass}" style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; align-items: ${align}; margin-bottom: 12px;">
+                    <span style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 2px; padding: 0 6px; font-weight: 500;">${senderName}</span>
+                    <div style="background: ${bg}; color: #fff; padding: 12px 18px; border-radius: ${radius}; font-size: 0.95rem; line-height: 1.5; border: ${border}; box-shadow: 0 4px 6px rgba(0,0,0,0.15); position: relative;">
+                        ${m.message || m.messageText}
                     </div>
-                    <span style="font-size: 0.65rem; color: #64748b; margin-top: 2px; padding: 0 4px;">${time}</span>
+                    <span style="font-size: 0.7rem; color: #64748b; margin-top: 4px; padding: 0 6px;">${time}</span>
                 </div>
             `;
         }).join('');

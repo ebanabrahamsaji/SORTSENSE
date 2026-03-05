@@ -1172,11 +1172,33 @@
                     return;
                 }
 
+                const loggedInUserId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+                const loggedInUsername = localStorage.getItem('app_user_name') || localStorage.getItem('userName') || 'User';
+                const centerName = document.getElementById('chatCenterName').textContent || 'Center';
+
                 container.innerHTML = messages.map(m => {
-                    const isMe = m.sender_role === 'user' || m.sender_role === 'USER';
+                    const senderId = m.sender_id || m.senderId;
+
+                    let senderName;
+                    let messageClass;
+                    let align;
+                    let bg;
+
+                    if (String(senderId) === String(loggedInUserId)) {
+                        senderName = loggedInUsername;
+                        messageClass = "user-message";
+                        align = 'flex-end';
+                        bg = '#3b82f6';
+                    } else {
+                        senderName = centerName;
+                        messageClass = "center-message";
+                        align = 'flex-start';
+                        bg = 'rgba(255,255,255,0.1)';
+                    }
+
                     return `
-                        <div style="align-self: ${isMe ? 'flex-end' : 'flex-start'}; max-width: 80%; background: ${isMe ? '#3b82f6' : 'rgba(255,255,255,0.1)'}; color: white; padding: 10px 15px; border-radius: 12px; position: relative;">
-                            <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 4px;">${m.senderName || m.sender_name || (isMe ? 'You' : 'Center')}</div>
+                        <div class="${messageClass}" style="align-self: ${align}; max-width: 80%; background: ${bg}; color: white; padding: 10px 15px; border-radius: 12px; position: relative;">
+                            <div style="font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 4px;">${senderName}</div>
                             <div>${m.messageText || m.message}</div>
                         </div>
                     `;

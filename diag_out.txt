@@ -1,0 +1,15 @@
+[dotenv@17.2.3] injecting env (9) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+✅ Connected to MySQL Database (Live)
+USERS: [
+  { user_id: 25, name: 'EBAN ABRAHAM SAJI' },
+  { user_id: 26, name: 'EBAN ABRAHAM SAJI' }
+]
+CENTERS: [
+  { center_id: 624, center_name: 'HKS Unit Trivandrum' },
+  { center_id: 645, center_name: 'HKS Unit Kottayam' },
+  { center_id: 646, center_name: 'HKS Kanjirapally (Secondary)' },
+  { center_id: 664, center_name: 'HKS Unit Kochi' },
+  { center_id: 690, center_name: 'HKS Kanjirapally' },
+  { center_id: 696, center_name: 'HKS (Obsolete)' }
+]
+REQUEST: [ { request_id: 64, user_id: 25, center_id: 690, status: 'Approved' } ]

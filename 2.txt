@@ -1,0 +1,4 @@
+Testing POST /api/messages/user-center/send as center 690 to request 64
+403 {"success":false,"error":"Unauthorized: You are not the assigned center for this request"}
+Testing GET /api/messages/user-center/history/64 as user 25
+200 {"success":true,"data":[]}

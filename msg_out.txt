@@ -1,0 +1,82 @@
+[dotenv@17.2.3] injecting env (9) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+✅ Connected to MySQL Database (Live)
+[
+  {
+    "message_id": 18,
+    "sender_id": 25,
+    "sender_role": "user",
+    "message": "Hello center, I am user 25!"
+  },
+  {
+    "message_id": 20,
+    "sender_id": 25,
+    "sender_role": "user",
+    "message": "Hello center, I am user 25!"
+  },
+  {
+    "message_id": 21,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "Hello user, coming to pick it up!"
+  },
+  {
+    "message_id": 22,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "Hello user, coming to pick it up!"
+  },
+  {
+    "message_id": 23,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "hi"
+  },
+  {
+    "message_id": 24,
+    "sender_id": 25,
+    "sender_role": "user",
+    "message": "pickup the waste"
+  },
+  {
+    "message_id": 25,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "hi"
+  },
+  {
+    "message_id": 26,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "hi"
+  },
+  {
+    "message_id": 27,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "hello"
+  },
+  {
+    "message_id": 28,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "hi"
+  },
+  {
+    "message_id": 29,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "Hello user, coming to pick it up!"
+  },
+  {
+    "message_id": 30,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "hello"
+  },
+  {
+    "message_id": 31,
+    "sender_id": 690,
+    "sender_role": "center",
+    "message": "yes"
+  }
+]

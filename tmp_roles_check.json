@@ -1,0 +1,62 @@
+{
+  "roles": [
+    {
+      "sender_role": "center"
+    },
+    {
+      "sender_role": "user"
+    }
+  ],
+  "samples": [
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hello"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    },
+    {
+      "sender_id": 690,
+      "sender_role": "center",
+      "message": "hi"
+    }
+  ]
+}

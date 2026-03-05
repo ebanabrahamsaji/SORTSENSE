@@ -3,16 +3,24 @@ import { syncWasteRecord } from './adminController.js';
 
 // 1. Create Pickup Request (Finds Nearest Center)
 export const createPickupRequest = async (req, res) => {
-    let { userId, wasteType, quantity, lat, lng, address } = req.body;
+    let { userId, wasteType, quantity, lat, lng, address, phone, centerId: manualCenterId } = req.body;
 
-    if (!userId || !wasteType || !quantity) {
-        return res.status(400).json({ message: "Missing required fields." });
+    // 1. Basic Validation
+    if (!userId || !wasteType || isNaN(parseFloat(quantity))) {
+        return res.status(400).json({ message: "Invalid missing required fields (User, Type, or Quantity)." });
     }
 
+    quantity = parseFloat(quantity);
+    if (quantity <= 0) return res.status(400).json({ message: "Quantity must be greater than 0." });
+
     try {
+        // Ensure lat/lng are either Numbers or null (never NaN)
+        lat = (lat !== null && lat !== undefined && !isNaN(parseFloat(lat))) ? parseFloat(lat) : null;
+        lng = (lng !== null && lng !== undefined && !isNaN(parseFloat(lng))) ? parseFloat(lng) : null;
+
         // Fallback Logic if Location is Missing
-        if (!lat || !lng) {
-            console.log(`⚠️ No location provided for User ${userId}. Attempting fallback...`);
+        if (lat === null || lng === null) {
+            console.log(`⚠️ Invalid or missing location provided for User ${userId} (lat: ${lat}, lng: ${lng}). Attempting fallback...`);
 
             // Try last known location from waste records
             const [history] = await db.query(
@@ -23,61 +31,96 @@ export const createPickupRequest = async (req, res) => {
             if (history.length > 0 && history[0].location.includes(',')) {
                 const parts = history[0].location.split(',');
                 if (parts.length === 2) {
-                    lat = parseFloat(parts[0].trim());
-                    lng = parseFloat(parts[1].trim());
-                    console.log(`✅ Used Last Known Location: ${lat}, ${lng}`);
+                    const parsedLat = parseFloat(parts[0].trim());
+                    const parsedLng = parseFloat(parts[1].trim());
+                    if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
+                        lat = parsedLat;
+                        lng = parsedLng;
+                        console.log(`✅ Used Last Known Location: ${lat}, ${lng}`);
+                    }
                 }
             }
         }
+
 
         // If still no location, default to a central point (e.g., Kerala center or specific Default) 
         // OR Select Center with ID 1 (Default) if explicit routing fails.
         // For robustness, let's assume if we can't find a location, we pick the first available center.
 
         let nearestCenter = null;
-        let primaryType = wasteType.split(',')[0].trim(); // Handle "Plastic, Paper"
 
-        // A. Find Nearest Center (Filtered by Waste Type)
-        // Kochi Coords as default for distance calculation if user location is missing
-        const defaultLat = 9.9312;
-        const defaultLng = 76.2673;
+        // --- NEW: Manual Center Selection (Requirement 7) ---
+        if (manualCenterId) {
+            const [manualRows] = await db.query(
+                "SELECT center_id, center_name, location FROM tbl_collection_centers WHERE center_id = ? AND status = 'OPEN' AND available_slots > 0",
+                [manualCenterId]
+            );
+            if (manualRows.length > 0) {
+                nearestCenter = manualRows[0];
+                console.log(`✅ User-Selected Center Assigned: ${nearestCenter.center_name}`);
+            }
+        }
 
-        const findCenterQuery = `
-            SELECT DISTINCT cc.center_id, cc.center_name, 
-            (6371 * acos(
-                cos(radians(?)) * cos(radians(cc.latitude)) * 
-                cos(radians(cc.longitude) - radians(?)) + 
-                sin(radians(?)) * sin(radians(cc.latitude))
-            )) AS distance
-            FROM tbl_collection_centers cc
-            LEFT JOIN tbl_accepted_categories ac ON cc.center_id = ac.center_id
-            LEFT JOIN tbl_categories cat ON ac.category_id = cat.category_id
-            WHERE (cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.type LIKE '%Haritha%')
-            AND cc.status = 'OPEN' AND cc.available_slots > 0
-            ORDER BY distance ASC
-            LIMIT 1
-        `;
+        // --- NEW: String-based Center Assignment Logic ---
+        // 1. Extract base location (before " || SLOT:") 
+        const baseLocation = address ? address.split(' || ')[0].trim().toLowerCase() : "";
 
-        const searchType = `%${primaryType}%`;
-        const [centers] = await db.query(findCenterQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat, searchType, searchType]);
+        if (baseLocation) {
+            console.log(`🔍 Searching for center matching location: "${baseLocation}"`);
+            const [exactMatches] = await db.query(
+                "SELECT center_id, center_name, location FROM tbl_collection_centers WHERE LOWER(TRIM(location)) = ? AND status = 'OPEN' AND available_slots > 0 LIMIT 1",
+                [baseLocation]
+            );
 
-        if (centers.length > 0) {
-            nearestCenter = centers[0];
-        } else {
-            // Fallback: If no specific center found, try finding ANY nearest center (General HKS)
-            const fallbackQuery = `
-                SELECT center_id, center_name, 
+            if (exactMatches.length > 0) {
+                nearestCenter = exactMatches[0];
+                console.log(`✅ Strictly Assigned Center by Location: ${nearestCenter.center_name}`);
+            }
+        }
+
+        // --- FALLBACK: Distance-based Assignment (if String match failed) ---
+        if (!nearestCenter) {
+            let primaryType = wasteType.split(',')[0].trim(); // Handle "Plastic, Paper"
+            const defaultLat = 9.9312;
+            const defaultLng = 76.2673;
+
+            const findCenterQuery = `
+                SELECT DISTINCT cc.center_id, cc.center_name, 
                 (6371 * acos(
-                    cos(radians(?)) * cos(radians(latitude)) * 
-                    cos(radians(longitude) - radians(?)) + 
-                    sin(radians(?)) * sin(radians(latitude))
+                    cos(radians(?)) * cos(radians(cc.latitude)) * 
+                    cos(radians(cc.longitude) - radians(?)) + 
+                    sin(radians(?)) * sin(radians(cc.latitude))
                 )) AS distance
-                FROM tbl_collection_centers
-                WHERE status = 'OPEN' AND available_slots > 0
-                ORDER BY distance ASC LIMIT 1
+                FROM tbl_collection_centers cc
+                LEFT JOIN tbl_accepted_categories ac ON cc.center_id = ac.center_id
+                LEFT JOIN tbl_categories cat ON ac.category_id = cat.category_id
+                WHERE (cat.category_name LIKE ? OR cc.type LIKE ? OR cc.type LIKE '%HKS%' OR cc.type LIKE '%Haritha%')
+                AND cc.status = 'OPEN' AND cc.available_slots > 0
+                ORDER BY distance ASC
+                LIMIT 1
             `;
-            const [fallbackCenters] = await db.query(fallbackQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat]);
-            if (fallbackCenters.length > 0) nearestCenter = fallbackCenters[0];
+
+            const searchType = `%${primaryType}%`;
+            const [centers] = await db.query(findCenterQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat, searchType, searchType]);
+
+            if (centers.length > 0) {
+                nearestCenter = centers[0];
+            } else {
+                // Final Fallback: ANY nearest center
+                const fallbackQuery = `
+                    SELECT center_id, center_name, 
+                    (6371 * acos(
+                        cos(radians(?)) * cos(radians(latitude)) * 
+                        cos(radians(longitude) - radians(?)) + 
+                        sin(radians(?)) * sin(radians(latitude))
+                    )) AS distance
+                    FROM tbl_collection_centers
+                    WHERE status = 'OPEN' AND available_slots > 0
+                    ORDER BY distance ASC LIMIT 1
+                `;
+                const [fallbackCenters] = await db.query(fallbackQuery, [lat || defaultLat, lng || defaultLng, lat || defaultLat]);
+                if (fallbackCenters.length > 0) nearestCenter = fallbackCenters[0];
+            }
         }
 
 
@@ -136,11 +179,11 @@ export const createPickupRequest = async (req, res) => {
 
         // B. Insert Request
         const insertQuery = `
-            INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address, assigned_time)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+            INSERT INTO tbl_pickup_requests (user_id, center_id, waste_type, quantity, status, latitude, longitude, address, phone, assigned_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         `;
 
-        const [result] = await db.query(insertQuery, [userId, nearestCenter.center_id, wasteType, quantity, status, lat, lng, address || null]);
+        const [result] = await db.query(insertQuery, [userId, nearestCenter.center_id, wasteType, quantity, status, lat, lng, address || null, phone || null]);
         const requestId = result.insertId;
 
         // --- Challenge: Pickup ---
@@ -215,7 +258,7 @@ export const getUserRequests = async (req, res) => {
 
     try {
         const query = `
-            SELECT r.*, c.center_name, c.latitude as center_lat, c.longitude as center_lng
+            SELECT r.*, c.center_name, c.phone AS center_phone, c.address AS center_address, c.latitude as center_lat, c.longitude as center_lng
             FROM tbl_pickup_requests r
             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
             WHERE r.user_id = ?
@@ -260,6 +303,7 @@ export const getCenterRequests = async (req, res) => {
         if (!centerLocation) {
             const fallbackActive = `
                 SELECT r.*,
+                       r.phone AS pickup_phone,
                        u.name  AS user_name,
                        u.email AS user_email,
                        u.phone AS user_phone,
@@ -272,6 +316,7 @@ export const getCenterRequests = async (req, res) => {
             `;
             const fallbackHistory = `
                 SELECT r.*,
+                       r.phone AS pickup_phone,
                        u.name  AS user_name,
                        u.email AS user_email,
                        u.phone AS user_phone,
@@ -298,6 +343,7 @@ export const getCenterRequests = async (req, res) => {
 
         const activeQuery = `
             SELECT r.*,
+                   r.phone AS pickup_phone,
                    u.name  AS user_name,
                    u.email AS user_email,
                    u.phone AS user_phone,
@@ -316,6 +362,7 @@ export const getCenterRequests = async (req, res) => {
         // 3. History (limited to 50 rows for performance)
         const historyQuery = `
             SELECT r.*,
+                   r.phone AS pickup_phone,
                    u.name  AS user_name,
                    u.email AS user_email,
                    u.phone AS user_phone,
@@ -748,6 +795,7 @@ export const getAllPickupRequests = async (req, res) => {
                 r.waste_type,
                 r.quantity,
                 r.address,
+                r.phone,
                 r.created_at,
                 r.estimated_pickup_time,
                 u.name  AS user_name,

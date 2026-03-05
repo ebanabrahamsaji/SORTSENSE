@@ -1,0 +1,13 @@
+[
+  {
+    "message_id": 24,
+    "sender_id": 25,
+    "sender_role": "user",
+    "receiver_id": 690,
+    "receiver_role": "center",
+    "request_id": 64,
+    "message": "pickup the waste",
+    "is_read": 0,
+    "created_at": "2026-03-03T05:25:55.000Z"
+  }
+]

@@ -94,6 +94,160 @@
         .stepper-wrapper.rejected::before {
             background: rgba(239, 68, 68, 0.2);
         }
+
+        .center-option {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .center-option:hover {
+            background: rgba(255, 255, 255, 0.06) !important;
+            border-color: rgba(16, 185, 129, 0.3) !important;
+            transform: translateX(4px);
+        }
+
+        .center-option input[type="radio"]:checked+div span {
+            color: #10b981 !important;
+        }
+
+        /* ═══ Schedule Pickup — Form Layout ═══ */
+        @media (max-width: 960px) {
+            .pickup-center-info-panel {
+                order: -1;
+            }
+        }
+
+        .pickup-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .pickup-form-col {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .pickup-form-full {
+            margin-bottom: 18px;
+        }
+
+        .pickup-submit-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 8px;
+            margin-bottom: 0;
+        }
+
+        .pickup-submit-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            min-width: 180px;
+            justify-content: center;
+        }
+
+        .center-checklist-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 600px) {
+            .center-checklist-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pickup-form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Right panel */
+        .pickup-center-info-panel {
+            position: sticky;
+            top: 20px;
+        }
+
+        .center-info-card {
+            background: rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .center-info-header-label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            font-size: 0.71rem;
+            color: #a3a3a3;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .center-info-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #10b981;
+            margin: 0;
+            min-height: 1.4em;
+        }
+
+        .center-info-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .ci-stat {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .ci-label {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .ci-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .center-info-hint {
+            font-size: 0.74rem;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.5;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 10px;
+        }
     </style>
 </head>
 
@@ -282,9 +436,11 @@
                     </div>
                 </section>
 
-                <!-- Pickup Request Section -->
+                <!-- Schedule Pickup Section — Two-Column Layout -->
                 <section class="pickup-section">
                     <div class="pickup-card">
+
+                        <!-- Card Header -->
                         <div class="pickup-header">
                             <h3 data-i18n="pickup_request_title">Schedule Pickup</h3>
                             <div class="pickup-status-badge" id="pickupStatusBadge" style="display:none;">
@@ -292,89 +448,102 @@
                                 <span id="pickupStatusText" data-i18n="status_pending">Pending</span>
                             </div>
                         </div>
+
+                        <!-- Form Wrapper -->
                         <div class="pickup-form-wrapper" id="pickupFormWrapper">
-                            <!-- Section 1: Waste Type Dropdown -->
-                            <div class="form-group full-width">
-                                <label class="pickup-label" data-i18n="waste_type_label">Waste Type</label>
-                                <select id="pickupWasteType" class="pickup-input">
-                                    <option value="" disabled selected>Select Waste Type</option>
-                                    <option value="Plastic" data-i18n="plastic">Plastic</option>
-                                    <option value="Paper" data-i18n="paper">Paper</option>
-                                    <option value="Organic" data-i18n="organic">Organic</option>
-                                    <option value="Metal" data-i18n="metal">Metal</option>
-                                    <option value="Glass" data-i18n="glass">Glass</option>
-                                    <option value="E-Waste" data-i18n="ewaste">E-Waste</option>
-                                    <option value="Hazardous" data-i18n="hazardous">Hazardous</option>
-                                </select>
-                            </div>
+                            <div class="pickup-form-container"
+                                style="display: flex; flex-direction: column; width: 100%;">
 
-                            <div class="form-group full-width">
-                                <label class="pickup-label">Preferred Time Slot <span
-                                        style="color:var(--danger-color)">*</span></label>
-                                <select id="pickupTimeSlot" class="pickup-input">
-                                    <option value="" disabled selected>Select Time Slot</option>
-                                    <option value="Morning">Morning (8 AM - 12 PM)</option>
-                                    <option value="Afternoon">Afternoon (12 PM - 4 PM)</option>
-                                    <option value="Evening">Evening (4 PM - 8 PM)</option>
-                                </select>
-                            </div>
+                                <!-- Hidden fields (unchanged, required by JS) -->
+                                <input type="hidden" id="pickupLat">
+                                <input type="hidden" id="pickupLng">
+                                <input type="hidden" id="pickupAddress">
+                                <div id="nearestCenterInfo" style="display:none;"></div>
 
-                            <!-- Section 2: Bottom Row (Quantity + Location + Button) -->
-                            <div class="pickup-row-bottom">
-                                <div class="pickup-form-group" style="flex: 0 0 120px;">
-                                    <label class="pickup-label" data-i18n="quantity_label">Quantity (kg)</label>
-                                    <input type="number" id="pickupQuantity" class="pickup-input" placeholder="5"
-                                        min="1">
-                                </div>
-
-                                <div class="pickup-form-group" style="flex: 1;">
-                                    <label class="pickup-label" data-i18n="location_label">Location</label>
-                                    <div class="location-input-wrapper"
-                                        style="position: relative; display: flex; align-items: center;">
-                                        <input type="text" id="pickupAddress" class="pickup-input"
-                                            style="width: 100%; padding-right: 120px;"
-                                            placeholder="Enter address or use GPS" data-i18n="location_placeholder">
-                                        <button id="useUserLocationBtn" type="button" class="location-btn"
-                                            style="position: absolute; right: 5px; height: 42px; width: auto; padding: 0 12px; border-radius: 10px; border: none; background: rgba(16,185,129,0.1); color: #10b981; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
-                                            <i class="ri-map-pin-line"></i> <span id="locationText">Use GPS</span>
-                                        </button>
+                                <!-- Row 1: Waste Type | Preferred Time Slot -->
+                                <div class="pickup-form-row">
+                                    <div id="step1" class="pickup-form-col">
+                                        <label class="pickup-label" data-i18n="waste_type_label">Waste Type</label>
+                                        <select id="pickupWasteType" class="pickup-input">
+                                            <option value="" disabled selected>Select Waste Type</option>
+                                            <option value="Plastic" data-i18n="plastic">Plastic</option>
+                                            <option value="Paper" data-i18n="paper">Paper</option>
+                                            <option value="Organic" data-i18n="organic">Organic</option>
+                                            <option value="Metal" data-i18n="metal">Metal</option>
+                                            <option value="Glass" data-i18n="glass">Glass</option>
+                                            <option value="E-Waste" data-i18n="ewaste">E-Waste</option>
+                                            <option value="Hazardous" data-i18n="hazardous">Hazardous</option>
+                                        </select>
                                     </div>
-                                    <input type="hidden" id="pickupLat">
-                                    <input type="hidden" id="pickupLng">
+                                    <div id="step2" class="pickup-form-col">
+                                        <label class="pickup-label">Preferred Time Slot <span
+                                                style="color:var(--danger-color)">*</span></label>
+                                        <select id="pickupTimeSlot" class="pickup-input">
+                                            <option value="" disabled selected>Select Time Slot</option>
+                                            <option value="Morning">Morning (8 AM - 12 PM)</option>
+                                            <option value="Afternoon">Afternoon (12 PM - 4 PM)</option>
+                                            <option value="Evening">Evening (4 PM - 8 PM)</option>
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div class="pickup-form-group btn-group">
-                                    <button id="requestPickupBtn" class="primary-btn">
-                                        <i class="ri-truck-line"></i> <span data-i18n="request_pickup_btn">Schedule
-                                            Pickup</span>
+                                <!-- Row 2: Quantity | Phone Number -->
+                                <div class="pickup-form-row">
+                                    <div id="step3" class="pickup-form-col">
+                                        <label class="pickup-label" data-i18n="quantity_label">Quantity (kg)</label>
+                                        <input type="number" id="pickupQuantity" class="pickup-input"
+                                            placeholder="e.g. 5" min="1">
+                                    </div>
+                                    <div id="step4" class="pickup-form-col">
+                                        <label class="pickup-label">Phone Number</label>
+                                        <input type="tel" id="pickupPhone" class="pickup-input"
+                                            placeholder="10-digit mobile number" maxlength="10">
+                                    </div>
+                                </div>
+
+                                <!-- Row 3: Pickup Location (Area) -->
+                                <div id="step5" class="pickup-form-full">
+                                    <label class="pickup-label">Pickup Location (Area)</label>
+                                    <div style="position:relative;">
+                                        <i class="ri-map-pin-2-line"
+                                            style="position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--primary-color); pointer-events:none;"></i>
+                                        <input type="text" id="pickupAreaInput" class="pickup-input"
+                                            placeholder="e.g. Kanjirapally, Pala, Kottayam" style="padding-left:38px;">
+                                    </div>
+                                </div>
+
+                                <!-- Row 4: Available Centers (shown by JS after area entered) -->
+                                <div id="centerSelectionSection" class="pickup-form-full" style="display:none;">
+                                    <label class="pickup-label">Available Centers</label>
+                                    <div id="centerChecklist" class="center-checklist-grid">
+                                        <!-- Populated by JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Row 5: Full Pickup Address (shown by JS after center selected) -->
+                                <div id="step7" class="pickup-form-full" style="display:none;">
+                                    <label class="pickup-label">Full Pickup Address</label>
+                                    <textarea id="pickupFullAddress" class="pickup-input" rows="3"
+                                        placeholder="Flat/House No., Building, Street, Landmark"
+                                        style="height:auto; padding:12px; resize:none;"></textarea>
+                                </div>
+
+                                <!-- Row 6: Submit (right-aligned) -->
+                                <div class="pickup-form-full pickup-submit-row">
+                                    <button id="requestPickupBtn" class="primary-btn pickup-submit-btn" disabled>
+                                        <i class="ri-truck-line"></i>
+                                        <span data-i18n="request_pickup_btn">Request Pickup</span>
                                     </button>
                                 </div>
-                            </div>
-                            <div id="nearestCenterInfo"
-                                style="display:none; margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; font-size: 0.9rem; align-items:center; gap:10px;">
-                                <!-- Populated by JS -->
-                            </div>
-                            <!-- User Requested Structure -->
-                            <div class="center-availability"
-                                style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
-                                <h4
-                                    style="font-size: 0.9rem; color: #a3a3a3; margin-bottom: 0.5rem; display: flex; align-items: center;">
-                                    Collection Center</h4>
-                                <div
-                                    style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 0.85rem;">
-                                    <p style="margin:0; color:#cbd5e1;">Status: <span id="centerStatus" class="badge"
-                                            style="font-weight:600;">--</span></p>
-                                    <p style="margin:0; color:#cbd5e1;">Slots: <span id="centerSlots"
-                                            style="font-weight:600;">--</span></p>
-                                    <p style="margin:0; color:#cbd5e1;">Load: <span id="centerLoad"
-                                            style="font-weight:600;">--</span></p>
-                                </div>
-                            </div>
-                        </div>
+
+                            </div><!-- /.pickup-form-container -->
+                        </div><!-- /#pickupFormWrapper -->
+
                         <div id="pickupSuccessMsg" class="pickup-success" style="display: none;">
                             <i class="ri-checkbox-circle-line"></i>
                             <p data-i18n="pickup_request_success">Request submitted successfully!</p>
                         </div>
+
                     </div>
                 </section>
 
