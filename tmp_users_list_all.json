@@ -1,0 +1,72 @@
+[
+  {
+    "user_id": 2,
+    "name": "Admin",
+    "email": "admin@sortsense.com"
+  },
+  {
+    "user_id": 4,
+    "name": "User",
+    "email": "user@sortsense.com"
+  },
+  {
+    "user_id": 6,
+    "name": "Center",
+    "email": "center@sortsense.com"
+  },
+  {
+    "user_id": 7,
+    "name": "melbin",
+    "email": "melbinjames1212@gmail.com"
+  },
+  {
+    "user_id": 9,
+    "name": "Thomson",
+    "email": "thomsonshiju2028@mca.ajce.in"
+  },
+  {
+    "user_id": 10,
+    "name": "Amal",
+    "email": "amaldamy2028@mca.ajce.in"
+  },
+  {
+    "user_id": 12,
+    "name": "Sharon",
+    "email": "sharonshibuipandakasalayil2028@mca.ajce.in"
+  },
+  {
+    "user_id": 13,
+    "name": "Albin",
+    "email": "albinsunny2028@mca.ajce.in"
+  },
+  {
+    "user_id": 17,
+    "name": "Don",
+    "email": "donshaji2028@mca.ajce.in"
+  },
+  {
+    "user_id": 18,
+    "name": "Mathew",
+    "email": "mathewwilson2028@mca.ajce.in"
+  },
+  {
+    "user_id": 22,
+    "name": "Kevin",
+    "email": "kevindaniel2028@mca.ajce.in"
+  },
+  {
+    "user_id": 25,
+    "name": "EBAN ABRAHAM SAJI",
+    "email": "ebanabraham28@gmail.com"
+  },
+  {
+    "user_id": 26,
+    "name": "EBAN ABRAHAM SAJI",
+    "email": "ebanabraham52@gmail.com"
+  },
+  {
+    "user_id": 30,
+    "name": "Selenium Test User",
+    "email": "testuser_1772729397039@example.com"
+  }
+]

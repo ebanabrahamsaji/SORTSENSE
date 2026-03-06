@@ -1,0 +1,18 @@
+[
+  {
+    "center_id": 690,
+    "center_name": "HKS Kanjirapally",
+    "username": "hkskkanjirapally",
+    "status": "OPEN",
+    "current_operational_status": "CLOSED",
+    "center_performance_score": 37
+  },
+  {
+    "center_id": 699,
+    "center_name": "HKS Kanjirapally",
+    "username": "hkskanjirapally",
+    "status": "OPEN",
+    "current_operational_status": "CLOSED",
+    "center_performance_score": 100
+  }
+]

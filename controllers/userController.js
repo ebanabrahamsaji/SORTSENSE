@@ -26,6 +26,28 @@ export const markNotificationRead = async (req, res) => {
     }
 };
 
+// Mark All Notifications Read
+export const markAllNotificationsRead = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        await db.query("UPDATE tbl_notifications SET is_read = TRUE WHERE user_id = ?", [userId]);
+        res.json({ message: "All marked as read" });
+    } catch (error) {
+        res.status(500).json({ message: "Error updating notifications" });
+    }
+};
+
+// Clear All Notifications
+export const clearAllNotifications = async (req, res) => {
+    const { userId } = req.params;
+    try {
+        await db.query("DELETE FROM tbl_notifications WHERE user_id = ?", [userId]);
+        res.json({ message: "All notifications cleared" });
+    } catch (error) {
+        res.status(500).json({ message: "Error clearing notifications" });
+    }
+};
+
 // Get Full User History (Scans + Searches + Pickups)
 export const getUserHistory = async (req, res) => {
     const userId = req.params.userId || req.query.userId;

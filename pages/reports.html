@@ -845,7 +845,10 @@
                             <option value="Organic">Organic</option>
                             <option value="Metal">Metal</option>
                             <option value="Glass">Glass</option>
-                            <option value="E-Waste">E-Waste</option>
+                            <option value="E-Waste">Electronics</option>
+                            <option value="Hazardous">Hazardous</option>
+                            <option value="Biomedical">Biomedical</option>
+                            <option value="Industrial">Industrial</option>
                         </select>
                     </div>
                     <div class="filter-group">
@@ -1004,8 +1007,8 @@
         }
 
         // ── DOWNLOAD: Single Request Receipt ─────────────────────────────
-        async function downloadRequestReport(requestId) {
-            const url = `${API}/api/reports/request/${requestId}?userId=${userId}`;
+        async function downloadRequestReport(requestId, type = 'PICKUP') {
+            const url = `${API}/api/reports/request/${requestId}?userId=${userId}&type=${type}`;
             await downloadPdf(url, `Collection_Receipt_#${requestId}.pdf`);
         }
 
@@ -1024,9 +1027,11 @@
 
                 tbody.innerHTML = `<tr><td colspan="8" class="empty-state"><i class="ri-loader-4-line ri-spin"></i> Syncing your records...</td></tr>`;
 
-                const res = await fetch(`${API}/api/pickup/user/${userId}`);
+                // Use the unified reports endpoint
+                const res = await fetch(`${API}/api/reports?userId=${userId}`);
                 if (!res.ok) throw new Error('Failed to fetch');
-                let records = await res.json();
+                const data = await res.json();
+                let records = data.reports || [];
 
                 // Simple Client-Side Filtering
                 if (from) records = records.filter(r => new Date(r.created_at) >= new Date(from));
@@ -1035,7 +1040,7 @@
                     toDate.setHours(23, 59, 59);
                     records = records.filter(r => new Date(r.created_at) <= toDate);
                 }
-                if (cat) records = records.filter(r => r.waste_type && r.waste_type.includes(cat));
+                if (cat) records = records.filter(r => r.waste_type && r.waste_type.toLowerCase().includes(cat.toLowerCase()));
 
                 if (!records || records.length === 0) {
                     tbody.innerHTML = `
@@ -1050,9 +1055,11 @@
                     const qty = r.quantity ? `${r.quantity} kg` : '—';
                     const loc = (r.address || 'Location on file').slice(0, 35);
                     const center = (r.center_name || 'Processing...').slice(0, 25);
+                    const isSpecial = r.type === 'SPECIAL';
+
                     return `
                         <tr>
-                            <td><strong>#${r.request_id}</strong></td>
+                            <td><strong>#${r.request_id}${isSpecial ? ' <small style="opacity:0.6;">(SW)</small>' : ''}</strong></td>
                             <td>${r.waste_type || 'General'}</td>
                             <td>${qty}</td>
                             <td>${loc}</td>
@@ -1065,13 +1072,14 @@
                                         <i class="ri-message-3-line"></i> Chat
                                     </button>
                                 ` : ''}
-                                <button class="download-btn-sm" onclick="downloadRequestReport(${r.request_id})">
+                                <button class="download-btn-sm" onclick="downloadRequestReport(${r.request_id}, '${r.type}')">
                                     <i class="ri-file-pdf-line"></i> Receipt
                                 </button>
                             </td>
                         </tr>`;
                 }).join('');
             } catch (err) {
+                console.error("Load Records Error:", err);
                 tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Error syncronizing records. Please try again.</td></tr>`;
             }
         }

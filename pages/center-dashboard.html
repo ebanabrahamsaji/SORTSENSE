@@ -1135,9 +1135,6 @@
             }
 
             const centerId = localStorage.getItem('center_sys_id');
-            // 🔍 DEBUG — verify session center_id
-            console.log('[loadRequests] CENTER ID:', centerId);
-
             if (!centerId) {
                 STABLE.isFetching = false;
                 const emptyHtml = `<div style="text-align:center;padding:2rem;color:var(--text-muted);">No nearby requests assigned</div>`;
@@ -1150,8 +1147,6 @@
                 const res = await safeFetch(`/api/pickup/center/all?centerId=${centerId}&t=${Date.now()}`);
                 const data = res.ok ? await res.json() : [];
                 allRequests = Array.isArray(data) ? data : [];
-                // 🔍 DEBUG — verify what arrived
-                console.log('[loadRequests] REQUESTS count:', allRequests.length, allRequests);
                 applyFilters();
             } catch (err) {
                 console.error('Load Requests Error:', err);
@@ -2174,11 +2169,11 @@ Check the Active Requests panel.`
                 </div>
                 <div class="req-detail" style="flex:1.5;">
                     <label>Waste ${priBadge}</label>
-                    <span>${sText(req.waste_type, 'General')}</span>
+                    <span>${sText(req.waste_type, 'General')} ${req.type === 'SPECIAL' ? '<small style="color:#60a5fa; font-weight:bold;">(SW)</small>' : ''}</span>
                 </div>
                 <div class="req-detail">
                     <label>Quantity</label>
-                    <span>${req.quantity} kg</span>
+                    <span>${req.quantity} ${req.quantity_unit || req.unit || 'kg'}</span>
                 </div>
                 <div class="req-detail">
                     <label>Contact No.</label>

@@ -1,0 +1,37 @@
+[
+  {
+    "center_id": 624,
+    "center_name": "HKS Unit Trivandrum",
+    "username": null
+  },
+  {
+    "center_id": 645,
+    "center_name": "HKS Unit Kottayam",
+    "username": null
+  },
+  {
+    "center_id": 646,
+    "center_name": "HKS Kanjirapally (Secondary)",
+    "username": null
+  },
+  {
+    "center_id": 664,
+    "center_name": "HKS Unit Kochi",
+    "username": null
+  },
+  {
+    "center_id": 690,
+    "center_name": "HKS Kanjirapally",
+    "username": "hkskkanjirapally"
+  },
+  {
+    "center_id": 696,
+    "center_name": "HKS (Obsolete)",
+    "username": null
+  },
+  {
+    "center_id": 699,
+    "center_name": "HKS Kanjirapally",
+    "username": "hkskanjirapally"
+  }
+]

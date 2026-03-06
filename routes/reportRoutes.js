@@ -3,10 +3,20 @@ import {
     generateRequestReport,
     generateSummaryReport,
     generateMonthlyReport,
-    verifyReport
+    verifyReport,
+    getUserDashboardReports,
+    getAdminAllReports
 } from '../controllers/reportController.js';
 
 const router = express.Router();
+
+// ── Unified Reports List (Dashboard) ──────────────────────────────────
+// GET /api/reports?userId=
+router.get('/', getUserDashboardReports);
+
+// ── Admin All Records ────────────────────────────────────────────────
+// GET /api/reports/all
+router.get('/all', getAdminAllReports);
 
 // ── Single Request Detail Report ──────────────────────────────────────
 // GET /api/reports/request/:requestId

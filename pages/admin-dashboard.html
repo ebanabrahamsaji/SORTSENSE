@@ -537,7 +537,14 @@
                     <div class="section-card" style="margin-bottom: 2rem;">
                         <div class="section-title">
                             <h3>Live Collection Center Status</h3>
-                            <div style="display: flex; gap: 10px;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <select id="centerRegFilter" onchange="refreshCenterStatus()" class="form-input"
+                                    style="display: none; padding: 6px 12px; height: auto; outline: none; background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; font-size: 0.85rem; width: auto; min-width: 150px;">
+                                    <option value="all" style="background:#1e293b;">All Centers</option>
+                                    <option value="registered" style="background:#1e293b;">Registered Centers</option>
+                                    <option value="unregistered" style="background:#1e293b;">Unregistered Centers
+                                    </option>
+                                </select>
                                 <button id="toggleCenterStatusBtn" class="btn btn-sm btn-primary">
                                     <i class="ri-eye-line"></i> View Center Status
                                 </button>
@@ -623,9 +630,10 @@
                                     Type</label>
                                 <select id="reportType" class="form-input"
                                     style="background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; width: 100%; outline:none;">
-                                    <option value="summary" style="background:#1e293b;">Aggregated Summary (Period)
+                                    <option value="summary" style="background:#1e293b;">Overall Pickup Summary</option>
+                                    <option value="special_waste" style="background:#1e293b;">Special Waste Reports
                                     </option>
-                                    <option value="individual" style="background:#1e293b;">Individual Detailed Requests
+                                    <option value="individual" style="background:#1e293b;">Individual Pickup Details
                                     </option>
                                 </select>
                             </div>
@@ -1473,12 +1481,12 @@
                     <label
                         style="color:var(--text-secondary); display:block; margin-bottom:0.5rem; font-size:0.9rem;">Report
                         Type</label>
-                    <select name="type" required
+                    <select name="type" id="reportType" required
                         style="width:100%; padding:12px; background:#334155; border:1px solid rgba(255,255,255,0.1); color:white; border-radius:8px;">
-                        <option value="users">Users Report</option>
+                        <option value="summary">All Pickups Summary</option>
+                        <option value="special_waste">Special Waste Reports</option>
+                        <option value="users">Users Activity Report</option>
                         <option value="activity">Activity Logs</option>
-                        <option value="pickups">Pickup Requests</option>
-                        <option value="system">System Usage</option>
                     </select>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">

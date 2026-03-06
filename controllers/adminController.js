@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { transporter } from '../email.js';
 import moderationService from '../services/moderationService.js';
 
+
 export const getDashboardStats = async (req, res) => {
     try {
         const [u] = await db.query('SELECT COUNT(*) as c FROM tbl_users');
@@ -17,6 +18,13 @@ export const getDashboardStats = async (req, res) => {
         const [f] = await db.query("SELECT COUNT(*) as c FROM tbl_waste_records WHERE status IN ('Flagged', 'Rejected')");
         const [pickups] = await db.query("SELECT COUNT(*) as c FROM tbl_pickup_requests WHERE DATE(created_at) = CURDATE()");
 
+        // Centers registered count
+        let centersCount = 0;
+        try {
+            const [c] = await db.query('SELECT COUNT(*) as c FROM tbl_collection_centers');
+            centersCount = c[0].c;
+        } catch (e) { }
+
         const uptime = process.uptime();
         let upStr = "";
         if (uptime < 60) upStr = Math.floor(uptime) + " sec";
@@ -26,6 +34,7 @@ export const getDashboardStats = async (req, res) => {
 
         res.json({
             totalUsers: u[0].c,
+            centersRegistered: centersCount,
             itemsSorted: itemsCount,
             flaggedItems: f[0].c,
             systemUptime: upStr,
@@ -33,7 +42,7 @@ export const getDashboardStats = async (req, res) => {
         });
     } catch (e) {
         console.error("Stats Error:", e);
-        res.status(500).json({ totalUsers: 0, itemsSorted: 0, flaggedItems: 0, systemUptime: "Error" });
+        res.status(500).json({ totalUsers: 0, centersRegistered: 0, itemsSorted: 0, flaggedItems: 0, systemUptime: "Error" });
     }
 };
 
@@ -925,3 +934,51 @@ export const createAdminNotification = async (type, title, message, refId = null
     }
 };
 
+/**
+ * POST /api/admin/report-user
+ * Universal endpoint for admins OR centers to file a risk event against a user.
+ * Body: { userId, eventType, reason, centerId? }
+ * eventType: 'FAKE_WASTE_REPORT' | 'PICKUP_CANCELLATION' | 'SPAM_MESSAGE' |
+ *            'ABUSE_COMPLAINT' | 'MULTIPLE_REPORTS'
+ */
+export const reportUser = async (req, res) => {
+    const { userId, eventType, reason = '', centerId } = req.body;
+    if (!userId || !eventType) {
+        return res.status(400).json({ success: false, message: 'userId and eventType are required.' });
+    }
+
+    try {
+        const [userRows] = await db.query('SELECT user_id, name FROM tbl_users WHERE user_id = ?', [userId]);
+        if (!userRows.length) return res.status(404).json({ success: false, message: 'User not found.' });
+
+        let result;
+        switch (eventType) {
+            case 'FAKE_WASTE_REPORT':
+                result = await moderationService.handleFakeWasteReport(userId, reason);
+                break;
+            case 'PICKUP_CANCELLATION':
+                result = await moderationService.handlePickupCancellation(userId, reason || 'admin-reported');
+                break;
+            case 'SPAM_MESSAGE':
+                result = await moderationService.handleSpamMessage(userId, reason);
+                break;
+            case 'ABUSE_COMPLAINT':
+                result = await moderationService.handleCenterAbuseComplaint(userId, centerId || 0, reason);
+                break;
+            case 'MULTIPLE_REPORTS':
+                result = await moderationService.handleMultipleReports(userId, reason);
+                break;
+            default:
+                return res.status(400).json({ success: false, message: `Unknown eventType: ${eventType}` });
+        }
+
+        res.json({
+            success: true,
+            message: `Risk event recorded for user ${userRows[0].name}.`,
+            result
+        });
+    } catch (e) {
+        console.error('reportUser Error:', e);
+        res.status(500).json({ success: false, message: 'Server error while filing report.' });
+    }
+};

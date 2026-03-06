@@ -31,7 +31,8 @@ import {
     getAdminNotifications,
     markNotificationRead,
     clearNotifications,
-    resetRiskScore
+    resetRiskScore,
+    reportUser
 } from '../controllers/adminController.js';
 
 router.get('/stats', getDashboardStats);
@@ -42,6 +43,8 @@ router.get('/users', getAllUsers);
 router.post('/users', addNewUser);
 router.post('/user-status', updateUserStatus);
 router.post('/user-risk-reset', resetRiskScore);
+router.post('/report-user', reportUser);    // File a moderation event against a user
+
 router.delete('/users/:id', deleteUser);
 router.post('/categories', addCategory);
 router.delete('/categories/:id', deleteCategory);

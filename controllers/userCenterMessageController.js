@@ -1,4 +1,8 @@
 import db from '../db.js';
+import moderationService from '../services/moderationService.js';
+
+const ABUSE_WORDS = ['spam', 'abuse', 'fake', 'fraud', 'steal', 'hack', 'fuck', 'shit', 'scam', 'idiot'];
+
 
 /**
  * Send Message (User <-> Assigned Center)
@@ -68,7 +72,32 @@ export const sendUserCenterMessage = async (req, res) => {
             receiverRole = 'user';
         }
 
-        // 4. Save message
+        // 4. Abuse word detection in user messages → +25 (abuse complaint)
+        if (senderRole === 'user') {
+            const lowerMsg = message.toLowerCase();
+            const foundAbuse = ABUSE_WORDS.filter(w => lowerMsg.includes(w));
+            if (foundAbuse.length > 0) {
+                moderationService.handleCenterAbuseComplaint(senderId, receiverId, `Abusive message: ${foundAbuse.join(', ')}`)
+                    .catch(e => console.error('[Moderation] Abuse complaint hook error:', e.message));
+            }
+        }
+
+        // 5. Spam rate check: if user sends ≥5 messages in 1 hour → +20
+        if (senderRole === 'user') {
+            try {
+                const [recentMsgs] = await db.query(`
+                    SELECT COUNT(*) AS cnt FROM tbl_user_center_messages
+                    WHERE sender_id = ? AND sender_role = 'user'
+                      AND created_at >= NOW() - INTERVAL 1 HOUR
+                `, [senderId]);
+                if ((recentMsgs[0].cnt || 0) >= 5) {
+                    moderationService.handleSpamMessage(senderId, `${recentMsgs[0].cnt + 1} messages to centers in last hour`)
+                        .catch(e => console.error('[Moderation] Spam hook error:', e.message));
+                }
+            } catch (_) { }
+        }
+
+        // 6. Save message
         await db.query(`
             INSERT INTO tbl_user_center_messages 
             (sender_id, sender_role, receiver_id, receiver_role, request_id, message, created_at)

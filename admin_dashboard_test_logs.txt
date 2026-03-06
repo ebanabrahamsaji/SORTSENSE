@@ -1,0 +1,9 @@
+[2026-03-06T02:55:58.935Z] === Selenium Test: Admin Dashboard All Functionalities ===
+[2026-03-06T02:55:58.937Z] -> Navigating to: http://localhost:8000/pages/login.html?role=admin
+[2026-03-06T02:56:03.306Z] -> Waiting for admin-dashboard.html...
+[2026-03-06T02:56:04.689Z] ✅ Logged in successfully.
+[2026-03-06T02:56:04.690Z] -> Checking Overview Stats...
+[2026-03-06T02:56:04.708Z] ✅ Stats cards visible.
+[2026-03-06T02:56:04.709Z] -> Testing section: Overview
+[2026-03-06T02:56:04.727Z] ❌ TEST FAILED: no such element: Unable to locate element: {"method":"css selector","selector":"*[id="nav-overview"]"}
+  (Session info: chrome=145.0.7632.117)

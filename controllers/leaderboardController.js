@@ -73,12 +73,14 @@ export const getUserChallenges = async (req, res) => {
     }
 };
 
+import { processQuestCompletion } from '../services/rewardService.js';
+
 // 3. Update Progress (Internal Helper)
 export const updateChallengeProgress = async (userId, type) => {
     try {
         // Find incomplete challenges of this type
         const findQuery = `
-            SELECT uc.user_challenge_id, uc.progress, uc.completed, c.target, c.reward_points
+            SELECT uc.user_challenge_id, uc.progress, uc.completed, c.target, c.title
             FROM tbl_user_challenges uc
             JOIN tbl_challenges c ON uc.challenge_id = c.challenge_id
             WHERE uc.user_id = ? AND c.type = ? AND uc.completed = FALSE
@@ -91,17 +93,8 @@ export const updateChallengeProgress = async (userId, type) => {
 
             if (newProgress >= ch.target) {
                 completed = true;
-                // Reward Points
-                await db.query(
-                    "UPDATE tbl_users SET green_score = green_score + ?, monthly_points = monthly_points + ? WHERE user_id = ?",
-                    [ch.reward_points, ch.reward_points, userId]
-                );
-
-                // Notify User
-                await db.query(
-                    "INSERT INTO tbl_notifications (user_id, title, message, type) VALUES (?, ?, ?, 'SUCCESS')",
-                    [userId, 'Challenge Completed! 🏆', `You earned ${ch.reward_points} pts for completing a challenge!`]
-                );
+                // Reward Points using enhanced logic
+                await processQuestCompletion(userId, ch.title);
             }
 
             // Update Progress

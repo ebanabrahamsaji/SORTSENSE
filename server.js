@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
 import db from './db.js';
+import { processAchievementUnlock, grantWeeklyLeaderboardRewards } from './services/rewardService.js';
+import { runUserModerationScan } from './services/userModerationScheduler.js';
 
 // ── Security Packages ─────────────────────────────────
 import helmet from 'helmet';
@@ -119,28 +121,6 @@ import { getUserRequests } from './controllers/pickupController.js';
 
 app.use('/api/user', userRoutes);
 app.get('/api/rewards/:userId', getUserRewards);
-app.get('/api/reports', async (req, res) => {
-    const { userId } = req.query;
-    if (!userId) return res.status(400).json({ message: "userId required" });
-    try {
-        const query = `
-            SELECT r.*, c.center_name, MAX(rep.report_id) as report_id
-            FROM tbl_pickup_requests r
-            LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
-            LEFT JOIN tbl_reports rep ON r.request_id = rep.request_id AND rep.report_type = 'SINGLE'
-            WHERE r.user_id = ?
-            GROUP BY r.request_id
-            ORDER BY r.created_at DESC
-            LIMIT 10
-        `;
-        const [reports] = await db.query(query, [userId]);
-        res.json({ reports });
-    } catch (err) {
-        console.error("Dashboard Reports Error:", err);
-        res.status(500).json({ message: "Error fetching reports." });
-    }
-});
-
 // Pickup Routes
 import pickupRoutes from './routes/pickupRoutes.js';
 app.use('/api/pickup', pickupRoutes);
@@ -239,6 +219,9 @@ app.post('/api/gamification/check-badges', async (req, res) => {
                         [user_id, badge.id]
                     ).catch(() => { });
                     unlockedBadges.push(badge.label);
+
+                    // --- TRIGGER ACHIEVEMENT REWARDS ---
+                    processAchievementUnlock(user_id, badge.label).catch(e => console.error("Achievement Reward Error:", e));
                 }
             }
         }
@@ -425,7 +408,7 @@ const startServer = () => {
     });
 };
 
-// Schedule Monthly Reset
+// Schedule Monthly Reset & Weekly Leaderboard Rewards
 import { resetMonthlyLeaderboard } from './controllers/leaderboardController.js';
 setInterval(() => {
     const now = new Date();
@@ -433,11 +416,23 @@ setInterval(() => {
     if (now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
         resetMonthlyLeaderboard();
     }
+    // Run weekly rewards on Sunday at 00:00
+    if (now.getDay() === 0 && now.getHours() === 0 && now.getMinutes() === 0) {
+        grantWeeklyLeaderboardRewards().catch(e => console.error("Weekly Rewards Cron Error:", e));
+    }
 }, 60000); // Check every minute
 
 // Center Status Automation (Step 2 & 5)
 setInterval(() => {
     runCenterAutomation();
 }, 60 * 1000); // Run every minute
+
+// ── Automated User Moderation ──────────────────────────────
+// Runs once on startup (to catch any unresolved violations)
+// then every hour to evaluate user activity and auto-flag/suspend.
+runUserModerationScan();
+setInterval(() => {
+    runUserModerationScan();
+}, 60 * 60 * 1000); // Every 1 hour
 
 startServer();

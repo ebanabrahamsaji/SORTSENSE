@@ -1,6 +1,7 @@
 import db from '../db.js';
 import { body, validationResult } from 'express-validator';
 import moderationService from '../services/moderationService.js';
+import { awardPoints } from '../services/rewardService.js';
 
 const ABUSE_WORDS = ['spam', 'abuse', 'fake', 'fraud', 'steal', 'hack', 'fuck', 'shit', 'scam'];
 
@@ -79,10 +80,15 @@ export const createMarketplaceItem = async (req, res) => {
             return res.status(400).json({ message: "Only recyclable waste items allowed" });
         }
 
+        // Verified Category
+
         await db.query(
             "INSERT INTO tbl_marketplace_items (user_id, title, description, category, image_url) VALUES (?, ?, ?, ?, ?)",
             [user_id, title, description, category, image_url || null]
         );
+
+        // --- MARKETPLACE LISTING BONUS POINTS ---
+        await awardPoints(user_id, 25, "posting a recyclable item on the marketplace").catch(e => console.error(e));
 
         res.status(201).json({ success: true, message: "Item posted successfully" });
     } catch (error) {

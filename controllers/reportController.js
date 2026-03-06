@@ -190,20 +190,35 @@ function drawInfoRow(doc, label, value, y, x1 = 60, x2 = 190, highlight = false)
 // ============================================================
 export const generateRequestReport = async (req, res) => {
     const { requestId } = req.params;
+    const { type } = req.query; // 'PICKUP' or 'SPECIAL'
     const adminId = req.headers['admin-id'] || req.query.adminId || null;
-    const requestingUserId = req.headers['user-id'] || null;
+    const requestingUserId = req.headers['user-id'] || req.query.userId || null;
 
     try {
-        // Fetch request data with JOINs
-        const [rows] = await db.query(`
-            SELECT r.*, 
-                   u.name AS user_name, u.email AS user_email,
-                   c.center_name, c.address AS center_address, c.type AS center_type
-            FROM tbl_pickup_requests r
-            JOIN tbl_users u ON r.user_id = u.user_id
-            LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
-            WHERE r.request_id = ?
-        `, [requestId]);
+        let query = '';
+        if (type === 'SPECIAL') {
+            query = `
+                SELECT r.request_id, r.category as waste_type, r.quantity_value as quantity, r.quantity_unit, r.description as notes, r.status, r.created_at as created_at, NULL as updated_at, r.location as address, r.user_id, r.center_id,
+                       u.name AS user_name, u.email AS user_email,
+                       c.center_name, c.address AS center_address, c.type AS center_type
+                FROM tbl_special_waste_requests r
+                JOIN tbl_users u ON r.user_id = u.user_id
+                LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+                WHERE r.request_id = ?
+            `;
+        } else {
+            query = `
+                SELECT r.*, 
+                       u.name AS user_name, u.email AS user_email,
+                       c.center_name, c.address AS center_address, c.type AS center_type
+                FROM tbl_pickup_requests r
+                JOIN tbl_users u ON r.user_id = u.user_id
+                LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+                WHERE r.request_id = ?
+            `;
+        }
+
+        const [rows] = await db.query(query, [requestId]);
 
         if (!rows || rows.length === 0) {
             return res.status(404).json({ success: false, message: 'Request not found.' });
@@ -266,8 +281,9 @@ export const generateRequestReport = async (req, res) => {
             .text('Scan to Verify', pageW - 130, 152, { width: 80, align: 'center' });
 
         // ── REPORT TITLE ────────────────────────────────────────────────
+        const titleText = type === 'SPECIAL' ? 'SPECIAL WASTE RECEIPT' : 'COLLECTION RECEIPT';
         doc.fillColor('#1e293b').fontSize(16).font('Helvetica-Bold')
-            .text('COLLECTION RECEIPT', 50, 75, { width: pageW - 200 });
+            .text(titleText, 50, 75, { width: pageW - 200 });
         doc.fontSize(8.5).font('Helvetica').fillColor('#64748b')
             .text('Thank you for contributing to a sustainable future.', 50, 94);
 
@@ -304,8 +320,9 @@ export const generateRequestReport = async (req, res) => {
         y += 16;
 
         // Row 3
-        doc.fillColor(lCol).font('Helvetica').text('Quantity (kg)', col1x, y);
-        doc.fillColor('#059669').font('Helvetica-Bold').text(`${data.quantity || 0} kg`, col2x, y);
+        const unit = data.quantity_unit || 'kg';
+        doc.fillColor(lCol).font('Helvetica').text(`Quantity (${unit})`, col1x, y);
+        doc.fillColor('#059669').font('Helvetica-Bold').text(`${data.quantity || 0} ${unit}`, col2x, y);
         doc.fillColor(lCol).font('Helvetica').text('Estimated Pickup', col3x, y);
         doc.fillColor(vCol).font('Helvetica-Bold').text(etaStr, col4x, y);
         y += 16;
@@ -476,25 +493,43 @@ export const downloadUserReport = async (req, res) => {
 // ROUTE 2: Summary / Custom-Range Report  GET /api/reports/summary
 // ============================================================
 export const generateSummaryReport = async (req, res) => {
-    const { fromDate, toDate, centerId, userId, category, status } = req.query;
+    const { fromDate, toDate, centerId, userId, category, status, type } = req.query;
     const adminId = req.headers['admin-id'] || req.query.adminId || null;
 
     try {
-        let sql = `
-            SELECT r.*, u.name AS user_name, u.email AS user_email, c.center_name
-            FROM tbl_pickup_requests r
-            JOIN tbl_users u ON r.user_id = u.user_id
-            LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
-            WHERE 1=1
-        `;
+        let sql = '';
         const params = [];
 
-        if (fromDate) { sql += ' AND DATE(r.created_at) >= ?'; params.push(fromDate); }
-        if (toDate) { sql += ' AND DATE(r.created_at) <= ?'; params.push(toDate); }
-        if (centerId) { sql += ' AND r.center_id = ?'; params.push(centerId); }
-        if (userId) { sql += ' AND r.user_id = ?'; params.push(userId); }
-        if (category) { sql += ' AND r.waste_type LIKE ?'; params.push(`%${category}%`); }
-        if (status) { sql += ' AND r.status = ?'; params.push(status); }
+        if (type === 'special_waste') {
+            sql = `
+                SELECT r.request_id, r.category AS waste_type, r.quantity_value AS quantity, r.status, r.created_at, u.name AS user_name, u.email AS user_email, c.center_name
+                FROM tbl_special_waste_requests r
+                JOIN tbl_users u ON r.user_id = u.user_id
+                LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+                WHERE 1=1
+            `;
+            if (fromDate) { sql += ' AND DATE(r.created_at) >= ?'; params.push(fromDate); }
+            if (toDate) { sql += ' AND DATE(r.created_at) <= ?'; params.push(toDate); }
+            if (centerId) { sql += ' AND r.center_id = ?'; params.push(centerId); }
+            if (userId) { sql += ' AND r.user_id = ?'; params.push(userId); }
+            if (category) { sql += ' AND r.category LIKE ?'; params.push(`%${category}%`); }
+            if (status) { sql += ' AND r.status = ?'; params.push(status); }
+        } else {
+            sql = `
+                SELECT r.*, u.name AS user_name, u.email AS user_email, c.center_name
+                FROM tbl_pickup_requests r
+                JOIN tbl_users u ON r.user_id = u.user_id
+                LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+                WHERE 1=1
+            `;
+            if (fromDate) { sql += ' AND DATE(r.created_at) >= ?'; params.push(fromDate); }
+            if (toDate) { sql += ' AND DATE(r.created_at) <= ?'; params.push(toDate); }
+            if (centerId) { sql += ' AND r.center_id = ?'; params.push(centerId); }
+            if (userId) { sql += ' AND r.user_id = ?'; params.push(userId); }
+            if (category) { sql += ' AND r.waste_type LIKE ?'; params.push(`%${category}%`); }
+            if (status) { sql += ' AND r.status = ?'; params.push(status); }
+        }
+
         sql += ' ORDER BY r.created_at DESC LIMIT 200';
 
         const [rows] = await db.query(sql, params);
@@ -739,5 +774,61 @@ export const verifyReport = async (req, res) => {
     } catch (err) {
         console.error('Verify Report Error:', err);
         res.status(500).json({ valid: false, message: 'Verification service error. Please try again.' });
+    }
+};
+
+// ============================================================
+// NEW: User Dashboard Unified Reports
+// ============================================================
+export const getUserDashboardReports = async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: "userId required" });
+    try {
+        const query = `
+            (SELECT r.request_id, r.waste_type, r.quantity, r.status, r.created_at, c.center_name, MAX(rep.report_id) as report_id, 'PICKUP' as type
+             FROM tbl_pickup_requests r
+             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+             LEFT JOIN tbl_reports rep ON r.request_id = rep.request_id AND rep.report_type = 'SINGLE'
+             WHERE r.user_id = ?
+             GROUP BY r.request_id)
+            UNION ALL
+            (SELECT r.request_id, r.category as waste_type, r.quantity_value as quantity, r.status, r.created_at, c.center_name, MAX(rep.report_id) as report_id, 'SPECIAL' as type
+             FROM tbl_special_waste_requests r
+             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
+             LEFT JOIN tbl_reports rep ON r.request_id = rep.request_id AND rep.report_type = 'SINGLE'
+             WHERE r.user_id = ?
+             GROUP BY r.request_id)
+            ORDER BY created_at DESC
+            LIMIT 50
+        `;
+        const [reports] = await db.query(query, [userId, userId]);
+        res.json({ reports });
+    } catch (err) {
+        console.error("Dashboard Reports Error:", err);
+        res.status(500).json({ message: "Error fetching reports." });
+    }
+};
+
+// ============================================================
+// NEW: Admin Oversight - All Recent Records
+// ============================================================
+export const getAdminAllReports = async (req, res) => {
+    try {
+        const query = `
+            (SELECT r.request_id, r.waste_type, r.quantity, r.status, r.created_at, u.name as user_name, 'PICKUP' as type
+             FROM tbl_pickup_requests r
+             JOIN tbl_users u ON r.user_id = u.user_id)
+            UNION ALL
+            (SELECT r.request_id, r.category as waste_type, r.quantity_value as quantity, r.status, r.created_at, u.name as user_name, 'SPECIAL' as type
+             FROM tbl_special_waste_requests r
+             JOIN tbl_users u ON r.user_id = u.user_id)
+            ORDER BY created_at DESC
+            LIMIT 100
+        `;
+        const [records] = await db.query(query);
+        res.json(records);
+    } catch (err) {
+        console.error("Admin All Reports Error:", err);
+        res.status(500).json({ message: "Error fetching all reports." });
     }
 };

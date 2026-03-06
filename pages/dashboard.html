@@ -369,7 +369,18 @@
 
                 <!-- Notification Panel -->
                 <div class="notification-panel" id="notificationPanel">
-                    <div class="notif-header">Notifications</div>
+                    <div class="notif-header"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Notifications</span>
+                        <div style="display:flex; gap:10px; font-size: 0.8rem; font-weight: normal;">
+                            <button onclick="markAllUserNotifsRead()"
+                                style="color:#60a5fa; background:none; border:none; cursor:pointer; padding:0;">Mark all
+                                as read</button>
+                            <button onclick="clearAllUserNotifs()"
+                                style="color:#ef4444; background:none; border:none; cursor:pointer; padding:0;">Clear
+                                all</button>
+                        </div>
+                    </div>
                     <div class="notif-list" id="notifList">
                         <!-- Populated by JS -->
                     </div>

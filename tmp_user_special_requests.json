@@ -1,0 +1,30 @@
+[
+  {
+    "request_id": 4,
+    "category": "Festival",
+    "quantity_value": "45.00",
+    "center_id": 699,
+    "user_id": 25
+  },
+  {
+    "request_id": 5,
+    "category": "Bulk",
+    "quantity_value": "1000.00",
+    "center_id": 699,
+    "user_id": 25
+  },
+  {
+    "request_id": 6,
+    "category": "Hazardous",
+    "quantity_value": "10.00",
+    "center_id": 646,
+    "user_id": 26
+  },
+  {
+    "request_id": 7,
+    "category": "E-waste",
+    "quantity_value": "50.00",
+    "center_id": 646,
+    "user_id": 25
+  }
+]

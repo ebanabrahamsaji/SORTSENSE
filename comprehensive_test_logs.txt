@@ -1,0 +1,21 @@
+[2026-03-06T06:31:05.983Z] === Comprehensive Dashboard Test Start (Port 8001) ===
+[2026-03-06T06:31:05.987Z] 
+--- Testing Admin Dashboard ---
+[2026-03-06T06:31:12.946Z] ✅ Admin Login Success
+[2026-03-06T06:31:13.077Z] ✅ Admin Stats (Users): 14
+[2026-03-06T06:31:13.332Z] ✅ Admin Special Waste Page Reached
+[2026-03-06T06:31:13.332Z] 
+--- Testing User Dashboard ---
+[2026-03-06T06:31:15.976Z] ✅ User Login Success
+[2026-03-06T06:31:16.041Z] ✅ User Welcome Name: User
+[2026-03-06T06:31:16.137Z] ✅ User Eco Score: 0 / 2000
+[2026-03-06T06:31:16.140Z] 
+--- Testing Center Dashboard ---
+[2026-03-06T06:31:19.342Z] ✅ Center Login Success
+[2026-03-06T06:31:19.396Z] ✅ Center Stats (Today): 0
+[2026-03-06T06:31:19.396Z] -> Checking History for Special Waste integration...
+[2026-03-06T06:31:19.594Z] ✅ SUCCESS: Special Waste (SW) found in History list!
+[2026-03-06T06:31:19.594Z] ✅ ALL DASHBOARD TESTS COMPLETED.
+[2026-03-06T06:31:19.597Z] 
+--- Browser Console Logs ---
+[2026-03-06T06:31:19.597Z] [SEVERE] http://localhost:8001/favicon.ico - Failed to load resource: the server responded with a status of 404 (Not Found)

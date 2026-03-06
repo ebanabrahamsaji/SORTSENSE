@@ -1,5 +1,8 @@
 import db from '../db.js';
 import { syncWasteRecord } from './adminController.js';
+import { processRecyclingImpact } from '../services/rewardService.js';
+import moderationService from '../services/moderationService.js';
+
 
 // 1. Create Pickup Request (Finds Nearest Center)
 export const createPickupRequest = async (req, res) => {
@@ -328,11 +331,23 @@ export const getCenterRequests = async (req, res) => {
                 ORDER BY r.created_at DESC
                 LIMIT 50
             `;
-            const [a, h] = await Promise.all([
+            const swHistoryQuery = `
+                SELECT r.request_id, r.category AS waste_type, r.quantity_value AS quantity, r.quantity_unit, r.status, r.created_at, r.location AS address,
+                       u.name AS user_name, u.email AS user_email, u.phone AS user_phone, u.location AS user_location,
+                       'SPECIAL' AS type, 0 AS is_urgent
+                FROM tbl_special_waste_requests r
+                JOIN tbl_users u ON r.user_id = u.user_id
+                WHERE r.center_id = ?
+                  AND r.status IN ('Completed', 'Rejected', 'Cancelled')
+                ORDER BY r.created_at DESC
+                LIMIT 50
+            `;
+            const [a, h, s] = await Promise.all([
                 db.query(fallbackActive, [centerId]).then(r => r[0]),
-                db.query(fallbackHistory, [centerId]).then(r => r[0])
+                db.query(fallbackHistory, [centerId]).then(r => r[0]),
+                db.query(swHistoryQuery, [centerId]).then(r => r[0])
             ]);
-            return res.json([...(a || []), ...(h || [])]);
+            return res.json([...(a || []), ...(h || []), ...(s || [])]);
         }
 
         // 2. Location-based matching:
@@ -359,7 +374,7 @@ export const getCenterRequests = async (req, res) => {
             ORDER BY r.is_urgent DESC, r.created_at ASC
         `;
 
-        // 3. History (limited to 50 rows for performance)
+        // 3. History (Regular Pickups)
         const historyQuery = `
             SELECT r.*,
                    r.phone AS pickup_phone,
@@ -379,14 +394,32 @@ export const getCenterRequests = async (req, res) => {
             LIMIT 50
         `;
 
+        // 4. Special Waste History (Unified view)
+        const swHistoryQuery = `
+            SELECT r.request_id, r.category AS waste_type, r.quantity_value AS quantity, r.quantity_unit, r.status, r.created_at, r.location AS address,
+                   u.name AS user_name, u.email AS user_email, u.phone AS user_phone, u.location AS user_location,
+                   'SPECIAL' AS type, 0 AS is_urgent
+            FROM tbl_special_waste_requests r
+            JOIN tbl_users u ON r.user_id = u.user_id
+            WHERE r.center_id = ?
+              AND r.status IN ('Completed', 'Rejected', 'Cancelled')
+            ORDER BY r.created_at DESC
+            LIMIT 50
+        `;
+
         const params = [centerLocation, locationPattern, centerId];
 
-        const [activeReqs, historyReqs] = await Promise.all([
+        const [activeReqs, historyReqs, swHistoryReqs] = await Promise.all([
             db.query(activeQuery, params).then(r => r[0]),
-            db.query(historyQuery, params).then(r => r[0])
+            db.query(historyQuery, params).then(r => r[0]),
+            db.query(swHistoryQuery, [centerId]).then(r => r[0])
         ]);
 
-        const allRequests = [...(activeReqs || []), ...(historyReqs || [])];
+        const allRequests = [
+            ...(activeReqs || []),
+            ...(historyReqs || []),
+            ...(swHistoryReqs || [])
+        ];
         res.json(allRequests);
 
     } catch (error) {
@@ -475,12 +508,13 @@ export const updatePickupStatus = async (req, res) => {
         }
 
         // --- Notification Logic ---
-        // Need user_id to notify
-        const [uRows] = await db.query("SELECT user_id, center_id, waste_type FROM tbl_pickup_requests WHERE request_id = ?", [requestId]);
+        // Need user_id and quantity to notify and process rewards
+        const [uRows] = await db.query("SELECT user_id, center_id, waste_type, quantity FROM tbl_pickup_requests WHERE request_id = ?", [requestId]);
         if (uRows.length > 0) {
             const userId = uRows[0].user_id;
             const centerId = uRows[0].center_id;
             const wasteType = uRows[0].waste_type;
+            const quantity = uRows[0].quantity;
 
             let notifTitle = "Pickup Update";
             let notifMsg = `Your pickup request #${requestId} status has changed to ${status}.`;
@@ -504,6 +538,9 @@ export const updatePickupStatus = async (req, res) => {
                 notifTitle = "Process Completed 🎉";
                 notifMsg = `Request #${requestId} has been successfully processed. Thank you for recycling!`;
                 notifType = "SUCCESS";
+
+                // --- TRIGGER RECYCLING IMPACT REWARDS ---
+                processRecyclingImpact(userId, quantity).catch(e => console.error("Impact Reward Error:", e));
             }
 
             // User Notif
@@ -523,6 +560,14 @@ export const updatePickupStatus = async (req, res) => {
         }
         // --- End Notification Logic ---
         res.json({ message: `Request ${requestId} updated to ${status}` });
+
+        // ── Moderation: Pickup Rejected/Cancelled by center → risk +15 ──
+        if ((status === 'Rejected' || status === 'Cancelled') && uRows.length > 0) {
+            const affectedUserId = uRows[0].user_id;
+            moderationService.handlePickupCancellation(affectedUserId, requestId)
+                .catch(e => console.error('[Moderation] Pickup rejection hook error:', e.message));
+        }
+
     } catch (error) {
         console.error("Update Status Error:", error);
         res.status(500).json({ message: "Error updating status." });

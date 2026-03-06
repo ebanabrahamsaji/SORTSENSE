@@ -1,6 +1,8 @@
 import express from 'express';
 import { getProfile } from '../controllers/authController.js';
-import { getNotifications, markNotificationRead, getUserHistory, clearUserHistory, getUserStats, getUserRewards } from '../controllers/userController.js';
+import { getNotifications, markNotificationRead, markAllNotificationsRead, clearAllNotifications, getUserHistory, clearUserHistory, getUserStats, getUserRewards } from '../controllers/userController.js';
+
+// ... other imports
 import { getUserScanHistory } from '../controllers/historyController.js';
 import { downloadUserReport } from '../controllers/reportController.js';
 
@@ -13,6 +15,8 @@ router.get('/scan-history', getUserScanHistory);
 router.get('/rewards/v1/:userId', getUserRewards);
 router.get('/reports/v1/:userId', getUserHistory); // Reusing history as the report list
 router.get('/notifications/v1/:userId', getNotifications);
+router.delete('/notifications/v1/:userId/clear-all', clearAllNotifications);
+router.put('/notifications/v1/:userId/read-all', markAllNotificationsRead);
 router.get('/report/download/:reportId', downloadUserReport);
 
 // History Routes

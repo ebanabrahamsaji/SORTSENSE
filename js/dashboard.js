@@ -331,6 +331,37 @@ async function checkUnread(dot) {
     } catch (e) { /* ignore silent fail */ }
 }
 
+window.markAllUserNotifsRead = async () => {
+    const userId = window.currentUserId || localStorage.getItem('userId') || localStorage.getItem('app_user_id');
+    if (!userId) return;
+    try {
+        await fetch(`/api/user/notifications/v1/${userId}/read-all`, { method: 'PUT' });
+        const listContainer = document.getElementById('notifList');
+        const dot = document.querySelector('.notification-badge .dot');
+        if (listContainer && dot) {
+            loadNotifications(listContainer, dot);
+        }
+    } catch (e) {
+        console.error('Failed to mark all as read', e);
+    }
+};
+
+window.clearAllUserNotifs = async () => {
+    const userId = window.currentUserId || localStorage.getItem('userId') || localStorage.getItem('app_user_id');
+    if (!userId) return;
+    if (!confirm('Are you sure you want to clear all your notifications?')) return;
+    try {
+        await fetch(`/api/user/notifications/v1/${userId}/clear-all`, { method: 'DELETE' });
+        const listContainer = document.getElementById('notifList');
+        const dot = document.querySelector('.notification-badge .dot');
+        if (listContainer && dot) {
+            loadNotifications(listContainer, dot);
+        }
+    } catch (e) {
+        console.error('Failed to clear notifications', e);
+    }
+};
+
 function initHistoryLink() {
     // Both sidebar link and any other history trigger
     const historyLinks = document.querySelectorAll('a[href="history.html"], span[data-i18n="history_menu"]');
@@ -2236,11 +2267,12 @@ window.loadFullReports = async function () {
         data.reports.forEach(r => {
             const date = new Date(r.created_at).toLocaleDateString();
             const statusColor = r.status === 'Completed' ? '#10b981' : (r.status === 'Rejected' ? '#ef4444' : '#f59e0b');
+            const isSpecial = r.type === 'SPECIAL';
 
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
             tr.innerHTML = `
-                <td style="padding:15px; font-weight:600;">#${r.request_id}</td>
+                <td style="padding:15px; font-weight:600;">#${r.request_id}${isSpecial ? ' <small style="opacity:0.6;">(SW)</small>' : ''}</td>
                 <td style="padding:15px; color:#10b981;">${r.waste_type}</td>
                 <td style="padding:15px;">${r.quantity} kg</td>
                 <td style="padding:15px; color:#94a3b8;">${date}</td>
@@ -2256,7 +2288,7 @@ window.loadFullReports = async function () {
                             <i class="ri-message-3-line"></i> Message Center
                         </button>
                     ` : ''}
-                    <button class="download-pdf-btn" onclick="downloadReportPDF(${r.report_id || 'null'}, ${r.request_id})" 
+                    <button class="download-pdf-btn" onclick="downloadReportPDF(${r.report_id || 'null'}, ${r.request_id}, '${r.type}')" 
                         style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.2); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
                         <i class="ri-file-pdf-line"></i> Download PDF
                     </button>
@@ -2271,7 +2303,7 @@ window.loadFullReports = async function () {
     }
 }
 
-window.downloadReportPDF = async function (reportId, requestId) {
+window.downloadReportPDF = async function (reportId, requestId, type = 'PICKUP') {
     const userId = window.currentUserId || localStorage.getItem('app_user_id') || localStorage.getItem('userId');
     if (!userId) return window.showError("Auth session expired.");
 
@@ -2280,10 +2312,12 @@ window.downloadReportPDF = async function (reportId, requestId) {
     try {
         // Use the new endpoint if reportId exists, otherwise use request-based one
         let url = reportId
-            ? `/api/user/report/download/${reportId}?userId=${userId}`
-            : `/api/reports/request/${requestId}?userId=${userId}`;
+            ? `/api/user/report/download/${reportId}?userId=${userId}&type=${type}`
+            : `/api/reports/request/${requestId}?userId=${userId}&type=${type}`;
 
         const response = await fetch(url);
+        // ... rest of the function stays same
+
 
         if (!response.ok) {
             const err = await response.json();

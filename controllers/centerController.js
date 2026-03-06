@@ -350,12 +350,16 @@ export const clearCenterNotifications = async (req, res) => {
 
 // Register Center
 export const registerCenter = async (req, res) => {
-    const { name, username, email, phone, address, password } = req.body;
+    let { name, username, email, phone, address, password } = req.body;
 
     // Validation
     if (!name || !username || !email || !phone || !address || !password) {
         return res.status(400).json({ message: "All fields are required. Please fill in all information." });
     }
+
+    username = username.trim();
+    email = email.trim();
+    name = name.trim();
 
     try {
         // Check uniqueness for username and email in tbl_collection_centers
@@ -394,11 +398,13 @@ export const registerCenter = async (req, res) => {
 
 // Center Login
 export const centerLogin = async (req, res) => {
-    const { username, password } = req.body;
+    let { username, password } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ message: "Username and password are required." });
     }
+
+    username = username.trim();
 
     try {
         // Login by username or email

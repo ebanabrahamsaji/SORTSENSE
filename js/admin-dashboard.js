@@ -433,10 +433,21 @@ async function fetchCenterStatus() {
         const response = await fetch(`${API_BASE_URL}/api/centers?_t=${Date.now()}`, {
             cache: 'no-store'
         });
-        const centers = await response.json();
+        let centers = await response.json();
+
+        // Apply Registration Filter
+        const filterEl = document.getElementById('centerRegFilter');
+        if (filterEl && Array.isArray(centers)) {
+            const filterVal = filterEl.value;
+            if (filterVal === 'registered') {
+                centers = centers.filter(c => c.username || c.email);
+            } else if (filterVal === 'unregistered') {
+                centers = centers.filter(c => !c.username && !c.email);
+            }
+        }
 
         if (!Array.isArray(centers) || centers.length === 0) {
-            STABLE.safeUpdate(tableId, '<tr><td colspan="5" style="text-align:center; padding:2rem; color: #94a3b8;">No centers found.</td></tr>');
+            STABLE.safeUpdate(tableId, '<tr><td colspan="5" style="text-align:center; padding:2rem; color: #94a3b8;">No centers found matching criteria.</td></tr>');
             return;
         }
 
@@ -520,6 +531,7 @@ function setupCenterToggle() {
     const toggleBtn = document.getElementById('toggleCenterStatusBtn');
     const container = document.getElementById('centerStatusContainer');
     const refreshBtn = document.getElementById('refreshCenterBtn');
+    const filterBtn = document.getElementById('centerRegFilter');
 
     if (toggleBtn && container) {
         // Initial setup for the button click
@@ -531,12 +543,14 @@ function setupCenterToggle() {
                 toggleBtn.classList.remove('btn-primary');
                 toggleBtn.classList.add('btn-outline');
                 if (refreshBtn) refreshBtn.style.display = 'inline-flex';
+                if (filterBtn) filterBtn.style.display = 'inline-block';
             } else {
                 container.style.display = 'none';
                 toggleBtn.innerHTML = '<i class="ri-eye-line"></i> View Center Status';
                 toggleBtn.classList.remove('btn-outline');
                 toggleBtn.classList.add('btn-primary');
                 if (refreshBtn) refreshBtn.style.display = 'none';
+                if (filterBtn) filterBtn.style.display = 'none';
             }
         });
     }
@@ -1287,7 +1301,7 @@ async function fetchReportRecords() {
     </td></tr>`;
 
     try {
-        const res = await fetch('/api/pickup/all');
+        const res = await fetch('/api/reports/all');
 
         // Check HTTP status before trying to parse
         if (!res.ok) {
@@ -1310,13 +1324,13 @@ async function fetchReportRecords() {
 
         tbody.innerHTML = records.slice(0, 50).map(r => `
             <tr>
-                <td>#${r.request_id}</td>
+                <td>#${r.request_id}${r.type === 'SPECIAL' ? ' <small style="opacity:0.6;">(SW)</small>' : ''}</td>
                 <td>${r.user_name || '—'}</td>
                 <td>${r.waste_type || '—'}</td>
                 <td>${r.quantity != null ? r.quantity + ' kg' : '—'}</td>
                 <td><span class="status-badge status-${(r.status || '').toLowerCase()}">${r.status || '—'}</span></td>
                 <td>
-                    <button onclick="downloadAdminReport(${r.request_id})" class="btn btn-sm btn-outline" style="padding:4px 8px; font-size:0.75rem;">
+                    <button onclick="downloadAdminReport(${r.request_id}, '${r.type}')" class="btn btn-sm btn-outline" style="padding:4px 8px; font-size:0.75rem;">
                         <i class="ri-file-pdf-line"></i> PDF
                     </button>
                 </td>
@@ -1336,7 +1350,7 @@ async function fetchReportRecords() {
 
 
 // Download Report (Admin Actions)
-window.downloadAdminReport = async function (requestId) {
+window.downloadAdminReport = async function (requestId, type = 'PICKUP') {
     if (!requestId) {
         showToast('Invalid Request ID.', 'error');
         return;
@@ -1348,7 +1362,7 @@ window.downloadAdminReport = async function (requestId) {
         // Get admin ID with fallback to legacy 'adminUser'
         const adminId = localStorage.getItem('admin_sys_id') || localStorage.getItem('adminUser') || '0';
 
-        const response = await fetch(`/api/reports/request/${requestId}`, {
+        const response = await fetch(`/api/reports/request/${requestId}?type=${type}`, {
             headers: {
                 'admin-id': adminId,
                 'Accept': 'application/pdf'
@@ -1397,12 +1411,12 @@ if (document.getElementById('btnGenerateReport')) {
         const to = document.getElementById('reportToDate').value;
         const userId = document.getElementById('reportUserId').value;
 
-        if (type === 'summary') {
+        if (type === 'summary' || type === 'special_waste') {
             try {
-                showToast('Generating Summary PDF...', 'info');
+                showToast(`Generating ${type === 'special_waste' ? 'Special Waste' : 'Summary'} PDF...`, 'info');
 
-                // Build query params
                 const params = new URLSearchParams();
+                if (type) params.append('type', type);
                 if (from) params.append('fromDate', from);
                 if (to) params.append('toDate', to);
                 if (userId) params.append('userId', userId);
