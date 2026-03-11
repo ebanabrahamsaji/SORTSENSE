@@ -784,6 +784,21 @@
     }
 }
 
+@media (max-width: 768px) {
+    .mp-header-text h1 {
+        font-size: 1.8rem;
+    }
+
+    .mp-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-post-item {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 @media (max-width: 640px) {
     .mp-header {
         flex-direction: column;

@@ -141,6 +141,7 @@
     <script src="../js/config.js"></script>
     <script src="../js/google-auth.js"></script>
     <script src="../js/script.js"></script>
+    <script src="../js/auth.js"></script>
     <script>
         function setupPasswordToggle(toggleId, inputId) {
             const toggle = document.querySelector(toggleId);
@@ -193,6 +194,17 @@
             const password = document.getElementById('password').value;
             const confirm = document.getElementById('confirm-password').value;
 
+            const isStrong = password.length >= 8 &&
+                /[a-zA-Z]/.test(password) &&
+                /\d/.test(password) &&
+                /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+            if (!isStrong) {
+                if (window.showWarning) window.showWarning("Please use a stronger password (8+ chars, numbers, and symbols).");
+                else alert("Please use a stronger password (8+ chars, numbers, and symbols).");
+                return;
+            }
+
             if (password !== confirm) {
                 if (window.showError) window.showError("Passwords do not match!");
                 else alert("Passwords do not match!");
@@ -215,11 +227,21 @@
                     btn.disabled = false;
 
                     if (data.success) {
+                        // Critical Fix: Store User ID to prevent dashboard redirect loop
+                        localStorage.setItem('userEmail', email);
+                        localStorage.setItem('userName', name);
+                        if (data.userId) {
+                            localStorage.setItem('userId', data.userId);
+                            localStorage.setItem('app_user_id', data.userId);
+                            localStorage.setItem('app_user_email', email);
+                            localStorage.setItem('userRole', 'USER');
+                        }
+
                         if (window.showSuccess) window.showSuccess(data.message || "Account created successfully!");
                         else alert(data.message || "Account created successfully!");
                         setTimeout(() => {
-                            window.location.href = 'login.html';
-                        }, 2000);
+                            window.location.href = 'dashboard.html';
+                        }, 1500);
                     } else {
                         if (window.showError) window.showError(data.message || "Registration failed");
                         else alert(data.message || "Registration failed");
@@ -235,9 +257,6 @@
         });
     </script>
 
-    <script src="../js/config.js"></script>
-    <script src="../js/script.js"></script>
-    <script src="../js/auth.js"></script>
 </body>
 
 </html>

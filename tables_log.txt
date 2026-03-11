@@ -1,10 +1,16 @@
 🔍 Checking Tables...
 [
   {
+    "Tables_in_sortsense_db": "center_messages"
+  },
+  {
     "Tables_in_sortsense_db": "tbl_accepted_categories"
   },
   {
     "Tables_in_sortsense_db": "tbl_admin_audit_logs"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_admin_notifications"
   },
   {
     "Tables_in_sortsense_db": "tbl_ai_performance_logs"
@@ -13,10 +19,34 @@
     "Tables_in_sortsense_db": "tbl_categories"
   },
   {
+    "Tables_in_sortsense_db": "tbl_center_messages"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_center_notifications"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_challenges"
+  },
+  {
     "Tables_in_sortsense_db": "tbl_collection_centers"
   },
   {
     "Tables_in_sortsense_db": "tbl_item_images"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_marketplace_interest"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_marketplace_items"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_marketplace_messages"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_moderation_appeals"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_moderation_logs"
   },
   {
     "Tables_in_sortsense_db": "tbl_notifications"
@@ -26,6 +56,9 @@
   },
   {
     "Tables_in_sortsense_db": "tbl_pickup_requests"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_reports"
   },
   {
     "Tables_in_sortsense_db": "tbl_security_logs"
@@ -43,12 +76,27 @@
     "Tables_in_sortsense_db": "tbl_system_health_logs"
   },
   {
+    "Tables_in_sortsense_db": "tbl_user_audit_logs"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_user_center_messages"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_user_challenges"
+  },
+  {
     "Tables_in_sortsense_db": "tbl_user_history"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_user_reports"
   },
   {
     "Tables_in_sortsense_db": "tbl_users"
   },
   {
     "Tables_in_sortsense_db": "tbl_waste_items"
+  },
+  {
+    "Tables_in_sortsense_db": "tbl_waste_records"
   }
 ]

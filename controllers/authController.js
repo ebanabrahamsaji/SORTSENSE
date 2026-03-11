@@ -14,8 +14,13 @@ export const registerUser = async (req, res) => {
         return res.status(400).json({ message: 'All fields are required.' });
     }
 
-    if (password.length < 8) {
-        return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
+    const isStrong = password.length >= 8 &&
+        /[a-zA-Z]/.test(password) &&
+        /\d/.test(password) &&
+        /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    if (!isStrong) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long and contain letters, numbers, and special characters.' });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

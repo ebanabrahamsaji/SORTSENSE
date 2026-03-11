@@ -362,6 +362,23 @@ body {
     .auth-left-panel {
         display: none;
     }
+
+    .auth-right-panel {
+        padding: 2rem 1rem;
+    }
+
+    .card-header h2 {
+        font-size: 2rem;
+    }
+
+    .login-wrapper {
+        max-width: 100%;
+    }
+
+    .role-tab {
+        font-size: 0.85rem;
+        padding: 0.6rem;
+    }
 }
 
 

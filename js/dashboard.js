@@ -758,6 +758,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            if (window.safeLogout) window.safeLogout();
+            else if (window.logoutSafely) window.logoutSafely();
+        });
+    }
+
     /* --- Granular Vertical Pickup Form Logic (Requirement Updates) --- */
     const wasteTypeSelect = document.getElementById('pickupWasteType');
     const timeSlotSelect = document.getElementById('pickupTimeSlot');

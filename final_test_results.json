@@ -1,0 +1,72 @@
+{
+    "admin": {
+        "status": "PASSED",
+        "steps": [
+            {
+                "step": "Login",
+                "success": true,
+                "detail": ""
+            },
+            {
+                "step": "Dashboard Overview Stats",
+                "success": true,
+                "detail": "Total Users: 12"
+            },
+            {
+                "step": "User Management Navigation",
+                "success": true,
+                "detail": ""
+            },
+            {
+                "step": "User Management Extended Stats",
+                "success": true,
+                "detail": "Top Users: 12, Centers: 82"
+            },
+            {
+                "step": "New Filter Buttons Existence",
+                "success": true,
+                "detail": ""
+            },
+            {
+                "step": "Type Filter Toggle (Centers)",
+                "success": true,
+                "detail": ""
+            },
+            {
+                "step": "Type Filter Toggle (Show All)",
+                "success": true,
+                "detail": ""
+            }
+        ]
+    },
+    "user": {
+        "status": "PASSED",
+        "steps": [
+            {
+                "step": "Login",
+                "success": true,
+                "detail": ""
+            },
+            {
+                "step": "Dashboard Welcome",
+                "success": true,
+                "detail": "melbin"
+            }
+        ]
+    },
+    "center": {
+        "status": "PASSED",
+        "steps": [
+            {
+                "step": "Login",
+                "success": true,
+                "detail": ""
+            },
+            {
+                "step": "Dashboard Stats",
+                "success": true,
+                "detail": "Today: 0"
+            }
+        ]
+    }
+}

@@ -1425,8 +1425,138 @@ select.pickup-input option {
 }
 
 @media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 80px;
+    }
+
+    .sidebar-header .logo-text,
+    .sidebar-nav span,
+    .sidebar-footer span {
+        display: none;
+    }
+
+    .sidebar {
+        padding: 2rem 0.5rem;
+    }
+
+    .sidebar-nav a {
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .main-content {
+        margin-left: var(--sidebar-width);
+        padding: 1.5rem 2rem;
+    }
+
+    .action-section {
+        grid-template-columns: 1fr;
+    }
+
     .pickup-row-bottom {
         flex-direction: column;
         align-items: stretch;
+    }
+}
+
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 0px;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+        width: 250px;
+        display: flex !important;
+    }
+
+    .sidebar.active .logo-text,
+    .sidebar.active span {
+        display: inline-block;
+    }
+
+    .main-content {
+        margin-left: 0;
+        padding: 1rem;
+    }
+
+    header.top-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .header-search {
+        width: 100%;
+        order: 2;
+    }
+
+    .header-profile {
+        justify-content: space-between;
+        order: 1;
+    }
+
+    .welcome-section h1 {
+        font-size: 2.2rem;
+    }
+
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dash-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .charts-row {
+        grid-template-columns: 1fr;
+    }
+
+    .action-section {
+        grid-template-columns: 1fr;
+    }
+
+    /* Make tables scrollable */
+    .section-card,
+    .chart-card {
+        padding: 1rem;
+        overflow-x: auto;
+    }
+
+    table {
+        min-width: 600px;
+    }
+
+    /* Pickup form responsiveness */
+    .pickup-form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .center-checklist-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .categories-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .welcome-section h1 {
+        font-size: 1.8rem;
+    }
+
+    .eco-progress {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .eco-text {
+        text-align: left !important;
     }
 }

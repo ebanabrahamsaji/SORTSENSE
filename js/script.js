@@ -264,72 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Register Form Handling
-    const registerForm = document.getElementById('registerForm');
-    if (registerForm) {
-        registerForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const fullname = document.getElementById('fullname').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-
-            // Email Validation
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                window.showWarning('Please enter a valid email address.');
-                return;
-            }
-
-            if (password !== confirmPassword) {
-                window.showWarning('Passwords do not match!');
-                return;
-            }
-
-            console.log('User Registration:', { fullname, email });
-
-            if (password.length < 8) {
-                window.showWarning('Password must be at least 8 characters long!');
-                return;
-            }
-
-            // Send to Backend
-            fetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: fullname, email, password }) // Map fullname -> name
-            })
-                .then(res => res.json().then(data => ({ status: res.status, body: data })))
-                .then(({ status, body }) => {
-                    if (status === 201 || status === 200) {
-                        console.log('✅ Registration successful', body);
-
-                        // Store user data
-                        localStorage.setItem('userEmail', email);
-                        localStorage.setItem('userName', fullname);
-
-                        // Critical Fix: Store User ID to prevent dashboard redirect loop
-                        if (body.userId) {
-                            localStorage.setItem('userId', body.userId);
-                            localStorage.setItem('app_user_id', body.userId);
-                            localStorage.setItem('app_user_email', email);
-                            localStorage.setItem('userRole', 'USER'); // Default role
-                        } else {
-                            console.error("Warning: Backend did not return userId on register");
-                        }
-
-                        // Redirect to dashboard
-                        window.location.href = 'dashboard.html';
-                    } else {
-                        window.showError('Registration failed: ' + (body.message || 'Unknown error'));
-                    }
-                })
-                .catch(err => {
-                    console.error("Register Error:", err);
-                    window.showError('Error connecting to server. Is Node running?');
-                });
-        });
-    }
+    // Register Form Handling removed, now handled by register-user.html directly.
 
     // Admin Login Form Handling
     const adminLoginForm = document.getElementById('adminLoginForm');
