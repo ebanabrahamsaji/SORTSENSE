@@ -2284,18 +2284,18 @@ window.loadFullReports = async function () {
                 <td style="padding:15px; color:#10b981;">${r.waste_type}</td>
                 <td style="padding:15px;">${r.quantity} kg</td>
                 <td style="padding:15px; color:#94a3b8;">${date}</td>
+                <td style="padding:15px; font-weight:500;">${r.center_name || 'Unassigned'}</td>
                 <td style="padding:15px;">
                     <span style="background:${statusColor}20; color:${statusColor}; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:600;">
                         ${r.status.toUpperCase()}
                     </span>
-                </td>
-                <td style="padding:15px; text-align:right; display:flex; justify-content:flex-end; gap:8px;">
                     ${r.status === 'Approved' && r.center_id ? `
-                        <button onclick="openUserCenterChat(${r.request_id}, '${r.center_name || 'Center'}')" 
-                            style="background:rgba(59,130,246,0.1); color:#60a5fa; border:1px solid rgba(59,130,246,0.2); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
-                            <i class="ri-message-3-line"></i> Message Center
+                        <button onclick="openUserCenterChat(${r.request_id}, '${r.center_name || 'Center'}')" class="btn-action-chat" style="color:#60a5fa; background:rgba(59,130,246,0.1); padding:0.4rem 0.8rem; border-radius:6px; border:none; cursor:pointer; margin-left: 8px;">
+                            <i class="ri-message-3-line"></i> Chat
                         </button>
                     ` : ''}
+                </td>
+                <td style="padding:15px; text-align:right; display:flex; justify-content:flex-end; gap:8px;">
                     <button class="download-pdf-btn" onclick="downloadReportPDF(${r.report_id || 'null'}, ${r.request_id}, '${r.type}')" 
                         style="background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.2); padding:6px 12px; border-radius:8px; cursor:pointer; font-size:0.8rem; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
                         <i class="ri-file-pdf-line"></i> Download PDF
@@ -2349,32 +2349,116 @@ window.downloadReportPDF = async function (reportId, requestId, type = 'PICKUP')
     }
 }
 
+async function showAdminReports() {
+    const section = document.getElementById('reportsSection');
+    const tbody = document.getElementById('fullReportsBody');
+    if (!section || !tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="7" style="padding:40px; text-align:center; color:#94a3b8;"><i class="ri-loader-4-line ri-spin" style="font-size:2rem;"></i><br>Loading all system records...</td></tr>`;
+
+    try {
+        const response = await fetch('/api/reports/all');
+        const records = await response.json();
+
+        if (!records || records.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="padding:40px; text-align:center; color:#94a3b8;">No reports found in system.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        records.forEach(r => {
+            const date = new Date(r.created_at).toLocaleDateString();
+            const statusColor = r.status === 'Completed' ? '#10b981' : (r.status === 'Rejected' ? '#ef4444' : '#f59e0b');
+
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+            tr.innerHTML = `
+                <td style="padding:15px; font-weight:600;">#${r.request_id}</td>
+                <td style="padding:15px; color:#10b981;">${r.waste_type}</td>
+                <td style="padding:15px;">${r.quantity} kg</td>
+                <td style="padding:15px; font-weight:500; color:#60a5fa;">${r.user_name}</td>
+                <td style="padding:15px; color:#94a3b8;">${date}</td>
+                <td style="padding:15px;">
+                    <span style="background:${statusColor}20; color:${statusColor}; padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:600;">
+                        ${r.status.toUpperCase()}
+                    </span>
+                    <button onclick="openUserCenterChat(${r.request_id}, '${r.center_name || 'Center'}')" class="btn-action-chat" style="color:#60a5fa; background:rgba(59,130,246,0.1); padding:0.4rem 0.8rem; border-radius:6px; border:none; cursor:pointer; margin-left: 8px;">
+                        <i class="ri-message-3-line"></i> Chat
+                    </button>
+                </td>
+                <td style="padding:15px; text-align:right;">
+                     <button onclick="downloadReportPDF(null, ${r.request_id}, '${r.type}')" 
+                        style="background:rgba(255,255,255,0.05); color:white; border:none; padding:6px 12px; border-radius:8px; cursor:pointer;">
+                        <i class="ri-download-line"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+    } catch (err) {
+        console.error("Admin Reports Error:", err);
+    }
+}
+
 // --- User-Center Direct Messaging ---
 let currentChatRequestId = null;
-let chatRefreshInterval = null;
+let chatRefreshTimeout = null;
+let isChatFetching = false;
 
 window.openUserCenterChat = function (requestId, centerName) {
     currentChatRequestId = requestId;
     document.getElementById('chatCenterName').textContent = centerName;
-    document.getElementById('userCenterChatModal').style.display = 'flex';
-    document.getElementById('userCenterChatMessages').innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Loading messages...</div>';
+    const modal = document.getElementById('userCenterChatModal');
+    modal.style.display = 'flex';
+    
+    // Slight delay for animation
+    setTimeout(() => {
+        const box = modal.querySelector('.modal-box');
+        if(box) {
+            box.style.transform = 'scale(1)';
+            box.style.opacity = '1';
+        }
+    }, 10);
 
-    // Non-silent load
-    loadUserCenterMessages();
+    document.getElementById('userCenterChatMessages').innerHTML = `
+        <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#94a3b8; animation: pulse 2s infinite;">
+            <i class="ri-loader-4-line ri-spin" style="font-size:2rem; margin-bottom:10px; color:#3b82f6;"></i>
+            <p style="font-size:0.9rem;">Connecting to ${centerName}...</p>
+        </div>`;
 
-    // Poll for new messages every 5 seconds while open
-    if (chatRefreshInterval) clearInterval(chatRefreshInterval);
-    chatRefreshInterval = setInterval(loadUserCenterMessages, 5000);
+    if (chatRefreshTimeout) clearTimeout(chatRefreshTimeout);
+    isChatFetching = false;
+    pollUserCenterMessages();
 };
 
 window.closeUserCenterChat = function () {
-    document.getElementById('userCenterChatModal').style.display = 'none';
-    if (chatRefreshInterval) clearInterval(chatRefreshInterval);
-    currentChatRequestId = null;
+    const modal = document.getElementById('userCenterChatModal');
+    const box = modal.querySelector('.modal-box');
+    if(box) {
+        box.style.transform = 'scale(0.95)';
+        box.style.opacity = '0';
+    }
+    setTimeout(() => {
+        modal.style.display = 'none';
+        if (chatRefreshTimeout) clearTimeout(chatRefreshTimeout);
+        currentChatRequestId = null;
+        isChatFetching = false;
+    }, 200); // Wait for transition
 };
 
-async function loadUserCenterMessages() {
+async function pollUserCenterMessages() {
     if (!currentChatRequestId) return;
+    await loadUserCenterMessages();
+    if (currentChatRequestId) {
+        chatRefreshTimeout = setTimeout(pollUserCenterMessages, 4000); // 4-second poll wait
+    }
+}
+
+async function loadUserCenterMessages() {
+    if (isChatFetching || !currentChatRequestId) return;
+    isChatFetching = true;
+
     try {
         const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
         const res = await fetch(`/api/messages/user-center/history/${currentChatRequestId}`, {
@@ -2384,59 +2468,82 @@ async function loadUserCenterMessages() {
         const rows = body.data || body.messages || [];
 
         const container = document.getElementById('userCenterChatMessages');
+        
+        // Prevent re-rendering if closed during fetch
+        if (!currentChatRequestId) return;
+
         if (rows.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">No messages yet. Send a message to start the conversation!</div>';
+            container.innerHTML = `
+                <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#64748b;">
+                    <i class="ri-chat-3-line" style="font-size:3rem; margin-bottom:15px; opacity:0.5;"></i>
+                    <p style="font-size:0.95rem; font-weight:500; color:#cbd5e1;">Start the conversation</p>
+                    <p style="font-size:0.8rem; text-align:center; max-width:80%; margin-top:5px;">Send a message to discuss your pickup.</p>
+                </div>`;
             return;
         }
 
         const loggedInUserId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+        const centerName = document.getElementById('chatCenterName').textContent || 'Center';
+        
+        let shouldScroll = false;
+        // Scroll if we are already at or near bottom
+        if (container.scrollHeight - container.scrollTop <= container.clientHeight + 50) {
+            shouldScroll = true;
+        }
 
-        container.innerHTML = rows.map(m => {
-            const senderId = m.sender_id || m.senderId;
+        let hasNewMessages = false;
+        const currentMessageCount = container.querySelectorAll('.chat-bubble-wrapper:not(.optimistic-msg)').length;
+        if (rows.length !== currentMessageCount) {
+             hasNewMessages = true;
+        }
 
-            const loggedInUsername = localStorage.getItem('app_user_name') || localStorage.getItem('userName') || 'User';
-            const centerName = document.getElementById('chatCenterName').textContent || 'Center';
+        if(hasNewMessages || container.innerHTML.includes('Start the conversation') || container.innerHTML.includes('Connecting')) {
+            container.innerHTML = rows.map((m, index) => {
+                const senderId = m.sender_id || m.senderId;
+                const mRole = String(m.sender_role || m.senderRole || '').toLowerCase();
+                const isMe = String(senderId) === String(loggedInUserId) && mRole === 'user';
 
-            let senderName;
-            let messageClass;
-            let align;
-            let bg;
-            let border;
-            let radius;
+                const align = isMe ? 'flex-end' : 'flex-start';
+                const bg = isMe ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'rgba(30, 41, 59, 0.8)';
+                const color = '#f8fafc';
+                const radius = isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px';
+                const border = isMe ? 'none' : '1px solid rgba(255, 255, 255, 0.05)';
+                
+                const loggedInUserName = localStorage.getItem('app_user_name') || localStorage.getItem('userName') || 'You';
+                const senderName = isMe ? loggedInUserName : (m.senderName || centerName);
+                
+                const initial = senderName.charAt(0).toUpperCase();
+                const avatarBg = isMe ? '#1d4ed8' : '#475569';
+                const avatarBorder = isMe ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.1)';
+                
+                const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const animDelay = (index === rows.length - 1) ? 'animation: slideUpFade 0.3s ease-out forwards;' : 'animation: none; opacity: 1;';
 
-            // Strict sender_id check as requested
-            if (String(senderId) === String(loggedInUserId)) {
-                senderName = loggedInUsername;
-                messageClass = "user-message";
-                align = 'flex-end';
-                bg = 'linear-gradient(135deg, #3b82f6, #2563eb)';
-                border = 'none';
-                radius = '16px 16px 2px 16px';
-            } else {
-                senderName = centerName;
-                messageClass = "center-message";
-                align = 'flex-start';
-                bg = 'rgba(255,255,255,0.08)';
-                border = '1px solid rgba(255,255,255,0.1)';
-                radius = '16px 16px 16px 2px';
-            }
-
-            const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-
-            return `
-                <div class="${messageClass}" style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; align-items: ${align}; margin-bottom: 12px;">
-                    <span style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 2px; padding: 0 6px; font-weight: 500;">${senderName}</span>
-                    <div style="background: ${bg}; color: #fff; padding: 12px 18px; border-radius: ${radius}; font-size: 0.95rem; line-height: 1.5; border: ${border}; box-shadow: 0 4px 6px rgba(0,0,0,0.15); position: relative;">
-                        ${m.message || m.messageText}
+                return `
+                    <div class="chat-bubble-wrapper" style="align-self: ${align}; max-width: 85%; display: flex; flex-direction: ${isMe ? 'row-reverse' : 'row'}; align-items: flex-end; gap: 8px; margin-bottom: 16px; ${animDelay}">
+                         <div style="flex-shrink:0; width: 28px; height: 28px; border-radius: 50%; background: ${avatarBg}; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: white; border: 2px solid ${avatarBorder}; margin-bottom: 2px;">
+                            ${initial}
+                         </div>
+                         <div style="display: flex; flex-direction: column; align-items: ${align}; max-width: calc(100% - 36px);">
+                            <span style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; padding: 0 4px; font-weight: 500;">${senderName}</span>
+                            <div style="background: ${bg}; color: ${color}; padding: 12px 16px; border-radius: ${radius}; font-size: 0.95rem; line-height: 1.5; border: ${border}; box-shadow: 0 4px 15px rgba(0,0,0,0.1); word-break: break-word; white-space: pre-wrap;">${m.message || m.messageText}</div>
+                            <span style="font-size: 0.65rem; color: #64748b; margin-top: 6px; padding: 0 4px; font-weight: 500;">${time}</span>
+                        </div>
                     </div>
-                    <span style="font-size: 0.7rem; color: #64748b; margin-top: 4px; padding: 0 6px;">${time}</span>
-                </div>
-            `;
-        }).join('');
+                `;
+            }).join('');
+            
+            if (shouldScroll || hasNewMessages) {
+                setTimeout(()=> {
+                    container.scrollTop = container.scrollHeight;
+                }, 50);
+            }
+        }
 
-        container.scrollTop = container.scrollHeight;
     } catch (err) {
         console.error('Chat load error:', err);
+    } finally {
+        isChatFetching = false;
     }
 }
 
@@ -2446,9 +2553,41 @@ window.sendUserCenterChatMessage = async function () {
     if (!msg || !currentChatRequestId) return;
 
     const btn = document.getElementById('sendUserCenterChatBtn');
-    const originalText = btn.innerHTML;
+    const originalContent = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
+    btn.innerHTML = '<i class="ri-loader-4-line ri-spin" style="font-size: 1.2rem;"></i>';
+    btn.style.opacity = '0.7';
+
+    // Optimistic UI Update
+    const container = document.getElementById('userCenterChatMessages');
+    
+    if(container.innerHTML.includes('Start the conversation') || container.innerHTML.includes('Connecting')) {
+        container.innerHTML = '';
+    }
+
+    const tempId = 'temp_' + Date.now();
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const loggedInUserName = localStorage.getItem('app_user_name') || localStorage.getItem('userName') || 'You';
+    const initial = loggedInUserName.charAt(0).toUpperCase();
+    
+    const tempBubble = `
+        <div id="${tempId}" class="chat-bubble-wrapper optimistic-msg" style="align-self: flex-end; max-width: 85%; display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 8px; margin-bottom: 16px; opacity: 0.6; transition: opacity 0.3s ease;">
+             <div style="flex-shrink:0; width: 28px; height: 28px; border-radius: 50%; background: #1d4ed8; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: white; border: 2px solid rgba(59,130,246,0.5); margin-bottom: 2px;">
+                ${initial}
+             </div>
+             <div style="display: flex; flex-direction: column; align-items: flex-end; max-width: calc(100% - 36px);">
+                <span style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; padding: 0 4px; font-weight: 500;">${loggedInUserName}</span>
+                <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: #f8fafc; padding: 12px 16px; border-radius: 18px 18px 4px 18px; font-size: 0.95rem; line-height: 1.5; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); word-break: break-word; white-space: pre-wrap;">${msg}</div>
+                <span style="font-size: 0.65rem; color: #64748b; margin-top: 6px; padding: 0 4px; font-weight: 500;">${time} &bull; Sending...</span>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', tempBubble);
+    container.scrollTop = container.scrollHeight;
+    
+    input.value = '';
+    input.focus();
 
     try {
         const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
@@ -2462,23 +2601,29 @@ window.sendUserCenterChatMessage = async function () {
         });
 
         if (res.ok) {
-            input.value = '';
-            loadUserCenterMessages();
+            await loadUserCenterMessages();
         } else {
             const data = await res.json();
             alert(data.message || 'Failed to send');
+            const tempEl = document.getElementById(tempId);
+            if(tempEl) tempEl.remove();
         }
     } catch (err) {
         console.error('Send error:', err);
+        const tempEl = document.getElementById(tempId);
+        if(tempEl) {
+             tempEl.innerHTML = `<div style="color:#ef4444; font-size:0.8rem;"><i class="ri-error-warning-line"></i> Failed to send message.</div>`;
+        }
     } finally {
         btn.disabled = false;
-        btn.innerHTML = originalText;
+        btn.innerHTML = originalContent;
+        btn.style.opacity = '1';
     }
 };
 
-// Handle Enter key in user chat
-document.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && document.activeElement.id === 'userCenterChatMessageInput') {
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.activeElement.id === 'userCenterChatMessageInput' && !e.shiftKey) {
+        e.preventDefault();
         sendUserCenterChatMessage();
     }
 });

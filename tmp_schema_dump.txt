@@ -1,0 +1,14 @@
+CREATE TABLE `tbl_user_center_messages` (
+  `message_id` int(11) NOT NULL AUTO_INCREMENT,
+  `sender_id` int(11) NOT NULL,
+  `sender_role` enum('user','center') NOT NULL,
+  `receiver_id` int(11) NOT NULL,
+  `receiver_role` enum('user','center') NOT NULL,
+  `request_id` int(11) NOT NULL,
+  `message` text NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`message_id`),
+  KEY `request_id` (`request_id`),
+  CONSTRAINT `tbl_user_center_messages_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `tbl_pickup_requests` (`request_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=83 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

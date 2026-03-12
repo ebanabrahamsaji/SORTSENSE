@@ -216,18 +216,20 @@ async function handleProfileUpdate(e) {
         const data = await response.json();
 
         if (response.ok) {
-            // Update LocalStorage
-            localStorage.setItem('userName', data.user.name);
-            if (data.user.phone) localStorage.setItem('userPhone', data.user.phone);
-            if (data.user.city) localStorage.setItem('userCity', data.user.city);
-            if (data.user.state) localStorage.setItem('userState', data.user.state);
-            if (data.user.zip) localStorage.setItem('userZip', data.user.zip);
-            if (data.user.country) localStorage.setItem('userCountry', data.user.country);
-            if (data.user.location) localStorage.setItem('userLocation', data.user.location);
+            // Update LocalStorage if user data is returned
+            if (data.user) {
+                localStorage.setItem('userName', data.user.name);
+                if (data.user.phone) localStorage.setItem('userPhone', data.user.phone);
+                if (data.user.city) localStorage.setItem('userCity', data.user.city);
+                if (data.user.state) localStorage.setItem('userState', data.user.state);
+                if (data.user.zip) localStorage.setItem('userZip', data.user.zip);
+                if (data.user.country) localStorage.setItem('userCountry', data.user.country);
+                if (data.user.location) localStorage.setItem('userLocation', data.user.location);
 
-            // Handle profile picture (DB uses snake_case)
-            const pic = data.user.profile_picture || data.user.profilePicture;
-            if (pic) localStorage.setItem('userPicture', pic);
+                // Handle profile picture (DB uses snake_case)
+                const pic = data.user.profile_picture || data.user.profilePicture;
+                if (pic) localStorage.setItem('userPicture', pic);
+            }
 
             alert('Profile updated successfully!');
             loadProfileData(); // Refresh UI

@@ -2545,28 +2545,61 @@ Check the Active Requests panel.`
 
         // --- Center-User Direct Messaging ---
         let _centerChatRequestId = null;
-        let _centerChatRefreshInterval = null;
+        let _centerChatRefreshTimeout = null;
+        let _isCenterChatFetching = false;
 
         window.openCenterUserChat = function (requestId, userName) {
             _centerChatRequestId = requestId;
             document.getElementById('chatUserName').textContent = userName;
-            document.getElementById('centerUserChatModal').style.display = 'flex';
-            document.getElementById('centerUserChatMessages').innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">Loading messages...</div>';
+            const modal = document.getElementById('centerUserChatModal');
+            modal.style.display = 'flex';
+            
+            setTimeout(() => {
+                const box = modal.querySelector('.modal-box');
+                if(box) {
+                    box.style.transform = 'scale(1)';
+                    box.style.opacity = '1';
+                }
+            }, 10);
 
-            loadCenterUserMessages();
+            document.getElementById('centerUserChatMessages').innerHTML = `
+                <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#94a3b8; animation: pulse 2s infinite;">
+                    <i class="ri-loader-4-line ri-spin" style="font-size:2rem; margin-bottom:10px; color:#10b981;"></i>
+                    <p style="font-size:0.9rem;">Connecting to ${userName}...</p>
+                </div>`;
 
-            if (_centerChatRefreshInterval) clearInterval(_centerChatRefreshInterval);
-            _centerChatRefreshInterval = setInterval(loadCenterUserMessages, 5000);
+            if (_centerChatRefreshTimeout) clearTimeout(_centerChatRefreshTimeout);
+            _isCenterChatFetching = false;
+            pollCenterUserMessages();
         };
 
         window.closeCenterUserChat = function () {
-            document.getElementById('centerUserChatModal').style.display = 'none';
-            if (_centerChatRefreshInterval) clearInterval(_centerChatRefreshInterval);
-            _centerChatRequestId = null;
+            const modal = document.getElementById('centerUserChatModal');
+            const box = modal.querySelector('.modal-box');
+            if(box) {
+                box.style.transform = 'scale(0.95)';
+                box.style.opacity = '0';
+            }
+            setTimeout(() => {
+                modal.style.display = 'none';
+                if (_centerChatRefreshTimeout) clearTimeout(_centerChatRefreshTimeout);
+                _centerChatRequestId = null;
+                _isCenterChatFetching = false;
+            }, 200);
         };
 
-        async function loadCenterUserMessages() {
+        async function pollCenterUserMessages() {
             if (!_centerChatRequestId) return;
+            await loadCenterUserMessages();
+            if (_centerChatRequestId) {
+                _centerChatRefreshTimeout = setTimeout(pollCenterUserMessages, 4000);
+            }
+        }
+
+        async function loadCenterUserMessages() {
+            if (_isCenterChatFetching || !_centerChatRequestId) return;
+            _isCenterChatFetching = true;
+
             try {
                 const token = localStorage.getItem('center_sys_token') || localStorage.getItem('centerToken') || localStorage.getItem('token');
                 const res = await fetch(`/api/messages/user-center/history/${_centerChatRequestId}`, {
@@ -2576,41 +2609,77 @@ Check the Active Requests panel.`
                 const rows = body.data || body.messages || [];
 
                 const container = document.getElementById('centerUserChatMessages');
+                if (!_centerChatRequestId) return;
+
                 if (rows.length === 0) {
-                    container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8;">No messages yet. Send a message to contact the user.</div>';
+                    container.innerHTML = `
+                        <div style="height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#64748b;">
+                            <i class="ri-chat-smile-2-line" style="font-size:3rem; margin-bottom:15px; opacity:0.5;"></i>
+                            <p style="font-size:0.95rem; font-weight:500; color:#cbd5e1;">Start the conversation</p>
+                            <p style="font-size:0.8rem; text-align:center; max-width:80%; margin-top:5px;">Send a message to contact the user.</p>
+                        </div>`;
                     return;
                 }
 
                 const centerId = localStorage.getItem('centerId') || localStorage.getItem('center_sys_id');
+                const userName = document.getElementById('chatUserName').textContent || 'User';
 
-                container.innerHTML = rows.map(m => {
-                    const isMe = String(m.sender_id || m.senderId) === String(centerId);
+                let shouldScroll = false;
+                if (container.scrollHeight - container.scrollTop <= container.clientHeight + 50) {
+                    shouldScroll = true;
+                }
 
-                    const align = isMe ? 'flex-end' : 'flex-start';
-                    const bg = isMe ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.08)';
-                    const border = isMe ? 'none' : '1px solid rgba(255,255,255,0.1)';
-                    const radius = isMe ? '16px 16px 2px 16px' : '16px 16px 16px 2px';
+                let hasNewMessages = false;
+                const currentMessageCount = container.querySelectorAll('.chat-bubble-wrapper:not(.optimistic-msg)').length;
+                if (rows.length !== currentMessageCount) {
+                     hasNewMessages = true;
+                }
 
-                    const loggedInUsername = document.getElementById('headerCenterName').textContent || 'Center';
-                    const otherParticipantName = document.getElementById('chatUserName').textContent || 'User';
-                    const senderDisplayName = isMe ? loggedInUsername : otherParticipantName;
+                if(hasNewMessages || container.innerHTML.includes('Start the conversation') || container.innerHTML.includes('Connecting')) {
+                    container.innerHTML = rows.map((m, index) => {
+                        const mRole = String(m.sender_role || m.senderRole || '').toLowerCase();
+                        const isMe = String(m.sender_id || m.senderId) === String(centerId) && mRole === 'center';
 
-                    const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                        const align = isMe ? 'flex-end' : 'flex-start';
+                        const bg = isMe ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(30, 41, 59, 0.8)';
+                        const color = '#f8fafc';
+                        const radius = isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px';
+                        const border = isMe ? 'none' : '1px solid rgba(255, 255, 255, 0.05)';
+                        
+                        const loggedInCenterName = localStorage.getItem('center_sys_name') || localStorage.getItem('centerName') || 'Center';
+                        const senderDisplayName = isMe ? loggedInCenterName : (m.senderName || userName);
+                        
+                        const initial = senderDisplayName.charAt(0).toUpperCase();
+                        const avatarBg = isMe ? '#059669' : '#475569';
+                        const avatarBorder = isMe ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)';
 
-                    return `
-                        <div style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; align-items: ${align}; margin-bottom: 12px;">
-                            <span style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 2px; padding: 0 6px; font-weight: 500;">${senderDisplayName}</span>
-                            <div style="background: ${bg}; color: #fff; padding: 12px 18px; border-radius: ${radius}; font-size: 0.95rem; line-height: 1.5; border: ${border}; box-shadow: 0 4px 6px rgba(0,0,0,0.15); position: relative;">
-                                ${m.message || m.messageText}
+                        const time = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                        const animDelay = (index === rows.length - 1) ? 'animation: slideUpFade 0.3s ease-out forwards;' : 'animation: none; opacity: 1;';
+
+                        return `
+                            <div class="chat-bubble-wrapper" style="align-self: ${align}; max-width: 85%; display: flex; flex-direction: ${isMe ? 'row-reverse' : 'row'}; align-items: flex-end; gap: 8px; margin-bottom: 16px; ${animDelay}">
+                                 <div style="flex-shrink:0; width: 28px; height: 28px; border-radius: 50%; background: ${avatarBg}; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: white; border: 2px solid ${avatarBorder}; margin-bottom: 2px;">
+                                    ${initial}
+                                 </div>
+                                 <div style="display: flex; flex-direction: column; align-items: ${align}; max-width: calc(100% - 36px);">
+                                    <span style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; padding: 0 4px; font-weight: 500;">${senderDisplayName}</span>
+                                    <div style="background: ${bg}; color: ${color}; padding: 12px 16px; border-radius: ${radius}; font-size: 0.95rem; line-height: 1.5; border: ${border}; box-shadow: 0 4px 15px rgba(0,0,0,0.1); word-break: break-word; white-space: pre-wrap;">${m.message || m.messageText}</div>
+                                    <span style="font-size: 0.65rem; color: #64748b; margin-top: 6px; padding: 0 4px; font-weight: 500;">${time}</span>
+                                </div>
                             </div>
-                            <span style="font-size: 0.7rem; color: #64748b; margin-top: 4px; padding: 0 6px;">${time}</span>
-                        </div>
-                    `;
-                }).join('');
-
-                container.scrollTop = container.scrollHeight;
+                        `;
+                    }).join('');
+                    
+                    if (shouldScroll || hasNewMessages) {
+                        setTimeout(()=> {
+                            container.scrollTop = container.scrollHeight;
+                        }, 50);
+                    }
+                }
             } catch (err) {
                 console.error('Center Chat load error:', err);
+            } finally {
+                _isCenterChatFetching = false;
             }
         }
 
@@ -2622,7 +2691,38 @@ Check the Active Requests panel.`
             const btn = document.getElementById('sendCenterUserChatBtn');
             const originalText = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
+            btn.innerHTML = '<i class="ri-loader-4-line ri-spin" style="font-size: 1.2rem;"></i>';
+            btn.style.opacity = '0.7';
+
+            const container = document.getElementById('centerUserChatMessages');
+            
+            if(container.innerHTML.includes('Start the conversation') || container.innerHTML.includes('Connecting')) {
+                container.innerHTML = '';
+            }
+
+            const tempId = 'temp_' + Date.now();
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const loggedInCenterName = localStorage.getItem('center_sys_name') || localStorage.getItem('centerName') || 'Center';
+            const initial = loggedInCenterName.charAt(0).toUpperCase();
+            
+            const tempBubble = `
+                <div id="${tempId}" class="chat-bubble-wrapper optimistic-msg" style="align-self: flex-end; max-width: 85%; display: flex; flex-direction: row-reverse; align-items: flex-end; gap: 8px; margin-bottom: 16px; opacity: 0.6; transition: opacity 0.3s ease;">
+                     <div style="flex-shrink:0; width: 28px; height: 28px; border-radius: 50%; background: #059669; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; color: white; border: 2px solid rgba(16,185,129,0.5); margin-bottom: 2px;">
+                        ${initial}
+                     </div>
+                     <div style="display: flex; flex-direction: column; align-items: flex-end; max-width: calc(100% - 36px);">
+                        <span style="font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; padding: 0 4px; font-weight: 500;">${loggedInCenterName}</span>
+                        <div style="background: linear-gradient(135deg, #10b981, #059669); color: #f8fafc; padding: 12px 16px; border-radius: 18px 18px 4px 18px; font-size: 0.95rem; line-height: 1.5; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); word-break: break-word; white-space: pre-wrap;">${msg}</div>
+                        <span style="font-size: 0.65rem; color: #64748b; margin-top: 6px; padding: 0 4px; font-weight: 500;">${time} &bull; Sending...</span>
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', tempBubble);
+            container.scrollTop = container.scrollHeight;
+            
+            input.value = '';
+            input.focus();
 
             try {
                 const token = localStorage.getItem('center_sys_token') || localStorage.getItem('centerToken') || localStorage.getItem('token');
@@ -2636,53 +2736,98 @@ Check the Active Requests panel.`
                 });
 
                 if (res.ok) {
-                    input.value = '';
-                    loadCenterUserMessages();
+                    await loadCenterUserMessages();
                 } else {
                     const data = await res.json();
                     alert(data.error || data.message || 'Failed to send');
+                    const tempEl = document.getElementById(tempId);
+                    if(tempEl) tempEl.remove();
                 }
             } catch (err) {
                 console.error('Center Send error:', err);
+                const tempEl = document.getElementById(tempId);
+                if(tempEl) {
+                     tempEl.innerHTML = `<div style="color:#ef4444; font-size:0.8rem;"><i class="ri-error-warning-line"></i> Failed to send message.</div>`;
+                }
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
+                btn.style.opacity = '1';
             }
         };
 
         // Handle Enter key in center chat
-        document.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && document.activeElement.id === 'centerUserChatMessageInput') {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.activeElement.id === 'centerUserChatMessageInput' && !e.shiftKey) {
+                e.preventDefault();
                 sendCenterUserChatMessage();
             }
         });
     </script>
 
-    <!-- Center-User Chat Modal -->
+    <!-- Center-User Chat Modal (Premium Redesign) -->
+    <style>
+        .chat-input-wrapper {
+            display:flex; gap: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 6px; padding-left: 18px; transition: border-color 0.2s ease;
+        }
+        .chat-input-wrapper:focus-within {
+            border-color: #3b82f6;
+        }
+        .chat-bubble-wrapper {
+            animation: slideUpFade 0.3s ease-out forwards;
+        }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+        }
+    </style>
     <div id="centerUserChatModal" class="modal-overlay"
-        style="display:none; align-items:center; justify-content:center; z-index: 3000;">
+        style="display:none; align-items:center; justify-content:center; z-index: 3000; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);">
         <div class="modal-box"
-            style="max-width:500px; width:95%; height: 600px; display:flex; flex-direction:column; overflow:hidden; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;">
+            style="max-width:550px; width:95%; height: 80vh; max-height: 700px; display:flex; flex-direction:column; overflow:hidden; background: linear-gradient(145deg, #0f172a, #1e293b); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); transform: scale(0.95); opacity: 0; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease-out;">
+            
+            <!-- Chat Header -->
             <div class="modal-head"
-                style="background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.05); padding:15px 20px; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="display:flex; align-items:center; gap:10px; font-size:1.1rem; color: #fff; margin: 0;">
-                    <i class="ri-message-3-line" style="color:#60a5fa;"></i>
-                    Chat with <span id="chatUserName">User</span>
-                </h3>
-                <button class="modal-close-btn" onclick="closeCenterUserChat()"
-                    style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.5rem;"><i
-                        class="ri-close-line"></i></button>
+                style="background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 10;">
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.1)); border: 1px solid rgba(16,185,129,0.3); display: flex; align-items: center; justify-content: center; color: #10b981; box-shadow: inset 0 2px 4px rgba(255,255,255,0.1);">
+                        <i class="ri-user-smile-fill" style="font-size: 1.4rem;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:1.15rem; font-weight: 600; color: #f8fafc; margin: 0; letter-spacing: -0.01em;" id="chatUserName">User</h3>
+                        <p style="margin: 0; font-size: 0.75rem; color: #3b82f6; display: flex; align-items: center; gap: 4px; font-weight: 500;">Active Inquiry</p>
+                    </div>
+                </div>
+                <button class="modal-close-btn" onclick="closeCenterUserChat()" title="Close chat"
+                    style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; color: #94a3b8; cursor: pointer; display:flex; align-items:center; justify-content:center; transition: all 0.2s ease;"><i class="ri-close-line" style="font-size: 1.3rem;"></i></button>
             </div>
-            <div id="centerUserChatMessages"
-                style="flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; background: rgba(15,23,42,0.4);">
-                <!-- Messages -->
+            
+            <!-- Chat Messages Area -->
+            <div id="centerUserChatMessages" class="custom-scrollbar"
+                style="flex:1; padding: 24px; overflow-y:auto; display:flex; flex-direction:column; background: radial-gradient(circle at top left, rgba(30,41,59,0.4) 0%, rgba(15,23,42,0.8) 100%);">
+                <!-- Messages will be injected here -->
             </div>
-            <div
-                style="padding:15px; background:rgba(255,255,255,0.02); border-top:1px solid rgba(255,255,255,0.05); display:flex; gap:10px;">
-                <input type="text" id="centerUserChatMessageInput" placeholder="Type a message..."
-                    style="flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); padding:10px 15px; border-radius:10px; color:white; outline:none;">
-                <button id="sendCenterUserChatBtn" onclick="sendCenterUserChatMessage()"
-                    style="background:#3b82f6; color:white; border:none; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:600;">Send</button>
+            
+            <!-- Chat Input Area -->
+            <div style="padding: 16px 20px; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.08); z-index: 10;">
+                <div class="chat-input-wrapper">
+                    <textarea id="centerUserChatMessageInput" placeholder="Message user..." rows="1"
+                        style="flex:1; background: transparent; border: none; color: #f1f5f9; outline: none; font-size: 0.95rem; font-family: inherit; resize: none; align-self: center; line-height: 1.4; max-height: 100px; padding: 8px 0;"></textarea>
+                    <button id="sendCenterUserChatBtn" onclick="sendCenterUserChatMessage()" title="Send message"
+                        style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; display:flex; align-items:center; justify-content:center; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(5,150,105,0.3); flex-shrink: 0;">
+                        <i class="ri-send-plane-fill" style="font-size: 1.2rem; transform: translateX(-1px) translateY(1px);"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -1,0 +1,56 @@
+[
+  {
+    "request_id": 64,
+    "waste_type": "Paper",
+    "quantity": "5.00",
+    "status": "Completed",
+    "created_at": "2026-03-02T09:49:23.000Z",
+    "center_name": "HKS Kanjirapally",
+    "type": "PICKUP"
+  },
+  {
+    "request_id": 91,
+    "waste_type": "Plastic",
+    "quantity": "13.00",
+    "status": "Completed",
+    "created_at": "2026-03-05T15:22:49.000Z",
+    "center_name": "HKS Kanjirapally",
+    "type": "PICKUP"
+  },
+  {
+    "request_id": 97,
+    "waste_type": "Plastic",
+    "quantity": "12.00",
+    "status": "Approved",
+    "created_at": "2026-03-12T04:00:45.000Z",
+    "center_name": "HKS Kanjirapally",
+    "type": "PICKUP"
+  },
+  {
+    "request_id": 4,
+    "waste_type": "Festival",
+    "quantity": "45.00",
+    "status": "Completed",
+    "created_at": "2026-02-19T09:22:34.000Z",
+    "center_name": "HKS Kanjirapally",
+    "type": "SPECIAL"
+  },
+  {
+    "request_id": 5,
+    "waste_type": "Bulk",
+    "quantity": "1000.00",
+    "status": "Approved",
+    "created_at": "2026-02-23T06:02:13.000Z",
+    "center_name": "HKS Kanjirapally",
+    "type": "SPECIAL"
+  },
+  {
+    "request_id": 7,
+    "waste_type": "E-waste",
+    "quantity": "50.00",
+    "status": "Approved",
+    "created_at": "2026-03-05T08:21:29.000Z",
+    "center_name": "HKS Kanjirapally",
+    "type": "SPECIAL"
+  }
+]

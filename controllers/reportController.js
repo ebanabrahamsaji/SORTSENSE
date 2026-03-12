@@ -785,14 +785,18 @@ export const getUserDashboardReports = async (req, res) => {
     if (!userId) return res.status(400).json({ message: "userId required" });
     try {
         const query = `
-            (SELECT r.request_id, r.waste_type, r.quantity, r.status, r.created_at, c.center_name, MAX(rep.report_id) as report_id, 'PICKUP' as type
+            (SELECT r.request_id, r.waste_type, r.quantity, r.status, r.created_at, 
+                    COALESCE(c.center_name, 'Unassigned') as center_name, 
+                    MAX(rep.report_id) as report_id, 'PICKUP' as type
              FROM tbl_pickup_requests r
              LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
              LEFT JOIN tbl_reports rep ON r.request_id = rep.request_id AND rep.report_type = 'SINGLE'
              WHERE r.user_id = ?
              GROUP BY r.request_id)
             UNION ALL
-            (SELECT r.request_id, r.category as waste_type, r.quantity_value as quantity, r.status, r.created_at, c.center_name, MAX(rep.report_id) as report_id, 'SPECIAL' as type
+            (SELECT r.request_id, r.category as waste_type, r.quantity_value as quantity, r.status, r.created_at, 
+                    COALESCE(c.center_name, 'Unassigned') as center_name, 
+                    MAX(rep.report_id) as report_id, 'SPECIAL' as type
              FROM tbl_special_waste_requests r
              LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id
              LEFT JOIN tbl_reports rep ON r.request_id = rep.request_id AND rep.report_type = 'SINGLE'
@@ -815,13 +819,17 @@ export const getUserDashboardReports = async (req, res) => {
 export const getAdminAllReports = async (req, res) => {
     try {
         const query = `
-            (SELECT r.request_id, r.waste_type, r.quantity, r.status, r.created_at, u.name as user_name, 'PICKUP' as type
+            (SELECT r.request_id, r.waste_type, r.quantity, r.status, r.created_at, 
+                    u.name as user_name, COALESCE(c.center_name, 'Unassigned') as center_name, 'PICKUP' as type
              FROM tbl_pickup_requests r
-             JOIN tbl_users u ON r.user_id = u.user_id)
+             JOIN tbl_users u ON r.user_id = u.user_id
+             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id)
             UNION ALL
-            (SELECT r.request_id, r.category as waste_type, r.quantity_value as quantity, r.status, r.created_at, u.name as user_name, 'SPECIAL' as type
+            (SELECT r.request_id, r.category as waste_type, r.quantity_value as quantity, r.status, r.created_at, 
+                    u.name as user_name, COALESCE(c.center_name, 'Unassigned') as center_name, 'SPECIAL' as type
              FROM tbl_special_waste_requests r
-             JOIN tbl_users u ON r.user_id = u.user_id)
+             JOIN tbl_users u ON r.user_id = u.user_id
+             LEFT JOIN tbl_collection_centers c ON r.center_id = c.center_id)
             ORDER BY created_at DESC
             LIMIT 100
         `;
