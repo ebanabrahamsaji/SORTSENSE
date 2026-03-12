@@ -160,6 +160,8 @@ function buildCard(item, index) {
     const avatar = owner.charAt(0).toUpperCase();
     const delay = Math.min(index * 0.05, 0.4);
 
+    const isMe = String(item.user_id) === String(getActiveUserId());
+
     return `
         <div class="mp-card" style="animation-delay:${delay}s;">
             <div class="mp-card-img">
@@ -175,12 +177,18 @@ function buildCard(item, index) {
                     <span class="mp-owner-name">${owner}${dateStr ? ` · ${dateStr}` : ''}</span>
                 </div>
                 <div class="mp-card-actions">
+                    ${isMe ? `
+                    <button class="mp-action-btn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="deleteMarketItem('${item.item_id}')" title="Delete">
+                        <i class="ri-delete-bin-line"></i> Delete
+                    </button>
+                    ` : `
                     <button class="mp-action-btn" onclick="toggleSave(this, '${item.item_id}')" title="Save">
                         <i class="ri-heart-line"></i> Save
                     </button>
                     <button class="mp-action-btn" onclick="contactSeller('${item.item_id}')" title="Contact">
                         <i class="ri-chat-3-line"></i> Contact
                     </button>
+                    `}
                 </div>
             </div>
         </div>`;
@@ -369,6 +377,73 @@ window.toggleSave = async function (btn, itemId) {
         icon.classList.toggle('ri-heart-fill', isSaved);
         btn.classList.toggle('saved', isSaved);
         if (window.showToast) window.showToast('Could not save item.', 'error', 'Error');
+    }
+};
+
+window.closeConfirmModal = function () {
+    const modal = document.getElementById('confirmActionModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.deleteMarketItem = async function (itemId) {
+    const modal = document.getElementById('confirmActionModal');
+    const btn = document.getElementById('confirmActionBtn');
+    
+    if (modal && btn) {
+        modal.style.display = 'flex';
+        btn.onclick = async function () {
+            btn.innerHTML = '<i class="ri-loader-4-line ri-spin"></i>';
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/marketplace/${itemId}`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: getActiveUserId() })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    if (window.showToast) window.showToast('Item deleted successfully.', 'success', 'Deleted');
+                    loadMarketplace(); // Refresh the list
+                } else {
+                    throw new Error(data.message || 'Failed to delete item');
+                }
+            } catch (err) {
+                if (window.showToast) {
+                    window.showToast(err.message, 'error', 'Error');
+                } else {
+                    alert(err.message);
+                }
+            } finally {
+                btn.innerHTML = 'Proceed';
+                btn.disabled = false;
+                closeConfirmModal();
+            }
+        };
+    } else {
+        if (!confirm('Are you sure you want to delete this item?')) return;
+
+        try {
+            const res = await fetch(`/api/marketplace/${itemId}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: getActiveUserId() })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                if (window.showToast) window.showToast('Item deleted successfully.', 'success', 'Deleted');
+                loadMarketplace(); // Refresh the list
+            } else {
+                throw new Error(data.message || 'Failed to delete item');
+            }
+        } catch (err) {
+            if (window.showToast) {
+                window.showToast(err.message, 'error', 'Error');
+            } else {
+                alert(err.message);
+            }
+        }
     }
 };
 

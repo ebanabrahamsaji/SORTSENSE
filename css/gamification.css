@@ -81,7 +81,7 @@
 }
 
 .level-number span:last-child {
-    font-size: 2rem;
+    font-size: clamp(1.5rem, 4vw, 2rem);
     font-weight: 800;
     color: white;
 }
@@ -140,7 +140,7 @@
 
 .stat-item h2 {
     margin: 0;
-    font-size: 1.8rem;
+    font-size: clamp(1.4rem, 3vw, 1.8rem);
     color: white;
     line-height: 1;
 }
@@ -166,7 +166,7 @@
 
 .impact-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(clamp(80px, 15vw, 100px), 1fr));
     gap: 1rem;
     text-align: center;
 }
@@ -217,7 +217,7 @@
 .panel-header h3 {
     margin: 0;
     color: white;
-    font-size: 1.25rem;
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -429,7 +429,7 @@
 
 .badges-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(clamp(140px, 20vw, 180px), 1fr));
     gap: 1rem;
 }
 
@@ -576,7 +576,7 @@
     }
 
     .badges-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     }
 }
 

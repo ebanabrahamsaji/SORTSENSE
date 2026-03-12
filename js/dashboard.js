@@ -1797,8 +1797,20 @@ window.checkPickupReminder = function (pickups) {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    // Store shown notifications in sessionStorage so they only appear once per session
+    let shownReminders;
+    try {
+        shownReminders = JSON.parse(sessionStorage.getItem('shownPickupReminders') || '{}');
+    } catch(e) {
+        shownReminders = {};
+    }
+
+    let modified = false;
 
     pickups.forEach(p => {
+        // Fallback to generating a hash if ID is missing so we can still track it loosely
+        const pId = p.pickup_id || p.id || p.request_id || (p.created_at + '_' + p.status);
         const dateStr = p.scheduled_date || p.created_at;
         const pickupDate = new Date(dateStr);
         pickupDate.setHours(0, 0, 0, 0);
@@ -1806,14 +1818,24 @@ window.checkPickupReminder = function (pickups) {
         const diffTime = pickupDate - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        if (diffDays === 1) {
-            showToast("🔔 Reminder: Pickup scheduled for tomorrow!", "info");
-        } else if (diffDays === 0) {
-            showToast("🔔 Reminder: You have a pickup scheduled today!", "info");
-        } else if (p.status === 'Completed' && diffDays === 0) {
-            showToast("✅ Pickup completed successfully!", "success");
+        if (diffDays === 1 && !shownReminders[`${pId}_tomorrow`]) {
+            if (typeof showToast === 'function') showToast("🔔 Reminder: Pickup scheduled for tomorrow!", "info");
+            shownReminders[`${pId}_tomorrow`] = true;
+            modified = true;
+        } else if (diffDays === 0 && p.status !== 'Completed' && !shownReminders[`${pId}_today`]) {
+            if (typeof showToast === 'function') showToast("🔔 Reminder: You have a pickup scheduled today!", "info");
+            shownReminders[`${pId}_today`] = true;
+            modified = true;
+        } else if (p.status === 'Completed' && diffDays === 0 && !shownReminders[`${pId}_completed`]) {
+            if (typeof showToast === 'function') showToast("✅ Pickup completed successfully!", "success");
+            shownReminders[`${pId}_completed`] = true;
+            modified = true;
         }
     });
+
+    if (modified) {
+        sessionStorage.setItem('shownPickupReminders', JSON.stringify(shownReminders));
+    }
 }
 
 // 2️⃣ Eco Score Progress Bar

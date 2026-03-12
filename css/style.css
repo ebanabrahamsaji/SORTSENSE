@@ -604,7 +604,7 @@ nav {
 }
 
 .auth-logo {
-    font-size: 2.5rem !important;
+    font-size: clamp(1.8rem, 4vw, 2.5rem) !important;
     color: white !important;
     margin-bottom: 2rem;
     display: flex;
@@ -622,7 +622,7 @@ nav {
 
 .auth-tagline {
     font-family: var(--font-heading);
-    font-size: 2.8rem;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
     font-weight: 800;
     color: white;
     line-height: 1.2;
@@ -1606,6 +1606,21 @@ select option {
     .blob {
         width: 300px;
         height: 300px;
+    }
+
+    .auth-split-screen {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow-y: auto;
+    }
+    
+    .auth-left {
+        padding: 2rem 1.5rem;
+        min-height: 300px;
+    }
+    
+    .auth-right {
+        padding: 2rem 1.5rem;
     }
 }
 

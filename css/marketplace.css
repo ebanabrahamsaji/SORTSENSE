@@ -63,7 +63,7 @@
 }
 
 .mp-header-text h1 {
-    font-size: 2.2rem;
+    font-size: clamp(1.8rem, 4vw, 2.2rem);
     font-weight: 800;
     color: var(--mp-text);
     margin: 0 0 6px;
@@ -135,7 +135,7 @@
 .mp-search-wrap {
     position: relative;
     flex: 1;
-    min-width: 200px;
+    min-width: clamp(150px, 30vw, 200px);
     max-width: 420px;
 }
 
@@ -200,7 +200,7 @@
 /* ── Marketplace Grid ──────────────────────────────── */
 .mp-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(clamp(220px, 30vw, 260px), 1fr));
     gap: 20px;
 }
 
@@ -790,7 +790,7 @@
     }
 
     .mp-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
 
     .btn-post-item {
