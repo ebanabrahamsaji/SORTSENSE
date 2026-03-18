@@ -12,6 +12,23 @@ function getActiveUserId() {
 }
 let allMarketItems = [];
 let currentMarketTab = 'all';
+let isDeleteMode = false;
+
+window.toggleMarketplaceDeleteMode = function() {
+    isDeleteMode = !isDeleteMode;
+    const btn = document.getElementById('toggleDeleteBtn');
+    if (btn) {
+        if (isDeleteMode) {
+            btn.classList.add('active');
+            btn.innerHTML = '<i class="ri-close-line"></i> Exit Delete Mode';
+            if (window.showToast) window.showToast('Delete mode enabled. Click on your items to remove.', 'info', 'Manage Mode');
+        } else {
+            btn.classList.remove('active');
+            btn.innerHTML = '<i class="ri-delete-bin-7-line"></i> Manage Items';
+        }
+    }
+    renderMarketplaceItems(allMarketItems);
+};
 
 // ── Image Upload Helpers ──────────────────────────────
 window.handleMPImageFile = function (input) {
@@ -167,6 +184,9 @@ function buildCard(item, index) {
     // Safter comparison: ensure both are valid strings before comparing
     const isMe = activeId && item.user_id && String(item.user_id) === activeId;
     
+    // In Delete Mode, we show the delete button for ALL items (backend will still verify ownership)
+    const showDelete = isMe || isDeleteMode;
+    
     // Debug log to confirm why delete button might be missing
     // console.log(`Item "${item.title}" owner: ${item.user_id}, Current user: ${activeId}, isMe: ${isMe}`);
 
@@ -185,7 +205,7 @@ function buildCard(item, index) {
                     <span class="mp-owner-name">${owner}${dateStr ? ` · ${dateStr}` : ''}</span>
                 </div>
                 <div class="mp-card-actions">
-                    ${isMe ? `
+                    ${showDelete ? `
                     <button class="mp-action-btn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="deleteMarketItem('${item.item_id}')" title="Delete">
                         <i class="ri-delete-bin-line"></i> Delete
                     </button>

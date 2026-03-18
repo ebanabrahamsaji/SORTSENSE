@@ -646,9 +646,14 @@
                         <h1>Waste <span class="gradient-text">Marketplace</span></h1>
                         <p>Exchange recyclable materials sustainably with your community.</p>
                     </div>
-                    <button class="btn-post-item" onclick="openAddItem()">
-                        <i class="ri-add-circle-line"></i> Post New Item
-                    </button>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button id="toggleDeleteBtn" class="btn-manage-items" onclick="toggleMarketplaceDeleteMode()" title="Delete Mode">
+                            <i class="ri-delete-bin-7-line"></i> Manage Items
+                        </button>
+                        <button class="btn-post-item" onclick="openAddItem()">
+                            <i class="ri-add-circle-line"></i> Post New Item
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Controls: Search + Tabs -->
