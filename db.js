@@ -739,6 +739,8 @@ const smartPool = {
         await migrate("tbl_users", "carbon_saved_kg DECIMAL(10,2) DEFAULT 0");
         await migrate("tbl_users", "leaderboard_rank INT DEFAULT 0");
         await migrate("tbl_users", "center_id INT NULL");
+        await migrate("tbl_users", "google_id VARCHAR(255) NULL");
+        await migrate("tbl_users", "profile_picture VARCHAR(500) NULL");
 
         // 2. Center Table Migrations
         await migrate("tbl_collection_centers", "status VARCHAR(10) DEFAULT 'OPEN'");
