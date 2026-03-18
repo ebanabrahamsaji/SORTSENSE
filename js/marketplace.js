@@ -197,8 +197,8 @@ function buildCard(item, index) {
                      onerror="this.onerror=null;this.src='${getCategoryPlaceholder(cat)}'">
                 <span class="mp-badge ${catKey}">${cat}</span>
                 
-                ${isDeleteMode ? `
-                <button class="mp-delete-badge" onclick="deleteMarketItem('${item.item_id}')" title="Force Delete (Admin/Manage Mode)">
+                ${isDeleteMode && isMe ? `
+                <button class="mp-delete-badge" onclick="deleteMarketItem('${item.item_id}')" title="Delete Item">
                     <i class="ri-delete-bin-line"></i>
                 </button>
                 ` : ''}
@@ -438,7 +438,9 @@ window.deleteMarketItem = async function (itemId) {
                 
                 if (data.success) {
                     if (window.showToast) window.showToast('Item deleted successfully.', 'success', 'Deleted');
-                    loadMarketplace(); // Refresh the list
+                    realDbItems = realDbItems.filter(i => String(i.item_id) !== String(itemId));
+                    allMarketItems = allMarketItems.filter(i => String(i.item_id) !== String(itemId));
+                    renderMarketplaceItems(allMarketItems);
                 } else {
                     throw new Error(data.message || 'Failed to delete item');
                 }
@@ -467,7 +469,9 @@ window.deleteMarketItem = async function (itemId) {
             
             if (data.success) {
                 if (window.showToast) window.showToast('Item deleted successfully.', 'success', 'Deleted');
-                loadMarketplace(); // Refresh the list
+                realDbItems = realDbItems.filter(i => String(i.item_id) !== String(itemId));
+                allMarketItems = allMarketItems.filter(i => String(i.item_id) !== String(itemId));
+                renderMarketplaceItems(allMarketItems);
             } else {
                 throw new Error(data.message || 'Failed to delete item');
             }
