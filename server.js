@@ -306,22 +306,38 @@ app.post('/api/auth/google/verify', authLimiter, async (req, res) => {
         let user = existing[0];
 
         if (!user) {
-            await db.query(
-                'INSERT INTO tbl_users (name, email, google_id, profile_pic, created_at) VALUES (?, ?, ?, ?, NOW())',
-                [payload.name, payload.email, payload.sub, payload.picture]
-            ).catch(() => { });
+            // Attempt to insert with typical columns; use try/catch to handle dynamic schema differences
+            try {
+                await db.query(
+                    'INSERT IGNORE INTO tbl_users (name, email, google_id, profile_picture, created_at) VALUES (?, ?, ?, ?, NOW())',
+                    [payload.name, payload.email, payload.sub, payload.picture]
+                );
+            } catch (insErr) {
+                // Fallback attempt with minimal columns if migration was incomplete
+                await db.query(
+                    'INSERT IGNORE INTO tbl_users (name, email, created_at) VALUES (?, ?, NOW())',
+                    [payload.name, payload.email]
+                ).catch(e => console.error("Critical: Cannot auto-register Google user:", e));
+            }
+            
             const [newUser] = await db.query('SELECT * FROM tbl_users WHERE email = ?', [payload.email]);
             user = newUser[0];
         }
 
+        // Logic check: if we still don't have a user, it's a server failure
+        if (!user) throw new Error("Could not find or create user record.");
+
+        // Extract ID (handle variants like 'id' or 'user_id')
+        const finalUserId = user.user_id || user.id || null;
+
         res.json({
             success: true,
             user: {
-                user_id: user?.user_id,
-                name: payload.name,
-                email: payload.email,
-                picture: payload.picture,
-                google_id: payload.sub
+                user_id: finalUserId,
+                name: user.name || payload.name,
+                email: user.email || payload.email,
+                picture: user.profile_picture || payload.picture,
+                google_id: user.google_id || payload.sub
             }
         });
     } catch (err) {

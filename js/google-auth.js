@@ -28,7 +28,12 @@ async function handleGoogleSignIn(response) {
             const user = data.user;
 
             // Core Session Storage
-            localStorage.setItem('app_user_id', user.user_id);
+            const uid = user.user_id || user.id;
+            if (uid) {
+                localStorage.setItem('app_user_id', uid);
+                localStorage.setItem('userId', uid);
+            }
+            
             localStorage.setItem('app_user_email', user.email);
             localStorage.setItem('app_user_name', user.name);
             localStorage.setItem('app_user_role', 'USER');
@@ -40,7 +45,6 @@ async function handleGoogleSignIn(response) {
             }
 
             // Legacy Fallbacks
-            localStorage.setItem('userId', user.user_id);
             localStorage.setItem('userEmail', user.email);
             localStorage.setItem('userRole', 'USER');
 

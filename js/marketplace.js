@@ -5,7 +5,10 @@
 // IMPORTANT: Read user ID dynamically at call-time (not load-time), because
 // the script loads before the user logs in, so static read = always null.
 function getActiveUserId() {
-    return localStorage.getItem('app_user_id') || localStorage.getItem('userId') || null;
+    const rawId = localStorage.getItem('app_user_id') || localStorage.getItem('userId');
+    // Important: check for string 'undefined' which can result from failed setItem() calls
+    if (!rawId || rawId === 'undefined' || rawId === 'null') return null;
+    return String(rawId);
 }
 let allMarketItems = [];
 let currentMarketTab = 'all';
@@ -161,7 +164,8 @@ function buildCard(item, index) {
     const delay = Math.min(index * 0.05, 0.4);
 
     const activeId = getActiveUserId();
-    const isMe = String(item.user_id) === String(activeId);
+    // Safter comparison: ensure both are valid strings before comparing
+    const isMe = activeId && item.user_id && String(item.user_id) === activeId;
     
     // Debug log to confirm why delete button might be missing
     // console.log(`Item "${item.title}" owner: ${item.user_id}, Current user: ${activeId}, isMe: ${isMe}`);
