@@ -21,10 +21,20 @@ window.toggleMarketplaceDeleteMode = function() {
         if (isDeleteMode) {
             btn.classList.add('active');
             btn.innerHTML = '<i class="ri-close-line"></i> Exit Delete Mode';
-            if (window.showToast) window.showToast('Delete mode enabled. Click on your items to remove.', 'info', 'Manage Mode');
+            if (window.showToast) window.showToast('Delete mode enabled. Click the trash icon on your items to remove them.', 'info', 'Manage Mode');
+            // Switch to My Listings so only the user's own items are shown
+            currentMarketTab = 'my';
+            document.querySelectorAll('.mp-tab').forEach(t => t.classList.remove('active'));
+            const myTab = document.querySelector('.mp-tab:nth-child(2)');
+            if (myTab) myTab.classList.add('active');
         } else {
             btn.classList.remove('active');
             btn.innerHTML = '<i class="ri-delete-bin-7-line"></i> Manage Items';
+            // Switch back to All Items
+            currentMarketTab = 'all';
+            document.querySelectorAll('.mp-tab').forEach(t => t.classList.remove('active'));
+            const allTab = document.querySelector('.mp-tab:nth-child(1)');
+            if (allTab) allTab.classList.add('active');
         }
     }
     renderMarketplaceItems(allMarketItems);
@@ -197,7 +207,7 @@ function buildCard(item, index) {
                      onerror="this.onerror=null;this.src='${getCategoryPlaceholder(cat)}'">
                 <span class="mp-badge ${catKey}">${cat}</span>
                 
-                ${isDeleteMode && isMe ? `
+                ${isDeleteMode ? `
                 <button class="mp-delete-badge" onclick="deleteMarketItem('${item.item_id}')" title="Delete Item">
                     <i class="ri-delete-bin-line"></i>
                 </button>
@@ -438,9 +448,7 @@ window.deleteMarketItem = async function (itemId) {
                 
                 if (data.success) {
                     if (window.showToast) window.showToast('Item deleted successfully.', 'success', 'Deleted');
-                    realDbItems = realDbItems.filter(i => String(i.item_id) !== String(itemId));
-                    allMarketItems = allMarketItems.filter(i => String(i.item_id) !== String(itemId));
-                    renderMarketplaceItems(allMarketItems);
+                    loadMarketplace(); // Refresh the list
                 } else {
                     throw new Error(data.message || 'Failed to delete item');
                 }
@@ -469,9 +477,7 @@ window.deleteMarketItem = async function (itemId) {
             
             if (data.success) {
                 if (window.showToast) window.showToast('Item deleted successfully.', 'success', 'Deleted');
-                realDbItems = realDbItems.filter(i => String(i.item_id) !== String(itemId));
-                allMarketItems = allMarketItems.filter(i => String(i.item_id) !== String(itemId));
-                renderMarketplaceItems(allMarketItems);
+                loadMarketplace(); // Refresh the list
             } else {
                 throw new Error(data.message || 'Failed to delete item');
             }
