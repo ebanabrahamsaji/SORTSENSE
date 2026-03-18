@@ -160,7 +160,11 @@ function buildCard(item, index) {
     const avatar = owner.charAt(0).toUpperCase();
     const delay = Math.min(index * 0.05, 0.4);
 
-    const isMe = String(item.user_id) === String(getActiveUserId());
+    const activeId = getActiveUserId();
+    const isMe = String(item.user_id) === String(activeId);
+    
+    // Debug log to confirm why delete button might be missing
+    // console.log(`Item "${item.title}" owner: ${item.user_id}, Current user: ${activeId}, isMe: ${isMe}`);
 
     return `
         <div class="mp-card" style="animation-delay:${delay}s;">
