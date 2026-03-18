@@ -196,6 +196,12 @@ function buildCard(item, index) {
                 <img src="${imageUrl}" alt="${item.title}" loading="lazy"
                      onerror="this.onerror=null;this.src='${getCategoryPlaceholder(cat)}'">
                 <span class="mp-badge ${catKey}">${cat}</span>
+                
+                ${isDeleteMode ? `
+                <button class="mp-delete-badge" onclick="deleteMarketItem('${item.item_id}')" title="Force Delete (Admin/Manage Mode)">
+                    <i class="ri-delete-bin-line"></i>
+                </button>
+                ` : ''}
             </div>
             <div class="mp-card-body">
                 <h3 title="${item.title}">${item.title}</h3>
@@ -205,9 +211,9 @@ function buildCard(item, index) {
                     <span class="mp-owner-name">${owner}${dateStr ? ` · ${dateStr}` : ''}</span>
                 </div>
                 <div class="mp-card-actions">
-                    ${showDelete ? `
-                    <button class="mp-action-btn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" onclick="deleteMarketItem('${item.item_id}')" title="Delete">
-                        <i class="ri-delete-bin-line"></i> Delete
+                    ${isMe ? `
+                    <button class="mp-action-btn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.05);" onclick="deleteMarketItem('${item.item_id}')" title="Delete Your Listing">
+                        <i class="ri-delete-bin-line"></i> Delete My Item
                     </button>
                     ` : `
                     <button class="mp-action-btn" onclick="toggleSave(this, '${item.item_id}')" title="Save">

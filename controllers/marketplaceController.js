@@ -146,10 +146,15 @@ export const deleteMarketplaceItem = async (req, res) => {
         const { id } = req.params;
         const { user_id } = req.body;
 
-        await db.query(
+        const [result] = await db.query(
             "UPDATE tbl_marketplace_items SET status = 'deleted' WHERE item_id = ? AND user_id = ?",
             [id, user_id]
         );
+
+        if (result.affectedRows === 0) {
+            console.warn(`⚠️ [Marketplace] Delete failed for ID ${id} with UID ${user_id}. Item may not exist or User mismatch.`);
+            return res.status(403).json({ success: false, message: "Could not delete item. Check if you are the owner." });
+        }
 
         res.json({ success: true, message: "Item deleted" });
     } catch (error) {
